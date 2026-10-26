@@ -92,6 +92,8 @@ openssl rand -base64 32     # TOKEN_ENC_KEY を生成
 3. デプロイ後、本番 URL のリダイレクト URI を GCP に追加
 4. スマホで開いて「ホーム画面に追加」するとアプリのように使えます
 
+`https://<本番ドメイン>/api/health` を開き、`"ready": true`（すべての項目が `ok`）になっていれば準備完了です。`ng` の項目は、その環境変数が未設定か、`supabase_schema` なら `schema.sql` が未実行か Supabase の URL・キーが違います。
+
 ## 開発
 
 ```bash
