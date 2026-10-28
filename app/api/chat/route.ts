@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { runAgent } from "@/lib/agent";
 import { getUserContext } from "@/lib/context";
+import { UnauthorizedError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http";
 import { dailyChatLimit } from "@/lib/limits";
 import { RecordingCalendar } from "@/lib/ops";
@@ -31,16 +32,19 @@ export async function POST(req: NextRequest) {
     const recording = new RecordingCalendar(calendar);
     const history = await store.recentMessages(userId, HISTORY_LIMIT);
     let reply: string;
+    let authError: UnauthorizedError | null = null;
     try {
       ({ reply } = await runAgent({ message: parsed.data.message, history, calendar: recording, tz, now }));
     } catch (err) {
-      console.error(err);
+      if (err instanceof UnauthorizedError) authError = err;
+      else console.error(err);
       reply = "AIの処理中にエラーが発生しました。";
       if (recording.ops.length) reply += "途中までの変更は［元に戻す］で取り消せます。";
     }
     // 途中で失敗しても、反映済みの変更は Undo できるように記録する
     const opId = recording.ops.length ? crypto.randomUUID() : null;
     if (opId) await store.recordOps(userId, opId, recording.ops);
+    if (authError) throw authError;
     await store.addMessages(
       userId,
       [

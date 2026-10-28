@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { UnauthorizedError } from "./context";
+import { UnauthorizedError } from "./errors";
 
 /** ルートハンドラ共通のエラー処理 */
 export function errorResponse(err: unknown) {

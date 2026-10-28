@@ -1,4 +1,5 @@
 import { auth, calendar, type calendar_v3 } from "@googleapis/calendar";
+import { UnauthorizedError, isInvalidGrant } from "../errors";
 import type { Block, BlockInput, BlockPatch, Energy } from "../types";
 import type { CalendarBackend } from "./types";
 
@@ -16,14 +17,14 @@ export class GoogleCalendar implements CalendarBackend {
   }
 
   async list(from: Date, to: Date): Promise<Block[]> {
-    const res = await this.api.events.list({
+    const res = await guard(() => this.api.events.list({
       calendarId: this.calendarId,
       timeMin: from.toISOString(),
       timeMax: to.toISOString(),
       singleEvents: true,
       orderBy: "startTime",
       maxResults: 250,
-    });
+    }));
     return (res.data.items ?? [])
       .filter((e) => e.status !== "cancelled")
       .map(toBlock)
@@ -32,7 +33,7 @@ export class GoogleCalendar implements CalendarBackend {
 
   async get(id: string): Promise<Block | null> {
     try {
-      const res = await this.api.events.get({ calendarId: this.calendarId, eventId: id });
+      const res = await guard(() => this.api.events.get({ calendarId: this.calendarId, eventId: id }));
       return res.data.status === "cancelled" ? null : toBlock(res.data);
     } catch (err) {
       if ((err as { code?: number }).code === 404) return null;
@@ -41,7 +42,7 @@ export class GoogleCalendar implements CalendarBackend {
   }
 
   async create(input: BlockInput): Promise<Block> {
-    const res = await this.api.events.insert({
+    const res = await guard(() => this.api.events.insert({
       calendarId: this.calendarId,
       requestBody: {
         summary: input.title,
@@ -49,7 +50,7 @@ export class GoogleCalendar implements CalendarBackend {
         end: { dateTime: new Date(input.end).toISOString() },
         extendedProperties: { private: { [MARK]: "1", energy: input.energy ?? "MEDIUM" } },
       },
-    });
+    }));
     return toBlock(res.data)!;
   }
 
@@ -59,12 +60,25 @@ export class GoogleCalendar implements CalendarBackend {
     if (patch.start) body.start = { dateTime: new Date(patch.start).toISOString() };
     if (patch.end) body.end = { dateTime: new Date(patch.end).toISOString() };
     if (patch.energy) body.extendedProperties = { private: { [MARK]: "1", energy: patch.energy } };
-    const res = await this.api.events.patch({ calendarId: this.calendarId, eventId: id, requestBody: body });
+    const res = await guard(() => this.api.events.patch({ calendarId: this.calendarId, eventId: id, requestBody: body }));
     return toBlock(res.data)!;
   }
 
   async remove(id: string): Promise<void> {
-    await this.api.events.delete({ calendarId: this.calendarId, eventId: id });
+    await guard(() => this.api.events.delete({ calendarId: this.calendarId, eventId: id }));
+  }
+}
+
+/**
+ * Google API 呼び出しの共通処理。リフレッシュトークンが失効していたら
+ * （テスト中のアプリは7日で切れる・ユーザーが権限を取り消した）ログインし直しを促す。
+ */
+async function guard<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (isInvalidGrant(err)) throw new UnauthorizedError("Google との接続が切れました。もう一度ログインしてください");
+    throw err;
   }
 }
 

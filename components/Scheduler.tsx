@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { login } from "@/app/actions";
 import type { Block } from "@/lib/types";
 import { DEFAULT_TZ, localDateString } from "@/lib/time";
 import type { ChangeItem, ChatEntry, Tab } from "@/lib/ui";
 import CalendarView from "./CalendarView";
 import ChatView from "./ChatView";
 import HomeView from "./HomeView";
+import { AppLogo } from "./icons";
 import SettingsView from "./SettingsView";
 import TabBar from "./TabBar";
 
@@ -38,6 +40,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Google との接続切れ（期限切れ・権限の取り消し）。再読み込みではなくログインし直しの画面を出す
+  const [authExpired, setAuthExpired] = useState(false);
 
   // 選択中のタブは URL の hash に残す（再読み込みしても同じタブで開く）
   const setTab = useCallback((t: Tab) => {
@@ -55,7 +59,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
     async (d: string) => {
       const res = await fetch(`/api/events?date=${d}&tz=${encodeURIComponent(tz)}`, { cache: "no-store" });
       if (res.status === 401) {
-        window.location.reload();
+        setAuthExpired(true);
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -109,6 +113,10 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
         body: JSON.stringify({ message, tz }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        setAuthExpired(true);
+        return;
+      }
       if (!res.ok) {
         reply(data.error ?? "送信に失敗しました", { error: true });
         return;
@@ -130,6 +138,10 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
       body: JSON.stringify({ opId }),
     });
     const data = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      setAuthExpired(true);
+      return;
+    }
     if (res.ok) {
       setEntries((prev) =>
         prev.map((e) => (e.id === entryId && e.role === "assistant" && e.result ? { ...e, result: { ...e.result, undone: true } } : e)),
@@ -143,6 +155,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
   // 時刻とタイムゾーンはブラウザでしか正しく決まらないので、サーバー描画では中身を出さない
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   if (!mounted) return <div className="h-dvh" />;
+  if (authExpired) return <Reconnect />;
 
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col pt-[env(safe-area-inset-top)]">
@@ -187,5 +200,24 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
       {tab === "settings" && <SettingsView tz={tz} email={email} demo={demo} dailyLimit={dailyLimit} />}
       <TabBar tab={tab} onChange={setTab} />
     </div>
+  );
+}
+
+function Reconnect() {
+  return (
+    <main className="mx-auto flex h-dvh max-w-md flex-col justify-center gap-6 px-6" data-testid="reconnect">
+      <AppLogo className="size-14 rounded-2xl shadow-card" />
+      <div className="space-y-2">
+        <h1 className="text-xl font-bold">Google との接続が切れました</h1>
+        <p className="text-sm text-muted">
+          セキュリティのため、しばらくするとログインし直しが必要になります。予定はそのまま残っています。
+        </p>
+      </div>
+      <form action={login}>
+        <button type="submit" className="w-full rounded-full bg-accent px-5 py-3.5 font-bold text-white shadow-card transition active:scale-[0.99]">
+          Google でログインし直す
+        </button>
+      </form>
+    </main>
   );
 }

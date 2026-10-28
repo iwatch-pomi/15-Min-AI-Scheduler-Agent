@@ -82,3 +82,20 @@ describe("runAgent", () => {
     expect(reply).toContain("お応えできません");
   });
 });
+
+describe("runAgent の認証エラー", () => {
+  it("Google の接続切れ（UnauthorizedError）は AI に返さず、そのまま投げる", async () => {
+    const { UnauthorizedError } = await import("@/lib/errors");
+    create.mockResolvedValueOnce({
+      stop_reason: "tool_use",
+      content: [{ type: "tool_use", id: "t1", name: "get_schedule", input: { from: "2026-10-26", to: "2026-10-26" } }],
+    });
+    const base = new MemoryCalendar(crypto.randomUUID());
+    base.list = async () => {
+      throw new UnauthorizedError("接続切れ");
+    };
+    const calendar = new RecordingCalendar(base);
+    await expect(runAgent({ message: "予定は？", history: [], calendar, tz: "Asia/Tokyo", now })).rejects.toBeInstanceOf(UnauthorizedError);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+});

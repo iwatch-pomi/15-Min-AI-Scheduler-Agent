@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { RecordingCalendar } from "./ops";
+import { UnauthorizedError } from "./errors";
 import { toLocalIso } from "./time";
 import { ToolError, executeTool, toolDefinitions } from "./tools";
 import type { ChatMessage } from "./types";
@@ -68,6 +69,8 @@ export async function runAgent(opts: {
         const result = await executeTool(use.name, use.input, { calendar: opts.calendar, tz: opts.tz, now: opts.now });
         results.push({ type: "tool_result", tool_use_id: use.id, content: JSON.stringify(result) });
       } catch (err) {
+        // ログインし直しが必要なときは AI に返さず、そのまま画面に伝える
+        if (err instanceof UnauthorizedError) throw err;
         if (!(err instanceof ToolError)) console.error(`tool ${use.name} failed`, err);
         const message = err instanceof ToolError ? err.message : "カレンダーの操作に失敗しました";
         results.push({ type: "tool_result", tool_use_id: use.id, content: message, is_error: true });

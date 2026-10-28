@@ -6,13 +6,14 @@ import { demoSeed } from "./demo";
 import { MemoryStore } from "./store/memory";
 import { SupabaseStore } from "./store/supabase";
 import type { Store } from "./store/types";
+import { UnauthorizedError } from "./errors";
 import { getRefreshToken } from "./users";
+
+export { UnauthorizedError };
 
 export const isDemo = () => process.env.DEMO_MODE === "1";
 
 export type UserContext = { userId: string; calendar: CalendarBackend; store: Store };
-
-export class UnauthorizedError extends Error {}
 
 /**
  * API ルートから呼ぶ。ログイン中のユーザーのカレンダーと保存先を返す。
