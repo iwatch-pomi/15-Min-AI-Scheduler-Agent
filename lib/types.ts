@@ -10,6 +10,8 @@ export type Block = {
   ai: boolean;
   energy?: Energy;
   allDay?: boolean;
+  /** 場所（Google の予定に入っていれば） */
+  location?: string;
 };
 
 export type BlockInput = {

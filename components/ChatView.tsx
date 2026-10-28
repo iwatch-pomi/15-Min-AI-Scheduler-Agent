@@ -6,7 +6,7 @@ import type { ChangeItem, ChatEntry } from "@/lib/ui";
 
 
 import ChatBar from "./ChatBar";
-import { AppLogo, ChevronLeftIcon } from "./icons";
+import { ChevronLeftIcon, Mascot } from "./icons";
 import ResultCard from "./ResultCard";
 
 const QUICK_ACTIONS = ["15分延長", "割り込み30分", "今のをスキップ", "今日の残りを組み直して"];
@@ -14,6 +14,7 @@ const EXAMPLES = ["14時から要件定義1時間、そのあと返信15分", "�
 
 export default function ChatView(props: {
   tz: string;
+  draft: { text: string; key: number };
   entries: ChatEntry[];
   sending: boolean;
   onSend: (text: string) => void;
@@ -22,7 +23,7 @@ export default function ChatView(props: {
   onConfirm: (items: ChangeItem[]) => void;
   onBack: () => void;
 }) {
-  const { tz, entries, sending, onSend, onUndo, onSaveEdits, onConfirm, onBack } = props;
+  const { tz, draft, entries, sending, onSend, onUndo, onSaveEdits, onConfirm, onBack } = props;
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // 新しいメッセージが来たら一番下までスクロール
@@ -42,7 +43,7 @@ export default function ChatView(props: {
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3" data-testid="chat-log">
         {entries.length === 0 && !sending && (
           <div className="space-y-3 pt-6 text-center">
-            <AppLogo className="mx-auto size-14 rounded-2xl shadow-card" />
+            <Mascot className="mx-auto size-20" />
             <p className="font-bold">ひと言で、今日の予定が整う。</p>
             <p className="text-sm text-muted">やりたいことを送ると、空き時間に15分単位で組み込みます。</p>
             <div className="space-y-2 pt-2">
@@ -62,11 +63,11 @@ export default function ChatView(props: {
         {entries.map((entry) =>
           entry.role === "user" ? (
             <div key={entry.id} className="flex justify-end">
-              <p className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent-soft px-4 py-2.5 text-[15px] ring-1 ring-accent/15">{entry.text}</p>
+              <p className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-blk-main-bg px-4 py-2.5 text-[15px] text-heading">{entry.text}</p>
             </div>
           ) : (
             <div key={entry.id} className="flex items-start gap-2">
-              <AppLogo className="mt-0.5 size-8 shrink-0 rounded-lg" />
+              <Mascot className="size-9 shrink-0" />
               <div className="min-w-0 flex-1 space-y-2">
                 <p
                   className={`w-fit max-w-full whitespace-pre-wrap rounded-2xl rounded-tl-md bg-surface px-4 py-2.5 text-[15px] shadow-card ${entry.error ? "text-now" : ""}`}
@@ -90,7 +91,7 @@ export default function ChatView(props: {
 
         {sending && (
           <div className="flex items-start gap-2" data-testid="thinking">
-            <AppLogo className="mt-0.5 size-8 shrink-0 rounded-lg" />
+            <Mascot className="size-9 shrink-0" />
             <div className="flex items-center gap-3 rounded-2xl rounded-tl-md bg-surface px-4 py-3 text-sm text-muted shadow-card">
               AIが予定を作成しています…
               <span className="flex h-4 items-center gap-0.5" aria-hidden="true">
@@ -113,14 +114,14 @@ export default function ChatView(props: {
               disabled={sending}
               onClick={() => onSend(a)}
               className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-50 ${
-                i === 0 ? "bg-accent text-white" : "border border-accent/40 bg-surface text-accent"
+                i === 0 ? "bg-accent text-white" : "border border-accent/40 bg-surface text-accent-ink"
               }`}
             >
               {a}
             </button>
           ))}
         </div>
-        <ChatBar sending={sending} onSend={onSend} />
+        <ChatBar key={draft.key} initialText={draft.text} sending={sending} onSend={onSend} />
       </div>
     </div>
   );

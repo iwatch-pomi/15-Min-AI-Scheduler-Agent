@@ -85,7 +85,7 @@ export default function Timeline(props: { date: string; tz: string; events: Bloc
                   title={`${time} ${e.title}`}
                 >
                   <div className={`flex gap-1.5 leading-tight ${compact ? "h-full items-center text-[11px]" : "flex-col pt-1 text-xs"}`}>
-                    <span className="truncate font-bold">{e.title}</span>
+                    <span className="truncate font-bold text-heading">{e.title}</span>
                     <span className="shrink-0 tabular-nums text-muted">{time}</span>
                     {!e.ai && !compact && <span className="text-[10px] text-muted">※ 変更しない</span>}
                   </div>

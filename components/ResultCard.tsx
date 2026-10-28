@@ -8,9 +8,9 @@ import { CheckCircleIcon, PencilIcon, PlusIcon, TrashIcon, UndoIcon } from "./ic
 
 const KIND_LABEL: Record<ChangeItem["kind"], string> = { create: "追加", update: "変更", delete: "削除" };
 const KIND_STYLE: Record<ChangeItem["kind"], string> = {
-  create: "border-l-blk-blue",
-  update: "border-l-blk-blue",
-  delete: "border-l-blk-gray",
+  create: "border-l-blk-ai",
+  update: "border-l-blk-ai",
+  delete: "border-l-blk-main",
 };
 
 /** 15分刻みの時刻の選択肢（00:00〜23:45） */
@@ -122,7 +122,7 @@ export default function ResultCard(props: {
         <p className="font-bold">予定を編集</p>
         <ul className="mt-3 space-y-2">
           {rows.map((row) => (
-            <li key={row.key} className="space-y-2 rounded-xl border-l-[3px] border-l-blk-blue bg-surface-2 p-2.5">
+            <li key={row.key} className="space-y-2 rounded-xl border-l-[3px] border-l-blk-ai bg-surface-2 p-2.5">
               <div className="flex items-center gap-2">
                 <input
                   value={row.title}
@@ -169,7 +169,7 @@ export default function ResultCard(props: {
         </ul>
         <button
           onClick={addRow}
-          className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-accent/40 py-2 text-sm font-bold text-accent"
+          className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-accent/40 py-2 text-sm font-bold text-accent-ink"
         >
           <PlusIcon className="size-4" />
           項目を追加
@@ -197,7 +197,7 @@ export default function ResultCard(props: {
         <CheckCircleIcon className={`size-6 shrink-0 ${undone ? "text-muted" : "text-ok"}`} />
         <p className="flex-1 font-bold">{undone ? "変更を元に戻しました" : heading(items)}</p>
         {!undone && editable.length > 0 && (
-          <button onClick={startEdit} className="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-sm font-bold text-accent active:bg-accent-soft">
+          <button onClick={startEdit} className="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-sm font-bold text-accent-ink active:bg-accent-soft">
             <PencilIcon className="size-4" />
             編集
           </button>
@@ -227,7 +227,7 @@ export default function ResultCard(props: {
           </button>
           <button
             onClick={onUndo}
-            className="flex w-full items-center justify-center gap-1.5 rounded-full border border-accent/40 bg-surface py-2.5 text-sm font-bold text-accent transition active:scale-[0.99]"
+            className="flex w-full items-center justify-center gap-1.5 rounded-full border border-accent/40 bg-surface py-2.5 text-sm font-bold text-accent-ink transition active:scale-[0.99]"
           >
             <UndoIcon className="size-4" />
             元に戻す

@@ -9,7 +9,7 @@ export default function SettingsView(props: { tz: string; email?: string; demo?:
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
       <header className="pt-4 pb-3">
-        <h1 className="text-2xl font-bold">設定</h1>
+        <h1 className="text-2xl font-bold text-heading">マイページ</h1>
       </header>
 
       <div className="space-y-4">
@@ -37,7 +37,7 @@ export default function SettingsView(props: { tz: string; email?: string; demo?:
           <ol className="space-y-2 px-4 py-3 text-sm">
             <li>1. Safari でこのページを開く</li>
             <li className="flex items-center gap-1">
-              2. 画面下の共有ボタン <ShareIcon className="inline size-4 text-accent" /> をタップ
+              2. 画面下の共有ボタン <ShareIcon className="inline size-4 text-accent-ink" /> をタップ
             </li>
             <li>3.「ホーム画面に追加」を選ぶ</li>
           </ol>
@@ -65,7 +65,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
-      <span className="text-accent">{icon}</span>
+      <span className="text-accent-ink">{icon}</span>
       <span className="flex-1 text-sm">{label}</span>
       <span className="min-w-0 truncate text-sm text-muted">{value}</span>
     </div>

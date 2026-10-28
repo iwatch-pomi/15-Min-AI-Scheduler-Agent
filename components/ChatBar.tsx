@@ -18,8 +18,9 @@ function getRecognition(): (new () => SpeechRecognitionLike) | null {
   return (w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null) as (new () => SpeechRecognitionLike) | null;
 }
 
-export default function ChatBar({ sending, onSend }: { sending: boolean; onSend: (text: string) => void }) {
-  const [text, setText] = useState("");
+export default function ChatBar(props: { sending: boolean; onSend: (text: string) => void; initialText?: string }) {
+  const { sending, onSend, initialText = "" } = props;
+  const [text, setText] = useState(initialText);
   const [listening, setListening] = useState(false);
   const [canListen, setCanListen] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -71,6 +72,8 @@ export default function ChatBar({ sending, onSend }: { sending: boolean; onSend:
             }
           }}
           rows={1}
+          autoFocus={!!initialText}
+          onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
           placeholder="メッセージを入力…"
           aria-label="AIへのメッセージ"
           className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-4 py-2.5 text-[16px] leading-6 outline-none placeholder:text-muted"

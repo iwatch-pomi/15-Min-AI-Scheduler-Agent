@@ -1,13 +1,13 @@
 "use client";
 
 import type { Tab } from "@/lib/ui";
-import { CalendarIcon, HomeIcon, SettingsIcon, SparkleIcon } from "./icons";
+import { CalendarIcon, HomeIcon, SparkleIcon, UserIcon } from "./icons";
 
 const TABS: { id: Tab; label: string; Icon: typeof HomeIcon }[] = [
   { id: "home", label: "ホーム", Icon: HomeIcon },
   { id: "calendar", label: "カレンダー", Icon: CalendarIcon },
   { id: "ai", label: "AI", Icon: SparkleIcon },
-  { id: "settings", label: "設定", Icon: SettingsIcon },
+  { id: "settings", label: "マイページ", Icon: UserIcon },
 ];
 
 export default function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
@@ -21,10 +21,11 @@ export default function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab)
               <button
                 onClick={() => onChange(id)}
                 aria-current={active ? "page" : undefined}
-                className={`flex w-full flex-col items-center gap-0.5 pt-2 pb-1.5 text-[10px] font-medium transition ${active ? "text-accent" : "text-muted"}`}
+                className={`flex w-full flex-col items-center gap-0.5 pt-2.5 pb-1 text-[10px] font-medium transition ${active ? "text-accent-ink" : "text-muted"}`}
               >
                 <Icon className="size-6" strokeWidth={active ? 2.2 : 1.8} />
                 {label}
+                <span className={`mt-0.5 h-0.5 w-6 rounded-full ${active ? "bg-accent" : "bg-transparent"}`} />
               </button>
             </li>
           );

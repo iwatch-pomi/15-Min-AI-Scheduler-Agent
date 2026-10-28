@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { login } from "@/app/actions";
 import type { Block } from "@/lib/types";
-import { DEFAULT_TZ, localDateString } from "@/lib/time";
+import { suggestions } from "@/lib/suggest";
+import { DEFAULT_TZ, addDays, localDateString } from "@/lib/time";
 import type { ManualChange } from "@/lib/manual";
 import type { ChangeItem, ChatEntry, Tab } from "@/lib/ui";
 import CalendarView from "./CalendarView";
@@ -35,6 +36,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
   const [tz] = useState(browserTz);
   const [today, setToday] = useState(() => localDateString(new Date(), tz));
   const [date, setDate] = useState(today);
+  // おすすめから AI を開いたときに入力欄へ入れる文（key が変わると入力欄に反映される）
+  const [draft, setDraft] = useState<{ text: string; key: number }>({ text: "", key: 0 });
   const [eventsByDate, setEventsByDate] = useState<Record<string, Block[]>>({});
   const [now, setNow] = useState(() => new Date());
   const [tab, setTabState] = useState<Tab>(tabFromHash);
@@ -76,7 +79,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
 
   // ホームは「今日」、カレンダーは選んだ日の予定を使うので両方読む
   const loadAll = useCallback(async () => {
-    await Promise.all([...new Set([today, date])].map(loadDate));
+    // 明日の分は「明日の予定を組み立てる」おすすめを出すかどうかに使う
+    await Promise.all([...new Set([today, date, addDays(today, 1)])].map(loadDate));
   }, [today, date, loadDate]);
 
   // 日付を変えたとき・画面に戻ったとき・1分ごとに再取得（Google 側の変更も拾う）
@@ -198,13 +202,26 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
     <div className="mx-auto flex h-dvh max-w-xl flex-col pt-[env(safe-area-inset-top)]">
       {tab === "home" && (
         <HomeView
+          date={date}
           today={today}
           tz={tz}
           now={now}
-          events={eventsByDate[today] ?? []}
+          events={eventsByDate[date] ?? []}
+          suggestions={suggestions({
+            date,
+            tz,
+            now,
+            today,
+            events: eventsByDate[date] ?? [],
+            tomorrow: eventsByDate[addDays(today, 1)],
+          })}
           error={error}
           demo={demo}
-          onOpenAi={() => setTab("ai")}
+          onDateChange={setDate}
+          onOpenAi={(text) => {
+            if (text) setDraft((d) => ({ text, key: d.key + 1 }));
+            setTab("ai");
+          }}
         />
       )}
       {tab === "calendar" && (
@@ -221,6 +238,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
       {tab === "ai" && (
         <ChatView
           tz={tz}
+          draft={draft}
           entries={entries}
           sending={sending}
           onSend={send}

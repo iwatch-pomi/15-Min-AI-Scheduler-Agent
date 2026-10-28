@@ -5,6 +5,7 @@ import { addDays } from "@/lib/time";
 import { formatDateJa } from "@/lib/ui";
 import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
 import Timeline from "./Timeline";
+import WeekStrip from "./WeekStrip";
 
 export default function CalendarView(props: {
   date: string;
@@ -28,7 +29,7 @@ export default function CalendarView(props: {
         >
           <ChevronLeftIcon className="size-5" />
         </button>
-        <h1 className="flex-1 text-center text-lg font-bold tabular-nums">{formatDateJa(date)}</h1>
+        <h1 className="flex-1 text-center text-lg font-bold text-heading tabular-nums">{formatDateJa(date)}</h1>
         <button
           onClick={() => onDateChange(addDays(date, 1))}
           aria-label="次の日"
@@ -39,11 +40,14 @@ export default function CalendarView(props: {
         <button
           onClick={() => onDateChange(today)}
           disabled={isToday}
-          className="rounded-full bg-surface px-3 py-1.5 text-xs font-medium text-accent shadow-card disabled:opacity-0"
+          className="rounded-full bg-surface px-3 py-1.5 text-xs font-medium text-accent-ink shadow-card disabled:opacity-0"
         >
           今日
         </button>
       </header>
+      <div className="px-4 pb-3">
+        <WeekStrip date={date} today={today} onChange={onDateChange} />
+      </div>
       {error && <p className="px-4 pb-2 text-sm text-now">{error}</p>}
       <Timeline date={date} tz={tz} events={events} now={now} isToday={isToday} />
     </div>

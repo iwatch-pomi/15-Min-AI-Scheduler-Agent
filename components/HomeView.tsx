@@ -1,72 +1,145 @@
 "use client";
 
+import type { Suggestion } from "@/lib/suggest";
 import type { Block } from "@/lib/types";
 import { localTime, minutesBetween } from "@/lib/time";
-import { blockTone, formatDateJa } from "@/lib/ui";
-import { AppLogo, CalendarIcon, CheckCircleIcon, LockIcon, PlusIcon, SparkleIcon } from "./icons";
-import NowCard from "./NowCard";
+import { greeting, iconFor } from "@/lib/ui";
+import BlockIcon from "./BlockIcon";
+import { BulbIcon, CalendarIcon, ChevronRightIcon, LeafIcon, Mascot, MoonIcon, PinIcon, PlusIcon, SparkleIcon, SunIcon } from "./icons";
+import WeekStrip from "./WeekStrip";
+
+const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+const SUGGESTION_ICONS = { calendar: CalendarIcon, bulb: BulbIcon, leaf: LeafIcon };
 
 export default function HomeView(props: {
+  date: string;
   today: string;
   tz: string;
   now: Date;
   events: Block[];
+  suggestions: Suggestion[];
   error: string | null;
   demo?: boolean;
-  onOpenAi: () => void;
+  onDateChange: (d: string) => void;
+  onOpenAi: (draft?: string) => void;
 }) {
-  const { today, tz, now, events, error, demo, onOpenAi } = props;
+  const { date, today, tz, now, events, suggestions, error, demo, onDateChange, onOpenAi } = props;
   const timed = events.filter((e) => !e.allDay);
   const allDay = events.filter((e) => e.allDay);
+  const isToday = date === today;
+  const [, m, d] = date.split("-").map(Number);
+  const weekday = WEEKDAYS[new Date(`${date}T12:00:00Z`).getUTCDay()];
+  const hello = greeting(Number(localTime(now, tz).slice(0, 2)));
+  const current = isToday ? timed.find((e) => new Date(e.start) <= now && new Date(e.end) > now) : undefined;
+  const next = isToday && !current ? timed.find((e) => new Date(e.start) > now) : undefined;
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-24">
-        <header className="flex items-center justify-between pt-4 pb-3">
-          <h1 className="text-2xl font-bold tabular-nums">{formatDateJa(today)}</h1>
-          <AppLogo className="size-9 rounded-[10px] shadow-card" />
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-28">
+        <header className="pt-5">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="flex min-w-0 items-baseline gap-0.5 text-heading">
+              <span className="text-[34px] font-bold leading-none tabular-nums">{m}</span>
+              <span className="text-lg font-bold">月</span>
+              <span className="text-[34px] font-bold leading-none tabular-nums">{d}</span>
+              <span className="text-lg font-bold">日</span>
+              <span className="ml-1 text-lg font-medium">({weekday})</span>
+            </h1>
+            <button
+              onClick={() => onOpenAi()}
+              className="flex shrink-0 items-center gap-2 rounded-2xl border border-line bg-surface py-2 pr-2 pl-2.5 text-left shadow-card transition active:scale-[0.98]"
+              data-testid="assistant-card"
+            >
+              <Mascot className="size-9" />
+              <span>
+                <span className="block text-xs font-bold text-accent-ink">AIアシスタント</span>
+                <span className="block text-[10px] text-muted">
+                  {suggestions.length ? `${suggestions.length}つの提案があります` : "なんでも頼んでね"}
+                </span>
+              </span>
+              <ChevronRightIcon className="size-4 text-muted" />
+            </button>
+          </div>
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
+            {hello.text}
+            {hello.icon === "sun" ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
+          </p>
         </header>
 
+        <div className="mt-5">
+          <WeekStrip date={date} today={today} onChange={onDateChange} />
+        </div>
+
         {demo && (
-          <p className="mb-3 rounded-xl bg-amber-500/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+          <p className="mt-4 rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
             デモモード：予定はサーバーのメモリに保存されます
           </p>
         )}
+        {error && <p className="mt-3 text-sm text-now">{error}</p>}
 
-        <section className="space-y-3">
-          <h2 className="text-sm font-bold text-muted">今日の予定</h2>
-          <NowCard events={events} now={now} tz={tz} />
-          {error && <p className="text-sm text-now">{error}</p>}
-
+        <section className="mt-5 rounded-3xl bg-surface/70 p-3 shadow-card" data-testid="agenda">
+          {next && (
+            <p className="mb-2 flex items-center gap-1.5 px-1 text-xs text-muted" data-testid="nowbar">
+              <span className="size-1.5 shrink-0 rounded-full bg-accent" />
+              次は <span className="tabular-nums">{localTime(new Date(next.start), tz)}</span>
+              <span className="truncate font-medium text-text">{next.title}</span>
+              <span className="shrink-0">（あと{minutesBetween(now, new Date(next.start))}分）</span>
+            </p>
+          )}
           {allDay.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="mb-2 flex flex-wrap gap-1.5 px-1">
               {allDay.map((e) => (
-                <span key={e.id} className="rounded-full bg-surface px-2.5 py-1 text-xs text-muted shadow-card">
+                <span key={e.id} className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">
                   終日・{e.title}
                 </span>
               ))}
             </div>
           )}
-
           {timed.length === 0 ? (
-            <div className="rounded-2xl bg-surface px-5 py-8 text-center shadow-card">
-              <p className="font-medium">今日の予定はまだありません</p>
+            <div className="px-4 py-8 text-center">
+              <p className="font-medium text-heading">予定はまだありません</p>
               <p className="mt-1 text-sm text-muted">右下の ＋ から、AI にひと言で頼んでみましょう</p>
             </div>
           ) : (
-            <ul className="overflow-hidden rounded-2xl bg-surface shadow-card" data-testid="agenda">
+            <ul className="space-y-2">
               {timed.map((e) => (
-                <AgendaRow key={e.id} block={e} tz={tz} now={now} />
+                <AgendaRow key={e.id} block={e} tz={tz} now={now} current={e.id === current?.id} past={isToday && new Date(e.end) <= now} />
               ))}
             </ul>
           )}
         </section>
+
+        {suggestions.length > 0 && (
+          <section className="mt-6" data-testid="suggestions">
+            <h2 className="mb-2 flex items-center gap-1.5 px-1 text-sm font-bold text-accent-ink">
+              <Mascot className="size-7" />
+              AIのおすすめ
+              <SparkleIcon className="size-4" />
+            </h2>
+            <ul className="divide-y divide-line-soft overflow-hidden rounded-2xl bg-surface shadow-card">
+              {suggestions.map((s) => {
+                const Icon = SUGGESTION_ICONS[s.icon];
+                return (
+                  <li key={s.id}>
+                    <button onClick={() => onOpenAi(s.prompt)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-surface-2">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink">
+                        <Icon className="size-5" />
+                      </span>
+                      <span className="flex-1 text-[13px] leading-relaxed">{s.text}</span>
+                      <ChevronRightIcon className="size-4 shrink-0 text-muted" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
       </div>
 
       <button
-        onClick={onOpenAi}
+        onClick={() => onOpenAi()}
         aria-label="AIに予定を依頼"
-        className="absolute right-5 bottom-5 grid size-14 place-items-center rounded-full bg-accent text-white shadow-lg shadow-accent/30 transition active:scale-95"
+        className="absolute right-5 bottom-5 grid size-14 place-items-center rounded-full bg-accent text-white shadow-[0_10px_24px_-8px_var(--accent)] transition active:scale-95"
       >
         <PlusIcon className="size-7" strokeWidth={2.4} />
       </button>
@@ -74,38 +147,37 @@ export default function HomeView(props: {
   );
 }
 
-function AgendaRow({ block, tz, now }: { block: Block; tz: string; now: Date }) {
+function AgendaRow({ block, tz, now, current, past }: { block: Block; tz: string; now: Date; current: boolean; past: boolean }) {
   const start = new Date(block.start);
   const end = new Date(block.end);
-  const current = start <= now && end > now;
-  const past = end <= now;
-  const tone = blockTone(block);
   const minutes = minutesBetween(start, end);
+  const remainingSec = Math.max(0, Math.round((end.getTime() - now.getTime()) / 1000));
 
   return (
-    <li
-      className={`flex items-center gap-3 border-b border-line-soft px-4 py-3 last:border-b-0 ${current ? "bg-accent-soft/60" : ""} ${past ? "opacity-55" : ""}`}
-    >
-      <span className="w-11 shrink-0 text-sm tabular-nums text-muted">{localTime(start, tz)}</span>
-      <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${tone.bg} ${tone.dot}`}>
-        {block.ai ? <SparkleIcon className="size-4.5" /> : <CalendarIcon className="size-4.5" />}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-medium">{block.title}</p>
-        <p className="flex items-center gap-1 text-xs text-muted">
-          {block.ai ? (
-            <>
-              {minutes}分 ・ AI
-            </>
-          ) : (
-            <>
-              <LockIcon className="size-3" /> メインのカレンダー
-            </>
+    <li className={`flex gap-3 ${past ? "opacity-50" : ""}`}>
+      <span className="w-10 shrink-0 pt-3.5 text-right text-xs tabular-nums text-muted">{localTime(start, tz)}</span>
+      <div
+        className={`flex min-w-0 flex-1 items-start gap-3 rounded-2xl px-3.5 py-3 ${block.ai ? "bg-blk-ai-bg" : "bg-blk-main-bg"} ${
+          current ? "ring-2 ring-accent" : ""
+        }`}
+      >
+        <BlockIcon kind={iconFor(block)} className={`mt-0.5 size-5 shrink-0 ${block.ai ? "text-accent-ink" : "text-text"}`} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-medium text-heading">{block.title}</p>
+          {block.location && (
+            <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
+              <PinIcon className="size-3.5 shrink-0" />
+              {block.location}
+            </p>
           )}
-          {current && <span className="ml-1 font-medium text-accent">・ 進行中</span>}
-        </p>
+          {current && (
+            <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-white tabular-nums" data-testid="nowbar">
+              進行中・残り {Math.floor(remainingSec / 60)}:{String(remainingSec % 60).padStart(2, "0")}
+            </p>
+          )}
+        </div>
+        <span className="shrink-0 pt-0.5 text-xs tabular-nums text-muted">{minutes}分</span>
       </div>
-      {past && <CheckCircleIcon className="size-5 shrink-0 text-ok" />}
     </li>
   );
 }

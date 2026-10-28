@@ -202,5 +202,6 @@ function toBlock(e: calendar_v3.Schema$Event, ai: boolean): Block | null {
     ai,
     energy: ai ? ((priv.energy as Energy | undefined) ?? undefined) : undefined,
     allDay,
+    location: e.location ?? undefined,
   };
 }

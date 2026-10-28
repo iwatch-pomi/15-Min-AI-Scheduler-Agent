@@ -1,50 +1,53 @@
 @import "tailwindcss";
 
+/* Minimal Organic：温かいオフホワイト × チャコールグレー × エメラルド（AI） */
 :root {
-  --bg: #f3f8fd;
-  --bg-top: #e6f0fb;
+  --bg: #faf9f6;
   --surface: #ffffff;
-  --surface-2: #f4f8fd;
-  --text: #1b2a41;
-  --muted: #6b7a90;
-  --line: #e2eaf4;
-  --line-soft: #eef3f9;
-  --accent: #2f7cf6;
-  --accent-soft: #e7f0fe;
-  --now: #ef4444;
-  --ok: #22a565;
+  --surface-2: #f4f3ef;
+  --text: #475569;
+  --heading: #3b4657;
+  --muted: #8a919c;
+  --line: #ebe8e1;
+  --line-soft: #f2f0ea;
+  --accent: #10b981;
+  --accent-ink: #059669;
+  --accent-soft: #e8f6ef;
+  --now: #f08a7e;
+  --ok: #10b981;
 
-  /* 予定ブロック（パステル背景 + 左線） */
-  --blk-blue: #3b82f6;
-  --blk-blue-bg: #e8f1fe;
-  --blk-gray: #a6b2c3;
-  --blk-gray-bg: #f1f4f8;
+  /* 予定ブロック：AI の予定はエメラルド、メインのカレンダーの予定はスレート */
+  --blk-ai: #10b981;
+  --blk-ai-bg: #eaf6f0;
+  --blk-main: #a3acb9;
+  --blk-main-bg: #eef1f4;
 
-  --shadow: 0 1px 2px rgb(30 60 110 / 0.04), 0 4px 16px rgb(30 60 110 / 0.06);
+  --shadow: 0 1px 2px rgb(71 85 105 / 0.04), 0 6px 20px rgb(71 85 105 / 0.06);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0b1220;
-    --bg-top: #0f1a30;
-    --surface: #131c2e;
-    --surface-2: #18233a;
-    --text: #e6edf7;
-    --muted: #93a1b8;
-    --line: #22304a;
-    --line-soft: #1a263c;
-    --accent: #5b9bff;
-    --accent-soft: #1a2b4d;
-    --now: #f87171;
-    --ok: #4ade80;
+    --bg: #161715;
+    --surface: #1f211e;
+    --surface-2: #262825;
+    --text: #d9dee4;
+    --heading: #eef1f4;
+    --muted: #979fa9;
+    --line: #2f322e;
+    --line-soft: #262825;
+    --accent: #34d399;
+    --accent-ink: #34d399;
+    --accent-soft: #173529;
+    --now: #f4a094;
+    --ok: #34d399;
 
-    --blk-blue: #5b9bff;
-    --blk-blue-bg: #1a2b4d;
-    --blk-gray: #5d6b82;
-    --blk-gray-bg: #1a2335;
+    --blk-ai: #34d399;
+    --blk-ai-bg: #183428;
+    --blk-main: #6b7684;
+    --blk-main-bg: #252a31;
 
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
     color-scheme: dark;
   }
 }
@@ -54,17 +57,19 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-text: var(--text);
+  --color-heading: var(--heading);
   --color-muted: var(--muted);
   --color-line: var(--line);
   --color-line-soft: var(--line-soft);
   --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
   --color-now: var(--now);
   --color-ok: var(--ok);
-  --color-blk-blue: var(--blk-blue);
-  --color-blk-blue-bg: var(--blk-blue-bg);
-  --color-blk-gray: var(--blk-gray);
-  --color-blk-gray-bg: var(--blk-gray-bg);
+  --color-blk-ai: var(--blk-ai);
+  --color-blk-ai-bg: var(--blk-ai-bg);
+  --color-blk-main: var(--blk-main);
+  --color-blk-main-bg: var(--blk-main-bg);
   --shadow-card: var(--shadow);
   --font-sans: "Noto Sans JP", ui-sans-serif, system-ui, -apple-system, "Hiragino Sans", sans-serif;
 
@@ -87,8 +92,4 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
-}
-
-body {
-  background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 320px) no-repeat, var(--bg);
 }
