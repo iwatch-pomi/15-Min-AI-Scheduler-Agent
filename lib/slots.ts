@@ -40,7 +40,8 @@ export function planShift(
   until?: Date,
 ): { block: Block; start: Date; end: Date }[] {
   return blocks
-    .filter((b) => b.ai && !b.allDay)
+    // ルーティンは、ユーザーが頼んだときだけ動かすので、まとめてずらす対象にしない
+    .filter((b) => b.ai && !b.allDay && !b.routine)
     .filter((b) => new Date(b.start) >= from && (!until || new Date(b.start) < until))
     .sort((a, b) => a.start.localeCompare(b.start))
     .map((b) => ({

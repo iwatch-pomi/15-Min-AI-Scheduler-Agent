@@ -5,7 +5,7 @@ import type { Block } from "@/lib/types";
 import { localTime, minutesBetween } from "@/lib/time";
 import { greeting, iconFor } from "@/lib/ui";
 import BlockIcon from "./BlockIcon";
-import { BulbIcon, CalendarIcon, ChevronRightIcon, LeafIcon, Mascot, MoonIcon, PinIcon, PlusIcon, SparkleIcon, SunIcon } from "./icons";
+import { BulbIcon, CalendarIcon, ChevronRightIcon, LeafIcon, Mascot, MoonIcon, PinIcon, PlusIcon, RepeatIcon, SparkleIcon, SunIcon } from "./icons";
 import WeekStrip from "./WeekStrip";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -164,6 +164,12 @@ function AgendaRow({ block, tz, now, current, past }: { block: Block; tz: string
         <BlockIcon kind={iconFor(block)} className={`mt-0.5 size-5 shrink-0 ${block.ai ? "text-accent-ink" : "text-text"}`} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-medium text-heading">{block.title}</p>
+          {block.routine && (
+            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-accent-ink">
+              <RepeatIcon className="size-3" />
+              ルーティン
+            </p>
+          )}
           {block.location && (
             <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
               <PinIcon className="size-3.5 shrink-0" />

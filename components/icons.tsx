@@ -222,6 +222,15 @@ export const MoonIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const RepeatIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M17 2.5l3 3-3 3" />
+    <path d="M4 11.5v-1a5 5 0 0 1 5-5h11" />
+    <path d="M7 21.5l-3-3 3-3" />
+    <path d="M20 12.5v1a5 5 0 0 1-5 5H4" />
+  </Svg>
+);
+
 /**
  * マスコット（芽の生えた丸い顔）。AI アシスタントの顔として使う。
  * 線は文字色、芽はエメラルド、顔は薄いミント

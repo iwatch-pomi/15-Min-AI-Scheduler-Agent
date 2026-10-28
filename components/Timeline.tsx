@@ -5,6 +5,7 @@ import { assignLanes } from "@/lib/slots";
 import type { Block } from "@/lib/types";
 import { dayRange, localTime, minutesBetween } from "@/lib/time";
 import { blockTone } from "@/lib/ui";
+import { RepeatIcon } from "./icons";
 
 /** 15分 = 1行の高さ(px) */
 const ROW = 18;
@@ -85,7 +86,10 @@ export default function Timeline(props: { date: string; tz: string; events: Bloc
                   title={`${time} ${e.title}`}
                 >
                   <div className={`flex gap-1.5 leading-tight ${compact ? "h-full items-center text-[11px]" : "flex-col pt-1 text-xs"}`}>
-                    <span className="truncate font-bold text-heading">{e.title}</span>
+                    <span className="truncate font-bold text-heading">
+                      {e.routine && <RepeatIcon className="mr-1 inline size-3 align-[-1px] text-accent-ink" aria-label="ルーティン" />}
+                      {e.title}
+                    </span>
                     <span className="shrink-0 tabular-nums text-muted">{time}</span>
                     {!e.ai && !compact && <span className="text-[10px] text-muted">※ 変更しない</span>}
                   </div>

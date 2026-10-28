@@ -7,6 +7,7 @@ import { suggestions } from "@/lib/suggest";
 import { DEFAULT_TZ, addDays, localDateString } from "@/lib/time";
 import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
+import type { Routine, RoutineInput } from "@/lib/routines";
 import { isUndoRequest, type ChangeItem, type ChatEntry, type Tab } from "@/lib/ui";
 import CalendarView from "./CalendarView";
 import ChatView from "./ChatView";
@@ -121,6 +122,37 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadHistory();
   }, [loadHistory]);
+
+  // 毎日のルーティン（null は読み込み中）
+  const [routines, setRoutines] = useState<Routine[] | null>(null);
+  const loadRoutines = useCallback(async () => {
+    const res = await fetch("/api/routines", { cache: "no-store" }).catch(() => null);
+    if (res?.ok) setRoutines((await res.json()).routines);
+    else setRoutines((r) => r ?? []);
+  }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadRoutines();
+  }, [loadRoutines]);
+
+  const routineRequest = async (method: "POST" | "PATCH" | "DELETE", body: object): Promise<string | null> => {
+    const res = await fetch("/api/routines", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, tz }),
+    }).catch(() => null);
+    if (!res) return "通信に失敗しました";
+    if (res.status === 401) {
+      setAuthExpired(true);
+      return null;
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return data.error ?? "保存できませんでした";
+    await Promise.all([loadRoutines(), loadAll()]);
+    return null;
+  };
+  const saveRoutine = (id: string | null, input: RoutineInput) => routineRequest(id ? "PATCH" : "POST", id ? { id, ...input } : input);
+  const deleteRoutine = (id: string) => routineRequest("DELETE", { id });
 
   const clearHistory = async () => {
     const res = await fetch("/api/messages", { method: "DELETE" });
@@ -318,7 +350,11 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           onBack={() => setTab("home")}
         />
       )}
-      {tab === "settings" && <SettingsView tz={tz} email={email} demo={demo} usage={usage} onClearHistory={clearHistory} />}
+      {tab === "settings" && <SettingsView tz={tz} email={email} demo={demo} usage={usage} onClearHistory={clearHistory}
+          routines={routines}
+          onSaveRoutine={saveRoutine}
+          onDeleteRoutine={deleteRoutine}
+        />}
       <TabBar tab={tab} onChange={setTab} />
     </div>
   );

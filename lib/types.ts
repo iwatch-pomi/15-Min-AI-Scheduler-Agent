@@ -12,6 +12,8 @@ export type Block = {
   allDay?: boolean;
   /** 場所（Google の予定に入っていれば） */
   location?: string;
+  /** 毎日のルーティンの1回分（AI はユーザーに頼まれたときだけ、その日の分を動かす） */
+  routine?: boolean;
 };
 
 export type BlockInput = {

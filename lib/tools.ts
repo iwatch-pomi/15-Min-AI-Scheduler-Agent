@@ -59,12 +59,12 @@ type ToolName = keyof typeof schemas;
 
 const descriptions: Record<ToolName, string> = {
   get_schedule:
-    "指定期間の予定と空き枠（15分単位）を返す。予定を書き込む前に必ず呼ぶ。ai=true がこのアプリで作ったブロック（動かせる）、ai=false は Google の既存予定（動かせない）。",
+    "指定期間の予定と空き枠（15分単位）を返す。予定を書き込む前に必ず呼ぶ。ai=true がこのアプリで作ったブロック（動かせる）、ai=false は Google の既存予定（動かせない）。routine=true はユーザーの毎日のルーティンの1回分。",
   create_blocks: "タイムブロックをまとめて作成する。開始は15分刻みに、長さは15の倍数に丸められる。",
   update_block: "AIブロック（ai=true）のタイトル・開始時刻・長さを変える。",
   delete_block: "AIブロック（ai=true）を削除する。",
   shift_following:
-    "指定時刻以降・同じ日のうちに始まるAIブロックをまとめて前後にずらす。延長・遅れ・割り込みのときに使う。Google の既存予定は動かない。",
+    "指定時刻以降・同じ日のうちに始まるAIブロックをまとめて前後にずらす。延長・遅れ・割り込みのときに使う。Google の既存予定とルーティンは動かない。",
 };
 
 export const toolDefinitions: Anthropic.Beta.BetaTool[] = (Object.keys(schemas) as ToolName[]).map((name) => {
@@ -110,6 +110,7 @@ function view(b: Block, tz: string) {
     end: b.allDay ? b.end.slice(0, 10) : toLocalIso(new Date(b.end), tz),
     minutes: b.allDay ? undefined : minutesBetween(new Date(b.start), new Date(b.end)),
     ai: b.ai,
+    routine: b.routine || undefined,
     energy: b.energy,
     allDay: b.allDay || undefined,
   };

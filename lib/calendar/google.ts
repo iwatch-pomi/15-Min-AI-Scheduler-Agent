@@ -1,5 +1,7 @@
 import { auth, calendar, type calendar_v3 } from "@googleapis/calendar";
 import { UnauthorizedError, isInsufficientScope, isInvalidGrant } from "../errors";
+import { firstDate, parseRrule, toRrule, untilBefore, type Routine, type RoutineInput } from "../routines";
+import { addMinutes, localDateString, localTime, minutesBetween, zonedToUtc } from "../time";
 import type { Block, BlockInput, BlockPatch, Energy } from "../types";
 import type { CalendarBackend } from "./types";
 
@@ -89,6 +91,98 @@ export class GoogleCalendar implements CalendarBackend {
 
   async remove(id: string): Promise<void> {
     await guard(() => this.api.events.delete({ calendarId: this.requireAiCalendar(), eventId: id }));
+  }
+
+  async restore(block: Block): Promise<Block> {
+    if (!block.routine) return this.create(block);
+    // ルーティンの1回分は、取り消された（cancelled）その回を元に戻す。id は変わらない
+    const res = await guard(() =>
+      this.api.events.patch({
+        calendarId: this.requireAiCalendar(),
+        eventId: block.id,
+        requestBody: {
+          status: "confirmed",
+          summary: block.title,
+          start: { dateTime: new Date(block.start).toISOString() },
+          end: { dateTime: new Date(block.end).toISOString() },
+        },
+      }),
+    );
+    return toBlock(res.data, true)!;
+  }
+
+  async listRoutines(): Promise<Routine[]> {
+    const calendarId = this.aiCalendarId;
+    if (!calendarId) return [];
+    let items: calendar_v3.Schema$Event[];
+    try {
+      const res = await guard(() =>
+        this.api.events.list({ calendarId, singleEvents: false, privateExtendedProperty: ["routine=1"], maxResults: 250 }),
+      );
+      items = res.data.items ?? [];
+    } catch (err) {
+      if (isNotFound(err)) return [];
+      throw err;
+    }
+    const now = new Date();
+    return items
+      .flatMap((e): Routine[] => {
+        const rule = parseRrule(e.recurrence);
+        if (e.status === "cancelled" || !e.id || !rule || !e.start?.dateTime || !e.end?.dateTime) return [];
+        if (rule.until && rule.until < now) return []; // 終わったルーティン
+        const start = new Date(e.start.dateTime);
+        const tz = e.start.timeZone ?? this.timeZone;
+        return [{ id: e.id, title: e.summary ?? "", time: localTime(start, tz), minutes: minutesBetween(start, new Date(e.end.dateTime)), days: rule.days }];
+      })
+      .sort((a, b) => a.time.localeCompare(b.time));
+  }
+
+  async createRoutine(input: RoutineInput, tz: string): Promise<Routine> {
+    const calendarId = await this.ensureAiCalendar();
+    const date = firstDate(localDateString(new Date(), tz), input.days);
+    const [h, m] = input.time.split(":").map(Number);
+    const start = zonedToUtc(date, h, m, tz);
+    const res = await guard(() =>
+      this.api.events.insert({
+        calendarId,
+        requestBody: {
+          summary: input.title,
+          // 繰り返しの時刻はタイムゾーンで決まる（夏時間でもずれないように）
+          start: { dateTime: start.toISOString(), timeZone: tz },
+          end: { dateTime: addMinutes(start, input.minutes).toISOString(), timeZone: tz },
+          recurrence: [toRrule(input.days)],
+          extendedProperties: { private: { routine: "1" } },
+        },
+      }),
+    );
+    return { id: res.data.id!, ...input };
+  }
+
+  async updateRoutine(id: string, input: RoutineInput, tz: string): Promise<Routine> {
+    // 過去の分を残すため、今のルーティンは昨日で終わらせ、今日から新しい内容で作り直す
+    await this.deleteRoutine(id, tz);
+    return this.createRoutine(input, tz);
+  }
+
+  async deleteRoutine(id: string, tz: string): Promise<void> {
+    const calendarId = this.requireAiCalendar();
+    const master = (await guard(() => this.api.events.get({ calendarId, eventId: id }))).data;
+    const today = localDateString(new Date(), tz);
+    const startDate = master.start?.dateTime ? localDateString(new Date(master.start.dateTime), master.start.timeZone ?? tz) : today;
+    if (startDate >= today) {
+      // まだ1回も来ていない → まるごと消す
+      await guard(() => this.api.events.delete({ calendarId, eventId: id }));
+      return;
+    }
+    const rule = (master.recurrence ?? []).find((r) => r.startsWith("RRULE:")) ?? "";
+    const ended = rule.replace(/;(UNTIL|COUNT)=[^;]*/g, "") + `;UNTIL=${untilBefore(today, tz)}`;
+    await guard(() =>
+      this.api.events.patch({
+        calendarId,
+        eventId: id,
+        requestBody: { recurrence: [...(master.recurrence ?? []).filter((r) => !r.startsWith("RRULE:")), ended] },
+      }),
+    );
   }
 
   private async listIn(calendarId: string, from: Date, to: Date, ai: boolean): Promise<Block[]> {
@@ -224,5 +318,7 @@ function toBlock(e: calendar_v3.Schema$Event, ai: boolean): Block | null {
     energy: ai ? ((priv.energy as Energy | undefined) ?? undefined) : undefined,
     allDay,
     location: e.location ?? undefined,
+    // AI 専用カレンダーの繰り返しの予定 = ルーティンの1回分
+    routine: ai && !!e.recurringEventId ? true : undefined,
   };
 }

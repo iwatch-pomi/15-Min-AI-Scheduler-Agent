@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { logout } from "@/app/actions";
 import type { Usage } from "@/lib/limits";
+import { daysLabel, type Routine, type RoutineInput } from "@/lib/routines";
+import RoutineEditor from "./RoutineEditor";
 import UsageMeter from "./UsageMeter";
-import { AppLogo, CalendarIcon, ClockIcon, ShareIcon, UserIcon } from "./icons";
+import { AppLogo, CalendarIcon, ChevronRightIcon, ClockIcon, PlusIcon, RepeatIcon, ShareIcon, UserIcon } from "./icons";
 
 export default function SettingsView(props: {
   tz: string;
@@ -12,8 +14,13 @@ export default function SettingsView(props: {
   demo?: boolean;
   usage: Usage;
   onClearHistory: () => Promise<boolean | void>;
+  routines: Routine[] | null;
+  onSaveRoutine: (id: string | null, input: RoutineInput) => Promise<string | null>;
+  onDeleteRoutine: (id: string) => Promise<string | null>;
 }) {
-  const { tz, email, demo, usage, onClearHistory } = props;
+  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine } = props;
+  // 編集中のルーティン（"new" は追加）
+  const [editing, setEditing] = useState<Routine | "new" | null>(null);
   const [cleared, setCleared] = useState(false);
 
   return (
@@ -33,6 +40,41 @@ export default function SettingsView(props: {
             </form>
           )}
         </Section>
+
+        <Section title="毎日のルーティン">
+          {routines === null ? (
+            <p className="px-4 py-3 text-sm text-muted">読み込み中…</p>
+          ) : routines.length === 0 ? (
+            <p className="px-4 py-3 text-xs text-muted">朝の準備・ジム・日記など、毎日（決まった曜日に）くり返す予定を登録すると、カレンダーに自動で入ります。</p>
+          ) : (
+            routines.map((r) => (
+              <button key={r.id} onClick={() => setEditing(r)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2" data-testid="routine-row">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink">
+                  <RepeatIcon className="size-4.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-heading">{r.title}</span>
+                  <span className="block text-xs text-muted tabular-nums">
+                    {r.time}〜{endTime(r)}・{daysLabel(r.days)}
+                  </span>
+                </span>
+                <ChevronRightIcon className="size-4 shrink-0 text-muted" />
+              </button>
+            ))
+          )}
+          <button onClick={() => setEditing("new")} className="flex w-full items-center justify-center gap-1 px-4 py-3 text-sm font-bold text-accent-ink active:bg-surface-2">
+            <PlusIcon className="size-4" />
+            ルーティンを追加
+          </button>
+        </Section>
+        {editing && (
+          <RoutineEditor
+            routine={editing === "new" ? null : editing}
+            onSave={(input) => onSaveRoutine(editing === "new" ? null : editing.id, input)}
+            onDelete={editing === "new" ? undefined : () => onDeleteRoutine(editing.id)}
+            onClose={() => setEditing(null)}
+          />
+        )}
 
         <Section title="スケジュール">
           <Row icon={<ClockIcon className="size-5" />} label="タイムゾーン" value={tz} />
@@ -97,4 +139,10 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
       <span className="min-w-0 truncate text-sm text-muted">{value}</span>
     </div>
   );
+}
+
+function endTime(r: Routine): string {
+  const [h, m] = r.time.split(":").map(Number);
+  const total = (h * 60 + m + r.minutes) % (24 * 60);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }

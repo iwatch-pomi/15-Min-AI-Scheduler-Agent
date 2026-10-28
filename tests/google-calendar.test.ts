@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Google Calendar API の偽物。カレンダー id ごとに予定をメモリに持つ
-type Ev = { id: string; summary?: string; start: { dateTime: string }; end: { dateTime: string }; extendedProperties?: unknown; status?: string };
+type Ev = { id: string; summary?: string; start: { dateTime: string; timeZone?: string }; end: { dateTime: string }; extendedProperties?: unknown; status?: string; recurrence?: string[] };
 const fake = {
   calendars: new Map<string, Map<string, Ev>>(),
   colors: new Map<string, string>(),
@@ -157,5 +157,31 @@ describe("GoogleCalendar（AI 専用カレンダー）", () => {
     saved = "old-cal";
     await make().list(new Date(t("00:00")), new Date(t("23:00")));
     expect(fake.names.get("old-cal")).toBe("AIスケジューラー");
+  });
+
+  it("ルーティンは専用カレンダーの繰り返しの予定になり、削除しても過去の分は残す", async () => {
+    const g = make();
+    const r = await g.createRoutine({ title: "ジム", time: "19:00", minutes: 60, days: [1, 3, 5] }, "Asia/Tokyo");
+    const ev = fake.calendars.get("ai-cal-1")!.get(r.id)!;
+    expect(ev.recurrence).toEqual(["RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR"]);
+    expect(ev.start.timeZone).toBe("Asia/Tokyo");
+    expect(ev.extendedProperties).toEqual({ private: { routine: "1" } });
+    expect(await make().listRoutines()).toEqual([{ id: r.id, title: "ジム", time: "19:00", minutes: 60, days: [1, 3, 5] }]);
+
+    // すでに始まっているルーティンを消す → UNTIL を付けて終わらせる（まるごとは消さない）
+    ev.start = { dateTime: "2026-01-05T10:00:00.000Z", timeZone: "Asia/Tokyo" };
+    await make().deleteRoutine(r.id, "Asia/Tokyo");
+    const after = fake.calendars.get("ai-cal-1")!.get(r.id)!;
+    expect(after.recurrence![0]).toMatch(/^RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;UNTIL=\d{8}T\d{6}Z$/);
+    expect(await make().listRoutines()).toEqual([]);
+  });
+
+  it("スキップしたルーティンの1回分は、元に戻すと同じ予定として戻る", async () => {
+    const g = make();
+    await g.create({ title: "x", start: t("00:00"), end: t("00:15") }); // 専用カレンダーを作る
+    fake.calendars.get("ai-cal-1")!.set("gym_20261028", { id: "gym_20261028", summary: "ジム", start: { dateTime: t("10:00") }, end: { dateTime: t("11:00") }, status: "cancelled" });
+    const restored = await make().restore({ id: "gym_20261028", title: "ジム", start: t("10:00"), end: t("11:00"), ai: true, routine: true });
+    expect(restored.id).toBe("gym_20261028");
+    expect(fake.calendars.get("ai-cal-1")!.get("gym_20261028")!.status).toBe("confirmed");
   });
 });

@@ -52,9 +52,8 @@ export async function undoOps(calendar: CalendarBackend, ops: Operation[]): Prom
       const { title, start, end, energy } = op.before;
       await calendar.update(resolve(op.blockId), { title, start, end, energy });
     } else if (op.kind === "delete" && op.before) {
-      const { title, start, end, energy } = op.before;
-      const restored = await calendar.create({ title, start, end, energy });
-      idMap.set(op.blockId, restored.id);
+      const restored = await calendar.restore(op.before);
+      if (restored.id !== op.blockId) idMap.set(op.blockId, restored.id);
     }
     undone++;
   }
