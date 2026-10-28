@@ -8,9 +8,14 @@ import { dayRange, localDateString, safeTimeZone } from "@/lib/time";
 
 export const maxDuration = 60;
 
-const body = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), tz: z.string().optional() });
+const body = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  tz: z.string().optional(),
+  /** 画面のデザイン。ストイックならコーチの口調で出す */
+  tone: z.enum(["soft", "stoic"]).optional(),
+});
 
-// POST /api/suggestions { date, tz } → その日の「AIのおすすめ」を Claude で作る（AI の使用量を消費する）
+// POST /api/suggestions { date, tz, tone? } → その日の「AIのおすすめ」を Claude で作る（AI の使用量を消費する）
 export async function POST(req: NextRequest) {
   try {
     const parsed = body.safeParse(await req.json().catch(() => null));
@@ -23,7 +28,7 @@ export async function POST(req: NextRequest) {
     const events = (await calendar.list(start, end)).filter((b) => !b.allDay || b.start.slice(0, 10) === date);
 
     const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now }, (meter) =>
-      generateSuggestions(meter, { date, tz, now, today: localDateString(now, tz), events }).catch((err) => {
+      generateSuggestions(meter, { date, tz, now, today: localDateString(now, tz), events, tone: parsed.data.tone }).catch((err) => {
         if (err instanceof SuggestError) return err;
         throw err;
       }),

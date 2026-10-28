@@ -137,8 +137,8 @@ export default function HomeView(props: {
           )}
           {timed.length === 0 ? (
             <div className="px-4 py-8 text-center">
-              <p className="font-medium text-heading">予定はまだありません</p>
-              <p className="mt-1 text-sm text-muted">右下の ＋ から、AI にひと言で頼んでみましょう</p>
+              <p className="font-medium text-heading">{stoic ? "まだ何も積まれていない。" : "予定はまだありません"}</p>
+              <p className="mt-1 text-sm text-muted">{stoic ? "右下の ＋ から、コーチに予定を投げろ。" : "右下の ＋ から、AI にひと言で頼んでみましょう"}</p>
             </div>
           ) : (
             <ul className={stoic ? "divide-y divide-line-soft [&>li]:mx-4" : "space-y-2"}>
@@ -187,12 +187,14 @@ export default function HomeView(props: {
               {usageExhausted
                 ? "今日のAIの利用上限に達したので、更新できません"
                 : aiSuggest
-                  ? `AIが${localTime(new Date(aiSuggest.at), tz)}に考えたおすすめ（この更新で今日のAIを${aiSuggest.costPercent < 0.1 ? "0.1%未満" : `${aiSuggest.costPercent}%`}使いました）`
-                  : "予定から自動で出したおすすめです。「AIで更新」でAIが考えます（今日のAIを少し使います）"}
+                  ? `AIが${localTime(new Date(aiSuggest.at), tz)}に考えた${stoic ? "ブリーフ" : "おすすめ"}（この更新で今日のAIを${aiSuggest.costPercent < 0.1 ? "0.1%未満" : `${aiSuggest.costPercent}%`}使いました）`
+                  : stoic
+                    ? "予定から自動で出したブリーフ。「AIで更新」でAIが考える（今日のAIを少し使う）"
+                    : "予定から自動で出したおすすめです。「AIで更新」でAIが考えます（今日のAIを少し使います）"}
             </p>
             {suggestError && <p className="mb-2 px-1 text-xs text-now">{suggestError}</p>}
             {suggestions.length === 0 && (
-              <p className="rounded-2xl bg-surface px-4 py-4 text-center text-sm text-muted shadow-card">今のところ、おすすめはありません</p>
+              <p className="rounded-2xl bg-surface px-4 py-4 text-center text-sm text-muted shadow-card">{stoic ? "今は、伝えることはない。予定どおりに進めろ。" : "今のところ、おすすめはありません"}</p>
             )}
             <ul className="divide-y divide-line-soft overflow-hidden rounded-2xl bg-surface shadow-card">
               {suggestions.map((s) => {

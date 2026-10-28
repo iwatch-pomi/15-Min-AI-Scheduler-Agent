@@ -86,6 +86,14 @@ describe("AIのおすすめ", () => {
     expect(text).toContain("15:00-19:00（240分）");
   });
 
+  it("ストイックのときは、コーチの口調の指示を足す", async () => {
+    create.mockResolvedValue(reply(JSON.stringify({ suggestions: [] })));
+    await withAiBudget({ store, userId, tz, now }, (meter) => generateSuggestions(meter, { date, tz, now, today: date, events, tone: "stoic" }));
+    await withAiBudget({ store, userId, tz, now }, (meter) => generateSuggestions(meter, { date, tz, now, today: date, events }));
+    expect(create.mock.calls[0][0].system).toContain("口調（ストイック）");
+    expect(create.mock.calls[1][0].system).not.toContain("口調（ストイック）");
+  });
+
   it("Claude の答え（JSON）から最大3件を作り、費用も記録する", async () => {
     const json = JSON.stringify({
       suggestions: [

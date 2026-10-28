@@ -182,7 +182,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   };
 
   // AI で作ったおすすめ（日付ごと）。再読み込みでもう一度費用がかからないよう、この端末に保存する
-  type AiSuggest = { items: Suggestion[]; costPercent: number; at: string };
+  // tone は作ったときのデザイン。今のデザインと違えば使わない（ストイックとやさしいで口調が違うため）
+  type AiSuggest = { items: Suggestion[]; costPercent: number; at: string; tone?: Theme };
   const [aiSuggest, setAiSuggest] = useState<Record<string, AiSuggest>>({});
   const [suggestState, setSuggestState] = useState<{ loading: boolean; error: string | null }>({ loading: false, error: null });
   useEffect(() => {
@@ -202,14 +203,14 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       const res = await fetch("/api/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: d, tz }),
+        body: JSON.stringify({ date: d, tz, tone: theme }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) return setAuthExpired(true);
       if (data.usage) setUsage(data.usage);
       if (!res.ok) return setSuggestState({ loading: false, error: data.error ?? "おすすめを更新できませんでした" });
       setAiSuggest((prev) => {
-        const next = { ...prev, [d]: { items: data.suggestions, costPercent: data.costPercent, at: new Date().toISOString() } };
+        const next = { ...prev, [d]: { items: data.suggestions, costPercent: data.costPercent, at: new Date().toISOString(), tone: theme } };
         try {
           localStorage.setItem("ai15:suggest", JSON.stringify(next));
         } catch {
@@ -406,6 +407,9 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     return null;
   };
 
+  // AI で作ったおすすめは、今のデザインの口調で作ったものだけ使う
+  const cachedSuggest = aiSuggest[date] && (aiSuggest[date].tone ?? "soft") === theme ? aiSuggest[date] : undefined;
+
   // 時刻とタイムゾーンはブラウザでしか正しく決まらないので、サーバー描画では中身を出さない
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   if (!mounted) return <div className="h-dvh" />;
@@ -422,7 +426,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           now={now}
           events={eventsByDate[date] ?? []}
           suggestions={
-            aiSuggest[date]?.items ??
+            cachedSuggest?.items ??
             suggestions({
               date,
               tz,
@@ -430,9 +434,10 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
               today,
               events: eventsByDate[date] ?? [],
               tomorrow: eventsByDate[addDays(today, 1)],
+              tone: theme,
             })
           }
-          aiSuggest={aiSuggest[date] ? { costPercent: aiSuggest[date].costPercent, at: aiSuggest[date].at } : null}
+          aiSuggest={cachedSuggest ? { costPercent: cachedSuggest.costPercent, at: cachedSuggest.at } : null}
           suggestLoading={suggestState.loading}
           suggestError={suggestState.error}
           usageExhausted={usage.exhausted}

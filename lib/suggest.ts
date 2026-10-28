@@ -1,5 +1,6 @@
 import { freeSlots } from "./slots";
 import type { Block } from "./types";
+import type { Theme } from "./theme";
 import { addDays, addMinutes, localTime, minutesBetween, zonedToUtc } from "./time";
 
 // ホームの「AIのおすすめ」。予定から決まりごとで作る（AI は呼ばない）。
@@ -20,8 +21,11 @@ export function suggestions(opts: {
   events: Block[];
   /** 明日の予定（読み込めていれば） */
   tomorrow?: Block[];
+  /** ストイックのデザインでは、短く言い切るコーチの口調にする */
+  tone?: Theme;
 }): Suggestion[] {
   const { date, tz, now, today, events, tomorrow } = opts;
+  const stoic = opts.tone === "stoic";
   if (date < today) return [];
   const timed = events.filter((e) => !e.allDay);
   const out: Suggestion[] = [];
@@ -36,8 +40,10 @@ export function suggestions(opts: {
     out.push({
       id: "break",
       icon: "leaf",
-      text: `${t(runEnd)}まで予定が続きます。そのあと15分、ひと息つきませんか？`,
-      prompt: `${t(runEnd)}から15分の休憩を入れて`,
+      text: stoic
+        ? `${t(runEnd)}まで予定が続きます。そのあと15分、リカバリーを入れますか？`
+        : `${t(runEnd)}まで予定が続きます。そのあと15分、ひと息つきませんか？`,
+      prompt: stoic ? `${t(runEnd)}から15分のリカバリーを入れて` : `${t(runEnd)}から15分の休憩を入れて`,
     });
   }
 
@@ -51,7 +57,9 @@ export function suggestions(opts: {
     out.push({
       id: "free",
       icon: "calendar",
-      text: `${t(slot.start)}〜${t(slot.end)}が空いています（${m}分）。やることを入れますか？`,
+      text: stoic
+        ? `${t(slot.start)}–${t(slot.end)} が空いています（${m}分）。${isToday ? "今日" : "この日"}のタスクを積みますか？`
+        : `${t(slot.start)}〜${t(slot.end)}が空いています（${m}分）。やることを入れますか？`,
       prompt: `${isToday ? "今日" : dayLabel(date)}の${t(slot.start)}から${Math.min(m, 120)}分で、`,
     });
   }
@@ -61,7 +69,9 @@ export function suggestions(opts: {
     out.push({
       id: "plan",
       icon: "bulb",
-      text: `やりたいことを送ると、${isToday ? "今日の" : ""}空き時間に15分単位で組み立てます。`,
+      text: stoic
+        ? "空き時間は、放っておけば消える。やることを送れば、15分単位で組み込む。"
+        : `やりたいことを送ると、${isToday ? "今日の" : ""}空き時間に15分単位で組み立てます。`,
       prompt: `${isToday ? "今日" : dayLabel(date)}やりたいこと：`,
     });
   }
@@ -71,7 +81,7 @@ export function suggestions(opts: {
     out.push({
       id: "tomorrow",
       icon: "bulb",
-      text: "明日の予定を、今のうちに組み立てておきましょう。",
+      text: stoic ? "明日の勝負は、今夜の段取りで決まる。明日の予定を組んでおこう。" : "明日の予定を、今のうちに組み立てておきましょう。",
       prompt: `明日（${dayLabel(addDays(date, 1))}）やりたいこと：`,
     });
   }

@@ -3,6 +3,7 @@ import { createMessage } from "./claude";
 import type { CostMeter } from "./pricing";
 import { freeSlots } from "./slots";
 import type { Suggestion } from "./suggest";
+import type { Theme } from "./theme";
 import type { Block } from "./types";
 import { localTime, minutesBetween, zonedToUtc } from "./time";
 import { formatDateJa } from "./ui";
@@ -51,6 +52,13 @@ const jsonSchema = {
   },
 };
 
+/** ストイックのデザインのときに足す口調の指示（text の「やさしく前向きな口調で」より優先） */
+const STOIC_TONE = `
+## 口調（ストイック）
+- ユーザーは Winter Arc など、目標に打ち込んでいる。text は甘やかさず、短く言い切るコーチの口調にする（例：「08:00–22:00 が空いています（840分）。今日のタスクを積みますか？」「06:00まで予定が続きます。そのあと15分、リカバリーを入れますか？」）
+- 休憩は「リカバリー」、作業は「タスクを積む」「集中ブロック」のように言う。休むことも訓練として扱う
+- 「〜しませんか？」「〜しましょう」のようなやわらかい誘い方や、絵文字・感嘆符は使わない`;
+
 export class SuggestError extends Error {}
 
 /** その日の予定を、AI に渡す短い文章にする */
@@ -80,12 +88,12 @@ export function describeDay(opts: { date: string; tz: string; now: Date; today: 
 
 export async function generateSuggestions(
   meter: CostMeter,
-  opts: { date: string; tz: string; now: Date; today: string; events: Block[] },
+  opts: { date: string; tz: string; now: Date; today: string; events: Block[]; tone?: Theme },
 ): Promise<Suggestion[]> {
   const response = await createMessage(meter, {
     max_tokens: 2000,
     output_config: { effort: "low", format: { type: "json_schema", schema: jsonSchema } },
-    system: SYSTEM,
+    system: opts.tone === "stoic" ? SYSTEM + STOIC_TONE : SYSTEM,
     messages: [{ role: "user", content: describeDay(opts) }],
   });
   if (response.stop_reason === "refusal") throw new SuggestError("おすすめを作れませんでした。時間をおいてもう一度お試しください");
