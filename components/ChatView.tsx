@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { ManualChange } from "@/lib/manual";
 import type { ChangeItem, ChatEntry } from "@/lib/ui";
 
 
@@ -16,11 +17,12 @@ export default function ChatView(props: {
   entries: ChatEntry[];
   sending: boolean;
   onSend: (text: string) => void;
-  onUndo: (entryId: string, opId: string) => void;
+  onUndo: (entryId: string) => void;
+  onSaveEdits: (entryId: string, changes: ManualChange[]) => Promise<string | null>;
   onConfirm: (items: ChangeItem[]) => void;
   onBack: () => void;
 }) {
-  const { tz, entries, sending, onSend, onUndo, onConfirm, onBack } = props;
+  const { tz, entries, sending, onSend, onUndo, onSaveEdits, onConfirm, onBack } = props;
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // 新しいメッセージが来たら一番下までスクロール
@@ -77,7 +79,8 @@ export default function ChatView(props: {
                     tz={tz}
                     undone={entry.result.undone}
                     onConfirm={() => onConfirm(entry.result!.items)}
-                    onUndo={() => onUndo(entry.id, entry.result!.opId)}
+                    onUndo={() => onUndo(entry.id)}
+                    onSave={(changes) => onSaveEdits(entry.id, changes)}
                   />
                 )}
               </div>

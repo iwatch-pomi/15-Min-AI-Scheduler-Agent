@@ -4,6 +4,7 @@ import type { Block, Energy } from "./types";
 export type Tab = "home" | "calendar" | "ai" | "settings";
 
 export type ChangeItem = {
+  id: string;
   kind: "create" | "update" | "delete";
   title: string;
   start: string;
@@ -17,7 +18,8 @@ export type ChatEntry =
       id: string;
       role: "assistant";
       text: string;
-      result?: { opId: string; items: ChangeItem[]; undone?: boolean };
+      /** opIds は AI の変更と、そのあとの手動編集の操作グループ（古い順）。元に戻すときは全部を逆順に取り消す */
+      result?: { opIds: string[]; items: ChangeItem[]; undone?: boolean };
       error?: boolean;
     };
 

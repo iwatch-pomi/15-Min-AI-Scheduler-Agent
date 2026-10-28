@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { login } from "@/app/actions";
 import type { Block } from "@/lib/types";
 import { DEFAULT_TZ, localDateString } from "@/lib/time";
+import type { ManualChange } from "@/lib/manual";
 import type { ChangeItem, ChatEntry, Tab } from "@/lib/ui";
 import CalendarView from "./CalendarView";
 import ChatView from "./ChatView";
@@ -122,7 +123,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
         return;
       }
       const items: ChangeItem[] = data.changes?.items ?? [];
-      reply(data.reply, data.opId ? { result: { opId: data.opId, items } } : {});
+      reply(data.reply, data.opId ? { result: { opIds: [data.opId], items } } : {});
       await loadAll();
     } catch {
       reply("通信に失敗しました。電波の良いところでもう一度お試しください。", { error: true });
@@ -131,25 +132,61 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
     }
   };
 
-  const undo = async (entryId: string, opId: string) => {
-    const res = await fetch("/api/undo", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ opId }),
-    });
+  const resultOf = (entryId: string) => {
+    const e = entries.find((x) => x.id === entryId);
+    return e?.role === "assistant" ? e.result : undefined;
+  };
+
+  const updateResult = (entryId: string, fn: (r: NonNullable<Extract<ChatEntry, { role: "assistant" }>["result"]>) => typeof r) =>
+    setEntries((prev) => prev.map((e) => (e.id === entryId && e.role === "assistant" && e.result ? { ...e, result: fn(e.result) } : e)));
+
+  const postJson = async (url: string, body: unknown) => {
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = await res.json().catch(() => ({}));
-    if (res.status === 401) {
-      setAuthExpired(true);
-      return;
-    }
-    if (res.ok) {
-      setEntries((prev) =>
-        prev.map((e) => (e.id === entryId && e.role === "assistant" && e.result ? { ...e, result: { ...e.result, undone: true } } : e)),
-      );
+    if (res.status === 401) setAuthExpired(true);
+    return { res, data };
+  };
+
+  // AI の変更と、そのあとの手動編集をまとめて取り消す
+  const undo = async (entryId: string) => {
+    const result = resultOf(entryId);
+    if (!result) return;
+    const { res, data } = await postJson("/api/undo", { opIds: result.opIds });
+    if (res.status === 401) return;
+    // 404 は取り消し済み（二重タップなど）
+    const failed = !res.ok && res.status !== 404 ? (data.error ?? "元に戻せませんでした") : null;
+    if (failed) {
+      setEntries((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", text: failed, error: true }]);
     } else {
-      setEntries((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", text: data.error ?? "元に戻せませんでした", error: true }]);
+      updateResult(entryId, (r) => ({ ...r, undone: true }));
     }
     await loadAll();
+  };
+
+  // 結果カードでの手動編集を保存する。失敗したらエラーメッセージを返す
+  const saveEdits = async (entryId: string, changes: ManualChange[]): Promise<string | null> => {
+    const { res, data } = await postJson("/api/blocks", { changes });
+    if (res.status === 401) return null;
+    if (data.opId) updateResult(entryId, (r) => ({ ...r, opIds: [...r.opIds, data.opId] }));
+    if (!res.ok) {
+      await loadAll();
+      return data.error ?? "保存できませんでした";
+    }
+    const saved: ChangeItem[] = data.items ?? [];
+    const deleted = new Set(changes.flatMap((c) => (c.op === "delete" ? [c.id] : [])));
+    updateResult(entryId, (r) => {
+      const kept = r.items
+        .filter((i) => !deleted.has(i.id))
+        // 変更した項目は保存後の内容に。AI が追加した項目は手で直しても「追加」のまま
+        .map((i) => {
+          const s = saved.find((x) => x.id === i.id);
+          return s ? { ...s, kind: i.kind } : i;
+        });
+      const created = saved.filter((s) => s.kind === "create");
+      return { ...r, items: [...kept, ...created] };
+    });
+    await loadAll();
+    return null;
   };
 
   // 時刻とタイムゾーンはブラウザでしか正しく決まらないので、サーバー描画では中身を出さない
@@ -188,6 +225,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
           sending={sending}
           onSend={send}
           onUndo={undo}
+          onSaveEdits={saveEdits}
           onConfirm={(items) => {
             // 変更した予定のうち一番早いものの日付をカレンダーで開く
             const first = items.map((i) => i.start).sort()[0];

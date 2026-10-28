@@ -68,7 +68,7 @@ function summarize(ops: RecordingCalendar["ops"]) {
     // 画面の結果カード用。作成・変更は変更後、削除は削除前の予定を返す
     items: ops.flatMap((o) => {
       const b = o.kind === "delete" ? o.before : o.after;
-      return b ? [{ kind: o.kind, title: b.title, start: b.start, end: b.end, energy: b.energy }] : [];
+      return b ? [{ id: b.id, kind: o.kind, title: b.title, start: b.start, end: b.end, energy: b.energy }] : [];
     }),
   };
 }
