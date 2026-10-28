@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { GoogleCalendar } from "./calendar/google";
 import { MemoryCalendar } from "./calendar/memory";
 import type { CalendarBackend } from "./calendar/types";
-import { demoSeed } from "./demo";
+import { demoSeed, isDemo } from "./demo";
 import { MemoryStore } from "./store/memory";
 import { SupabaseStore } from "./store/supabase";
 import type { Store } from "./store/types";
@@ -11,7 +11,7 @@ import { clearAiCalendarId, getGoogleAccount, saveAiCalendarId } from "./users";
 
 export { UnauthorizedError };
 
-export const isDemo = () => process.env.DEMO_MODE === "1";
+export { isDemo };
 
 export type UserContext = { userId: string; calendar: CalendarBackend; store: Store };
 

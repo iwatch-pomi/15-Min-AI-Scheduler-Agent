@@ -20,6 +20,7 @@ import {
 /** 空き枠を計算する1日の時間帯（ローカル時刻） */
 const DAY_START_HOUR = 7;
 const MAX_RANGE_DAYS = 14;
+const MAX_TITLE = 100;
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const energy = z.enum(["HIGH", "MEDIUM", "LOW"]);
@@ -118,7 +119,8 @@ export async function executeTool(name: string, rawInput: unknown, ctx: ToolCont
 function view(b: Block, tz: string) {
   return {
     id: b.id,
-    title: b.title,
+    // 招待された予定のタイトルはほかの人が書けるので、長すぎるもの（AI への指示の埋め込み・費用の増加）は切る
+    title: b.title.slice(0, MAX_TITLE),
     start: b.allDay ? b.start.slice(0, 10) : toLocalIso(new Date(b.start), tz),
     end: b.allDay ? b.end.slice(0, 10) : toLocalIso(new Date(b.end), tz),
     minutes: b.allDay ? undefined : minutesBetween(new Date(b.start), new Date(b.end)),

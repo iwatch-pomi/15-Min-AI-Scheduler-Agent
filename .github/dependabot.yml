@@ -1,0 +1,8 @@
+# 依存パッケージ（Next.js・React・Auth.js など）の脆弱性の修正を、毎週 PR で知らせる
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

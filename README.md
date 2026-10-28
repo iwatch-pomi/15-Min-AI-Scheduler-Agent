@@ -121,6 +121,19 @@ npm run build
 - AI の費用は、1人1日の**予算（`DAILY_AI_BUDGET_USD`、既定 $0.50）**で抑えています。依頼ごとに Claude が返すトークン数から実際の費用を計算して足し、予算を使い切るとその日は AI を呼びません（画面には「残り◯％」と表示）。料金表は `lib/pricing.ts`。エラーになった依頼も、AI を呼んだ分は数えます。［元に戻す］と手動編集は AI を使わないので減りません。
 - リフレッシュトークンは `TOKEN_ENC_KEY` で AES-256-GCM 暗号化して保存しています。キーを変えると全員再ログインが必要です。
 
+## セキュリティ
+
+| 対策 | 場所 |
+|---|---|
+| 画面に nonce 付きの Content-Security-Policy（外部・注入スクリプトを実行させない）、iframe 埋め込み禁止など | `proxy.ts`、`next.config.ts` |
+| API への書き込みは、このアプリの画面から来たものだけ受け付ける（CSRF 対策。Origin / Sec-Fetch-Site を確認） | `proxy.ts` |
+| 全 API でログインを確認し、データは必ずログイン中のユーザーのものだけを読む・書く | `lib/context.ts`、`lib/store/` |
+| AI の予算は依頼の前に先に押さえるので、同時に大量に送られても予算を大きく超えない | `lib/budget.ts` |
+| 招待された予定のタイトルに書かれた指示には AI が従わない（プロンプトインジェクション対策）。AI が変えられるのは AI 専用カレンダーだけ | `lib/agent.ts`、`lib/tools.ts` |
+| リフレッシュトークンは AES-256-GCM で暗号化。DB は RLS で外から読めず、関数もサーバーだけが呼べる | `lib/crypto.ts`、`supabase/schema.sql` |
+| 本番（Vercel の Production）では `DEMO_MODE` を入れてもデモモードにならない | `lib/demo.ts` |
+| 依存パッケージの脆弱性を Dependabot が毎週確認 | `.github/dependabot.yml` |
+
 ## ロードマップ
 
 1. ~~MVP：タイムライン + チャットで追加・移動・削除・後ろ倒し + Undo~~

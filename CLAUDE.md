@@ -9,6 +9,10 @@
 ## 料金
 - 1日の上限は回数ではなく費用（`DAILY_AI_BUDGET_USD`、既定 $0.50）。料金表は `lib/pricing.ts`
 
+## セキュリティ
+- API は `app/api/` の下に置く（`proxy.ts` が書き込みの送り元を確認する）。データは必ず `getUserContext()` の userId で絞る
+- 外部のスクリプト・画像などを使うときは `proxy.ts` の Content-Security-Policy に足す
+
 ## そのほか
 - 画面の文言は日本語。コードのコメントも日本語で書く
 - `npm run lint` / `npm run typecheck` / `npm test` / `npm run build` を通してからコミットする

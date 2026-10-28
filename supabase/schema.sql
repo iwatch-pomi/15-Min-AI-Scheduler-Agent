@@ -70,3 +70,12 @@ alter table users enable row level security;
 alter table operations enable row level security;
 alter table messages enable row level security;
 alter table usage enable row level security;
+
+-- 関数はサーバー（service_role）からだけ呼べるようにする。
+-- anon / authenticated キーが漏れても、ほかの人の使用量を書き換えられないように
+alter function increment_usage(uuid, date) set search_path = public;
+alter function add_usage_cost(uuid, date, bigint) set search_path = public;
+revoke execute on function increment_usage(uuid, date) from public, anon, authenticated;
+revoke execute on function add_usage_cost(uuid, date, bigint) from public, anon, authenticated;
+grant execute on function increment_usage(uuid, date) to service_role;
+grant execute on function add_usage_cost(uuid, date, bigint) to service_role;

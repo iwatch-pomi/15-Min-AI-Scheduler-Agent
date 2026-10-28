@@ -1,6 +1,12 @@
 import type { Block } from "./types";
 import { DEFAULT_TZ, localDateString, zonedToUtc } from "./time";
 
+/**
+ * デモモード（ログインなし・メモリ保存）。本番（Vercel の Production）では、
+ * 環境変数を間違えて入れても有効にしない（誰でもログインなしで AI を使えてしまうため）
+ */
+export const isDemo = () => process.env.DEMO_MODE === "1" && process.env.VERCEL_ENV !== "production";
+
 /** デモモードの初期データ。メインのカレンダーに見立てた「動かせない予定」と、AI の予定を少し */
 export function demoSeed(tz = DEFAULT_TZ): Block[] {
   const today = localDateString(new Date(), tz);

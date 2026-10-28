@@ -49,10 +49,26 @@ describe("withAiBudget", () => {
     expect(await store.getCost(userId, date)).toBeCloseTo(0.03, 10);
   });
 
+  it("同時にたくさん送られても、予算を大きく超えて Claude を呼ばない", async () => {
+    create.mockResolvedValue(reply("ok"));
+    await store.addCost(userId, date, 0.44);
+    const results = await Promise.allSettled(
+      Array.from({ length: 10 }, () => withAiBudget({ store, userId, tz, now }, async (meter) => (await call(meter), "done"))),
+    );
+    // 先に押さえた分（$0.05）が合計に入るので、残り $0.06 では2件まで
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(2);
+    expect(results.filter((r) => r.status === "rejected" && r.reason instanceof BudgetExceededError)).toHaveLength(8);
+    expect(create).toHaveBeenCalledTimes(2);
+    // 押さえた分は精算され、実際の費用だけが残る
+    expect(await store.getCost(userId, date)).toBeCloseTo(0.5, 10);
+  });
+
   it("予算を使い切っていたら Claude を呼ばない", async () => {
     await store.addCost(userId, date, 0.5);
     await expect(withAiBudget({ store, userId, tz, now }, async (meter) => call(meter))).rejects.toBeInstanceOf(BudgetExceededError);
     expect(create).not.toHaveBeenCalled();
+    // 押さえた分は戻す
+    expect(await store.getCost(userId, date)).toBeCloseTo(0.5, 10);
   });
 });
 
