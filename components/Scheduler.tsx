@@ -281,6 +281,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           message,
           tz,
           aiMode: chatSettings.aiMode,
+          interruptPrefs: { start: chatSettings.start, mode: chatSettings.mode },
           ...(interrupt ? { interrupt: { start: chatSettings.start, mode: chatSettings.mode } } : {}),
         }),
       });
@@ -434,6 +435,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           onSend={send}
           settings={chatSettings}
           onSettingsChange={changeChatSettings}
+          onOpenSettings={() => setTab("settings")}
           onUndo={undo}
           onSaveEdits={saveEdits}
           onConfirm={(items) => {

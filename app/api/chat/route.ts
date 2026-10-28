@@ -5,7 +5,8 @@ import { getUserContext } from "@/lib/context";
 import { UnauthorizedError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http";
 import { withAiBudget } from "@/lib/budget";
-import { applyInterrupt, interruptInstruction, interruptLabel, interruptReply, parseInterrupt } from "@/lib/interrupt";
+import { parseCommand, runCommand, type LocalCommand } from "@/lib/commands";
+import { interruptInstruction, interruptLabel, parseInterrupt } from "@/lib/interrupt";
 import { usageOf } from "@/lib/limits";
 import { RecordingCalendar } from "@/lib/ops";
 import { localDateString, safeTimeZone } from "@/lib/time";
@@ -14,16 +15,20 @@ export const maxDuration = 60;
 
 const HISTORY_LIMIT = 10;
 
+const interruptSettings = z.object({ start: z.enum(["now", "after_current"]), mode: z.enum(["slide", "trim"]) });
+
 const body = z.object({
   message: z.string().trim().min(1).max(1000),
   tz: z.string().optional(),
   /** 割り込みモード（オンのときだけ送られる） */
-  interrupt: z.object({ start: z.enum(["now", "after_current"]), mode: z.enum(["slide", "trim"]) }).optional(),
-  /** 強化モード（boost：常に AI）／節約モード（save：アプリで処理できるものは AI を使わない） */
+  interrupt: interruptSettings.optional(),
+  /** 割り込みの開始・後ろの予定の選び方（「割り込み30分」などで使う。割り込みモードがオフでも送られる） */
+  interruptPrefs: interruptSettings.optional(),
+  /** 強化モード（boost：すべて AI）／節約モード（save：アプリで処理できる依頼は AI を使わない） */
   aiMode: z.enum(["boost", "save"]).default("save"),
 });
 
-// POST /api/chat { message, tz, interrupt?, aiMode? } → 予定を操作し、返答と Undo 用の opId を返す
+// POST /api/chat { message, tz, interrupt?, interruptPrefs?, aiMode? } → 予定を操作し、返答と Undo 用の opId を返す
 export async function POST(req: NextRequest) {
   try {
     const parsed = body.safeParse(await req.json().catch(() => null));
@@ -37,23 +42,31 @@ export async function POST(req: NextRequest) {
     // 履歴には、割り込みモードで送ったことが分かる形で残す（AI にも伝わる）
     const userText = interrupt ? interruptLabel(message) : message;
 
-    // 節約モードの割り込みで、長さが読める文なら AI を使わずにアプリで処理する（使用量は消費しない）
-    const local = interrupt && aiMode === "save" ? parseInterrupt(message) : null;
-    if (interrupt && local) {
-      const r = await applyInterrupt(recording, { ...local, ...interrupt, tz, now });
-      const reply = interruptReply(r, interrupt.mode, tz);
-      const opId = crypto.randomUUID();
-      await store.recordOps(userId, opId, recording.ops);
-      await store.addMessages(
-        userId,
-        [
-          { role: "user", content: userText },
-          { role: "assistant", content: reply },
-        ],
-        opId,
-      );
-      const usage = usageOf(await store.getCost(userId, localDateString(now, tz)));
-      return NextResponse.json({ reply, opId, changes: summarize(recording.ops), usage, local: true });
+    // 節約モード：アプリで読める依頼は AI を使わずに処理する（使用量は消費しない）。
+    // 割り込みモードのときは、長さが読めれば割り込みとして扱う
+    let command: LocalCommand | null = null;
+    if (aiMode === "save") {
+      const i = interrupt ? parseInterrupt(message) : null;
+      command = interrupt ? (i && { kind: "interrupt", ...i }) : parseCommand(message);
+    }
+    if (command) {
+      const prefs = interrupt ?? parsed.data.interruptPrefs ?? { start: "now", mode: "slide" };
+      const reply = await runCommand(command, recording, { tz, now, interrupt: prefs });
+      // アプリでは決められなかった（空き時間が見つからないなど）ときは、下の AI に任せる
+      if (reply !== null) {
+        const opId = recording.ops.length ? crypto.randomUUID() : null;
+        if (opId) await store.recordOps(userId, opId, recording.ops);
+        await store.addMessages(
+          userId,
+          [
+            { role: "user", content: userText },
+            { role: "assistant", content: reply },
+          ],
+          opId ?? undefined,
+        );
+        const usage = usageOf(await store.getCost(userId, localDateString(now, tz)));
+        return NextResponse.json({ reply, opId, changes: summarize(recording.ops), usage, local: true });
+      }
     }
 
     const history = await store.recentMessages(userId, HISTORY_LIMIT);

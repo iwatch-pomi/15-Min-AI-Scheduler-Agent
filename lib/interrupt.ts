@@ -17,8 +17,8 @@ export type ChatSettings = InterruptSettings & { interrupt: boolean; aiMode: AiM
 export const DEFAULT_CHAT_SETTINGS: ChatSettings = { interrupt: false, start: "now", mode: "slide", aiMode: "save" };
 
 export const AI_MODE_HELP: Record<AiMode, string> = {
-  save: "アプリで処理し、読めないときだけAIを使います（使用量を節約）",
-  boost: "毎回AIが考えます（使用量を消費します）",
+  save: "「14時から会議1時間」「明日 資料作成2時間」「15分延長」「今のをスキップ」「割り込み30分」のような決まった形の依頼は、AIを使わずにアプリで処理します（使用量は減りません）。それ以外の依頼だけAIが考えます",
+  boost: "すべての依頼をAIが考えます。予定の分け方や空き時間の選び方まで任せられますが、そのたびに使用量を消費します",
 };
 
 /** 履歴に残すユーザーの発言（AI にも割り込みだったことが伝わる） */
@@ -33,13 +33,20 @@ export function interruptInstruction({ start, mode }: InterruptSettings): string
 
 const MAX_MINUTES = 8 * 60;
 
+/** 全角の数字・コロン・空白をそろえる */
+export function normalizeText(text: string): string {
+  return text
+    .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/：/g, ":")
+    .replace(/[　]/g, " ")
+    .trim();
+}
+
 /**
- * 「45分買い物」「買い物 1時間」「1時間半 散歩」から長さとタイトルを読む。
- * 長さが読めなければ null（そのときは AI に頼む）
+ * 文から長さ（「45分」「1時間」「1時間半」「1時間30分」「半時間」）を1つ取り出す。
+ * 15分単位に切り上げ、最大8時間。読めなければ null
  */
-export function parseInterrupt(text: string): { title: string; minutes: number } | null {
-  // 全角の数字・空白をそろえる
-  const s = text.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)).replace(/[　]/g, " ");
+export function takeDuration(s: string): { minutes: number; rest: string } | null {
   let minutes = 0;
   let rest = s;
   const hours = s.match(/(\d+(?:\.\d+)?)\s*時間(半)?(?:\s*(\d+)\s*分)?/);
@@ -57,16 +64,29 @@ export function parseInterrupt(text: string): { title: string; minutes: number }
     }
   }
   if (!minutes) return null;
-  minutes = Math.min(MAX_MINUTES, Math.ceil(minutes / SLOT_MINUTES) * SLOT_MINUTES);
-  const title = rest
+  return { minutes: Math.min(MAX_MINUTES, Math.ceil(minutes / SLOT_MINUTES) * SLOT_MINUTES), rest };
+}
+
+/** 依頼文の前後の助詞・「くらい」などを取って、予定のタイトルにする */
+export function cleanTitle(s: string): string {
+  return s
     .replace(/割り込み[:：]?/g, " ")
     .replace(/^[\s、,。:：をでのにだけ]+/, "")
     .replace(/[\s、,。をでのに]*(くらい|ぐらい|ほど|程度|だけ)?[\s、,。をでのに]*$/, "")
     .trim();
-  return { title: title || "割り込み", minutes };
 }
 
-function ceil15(d: Date): Date {
+/**
+ * 「45分買い物」「買い物 1時間」「1時間半 散歩」から長さとタイトルを読む。
+ * 長さが読めなければ null（そのときは AI に頼む）
+ */
+export function parseInterrupt(text: string): { title: string; minutes: number } | null {
+  const d = takeDuration(normalizeText(text));
+  if (!d) return null;
+  return { title: cleanTitle(d.rest) || "割り込み", minutes: d.minutes };
+}
+
+export function ceil15(d: Date): Date {
   const slot = SLOT_MINUTES * 60_000;
   return new Date(Math.ceil(d.getTime() / slot) * slot);
 }

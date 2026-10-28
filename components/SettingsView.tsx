@@ -80,14 +80,10 @@ export default function SettingsView(props: {
           />
         )}
 
-        <Section title="スケジュール">
-          <Row icon={<ClockIcon className="size-5" />} label="タイムゾーン" value={tz} />
-          <div className="px-4 py-3">
-            <UsageMeter usage={usage} />
-          </div>
+        <Section title="AIの使い方">
           <div className="space-y-1.5 px-4 py-3">
             <Segmented
-              label="AIの使い方"
+              label="モード"
               value={aiMode}
               options={[
                 { value: "save", label: "節約モード" },
@@ -97,8 +93,15 @@ export default function SettingsView(props: {
               testId="settings-ai-mode"
             />
             <p className="text-xs text-muted">
-              {AI_MODE_HELP[aiMode]}。いまは割り込みモードに使います。［元に戻す］はどちらでもAIを使いません。
+              {AI_MODE_HELP[aiMode]}。［元に戻す］と「元に戻して」は、どちらのモードでもAIを使いません。
             </p>
+          </div>
+        </Section>
+
+        <Section title="スケジュール">
+          <Row icon={<ClockIcon className="size-5" />} label="タイムゾーン" value={tz} />
+          <div className="px-4 py-3">
+            <UsageMeter usage={usage} />
           </div>
           <Row icon={<CalendarIcon className="size-5" />} label="AIの予定の保存先" value="AIスケジューラー" />
           <p className="px-4 py-3 text-xs text-muted">

@@ -83,9 +83,42 @@ describe("POST /api/chat の割り込みモード", () => {
     expect((await savedMessages())[0].content).toBe("⚡割り込み：45分買い物");
   });
 
-  it("割り込みモードでなければ、いつもどおり AI に頼む", async () => {
-    await send({ message: "45分買い物" });
+  it("割り込みモードでなければ、割り込みの指示は付けない", async () => {
+    await send({ message: "45分買い物", aiMode: "boost" });
     expect(create).toHaveBeenCalledTimes(2);
     expect(String(requests[0].messages.at(-1)!.content)).not.toContain("［割り込みモード］");
+  });
+});
+
+describe("POST /api/chat の節約モード／強化モード（すべてのチャット）", () => {
+  it("節約モード：決まった形の依頼は AI を使わずに処理する（使用量は増えない）", async () => {
+    const { data } = await send({ message: "14時から要件定義1時間", aiMode: "save" });
+    expect(create).not.toHaveBeenCalled();
+    expect(data).toMatchObject({ local: true, reply: "14:00-15:00 に「要件定義」を入れました。", changes: { created: 1 } });
+    expect(await cost()).toBe(0);
+    expect((await savedMessages()).map((m) => m.content)).toEqual(["14時から要件定義1時間", data.reply]);
+  });
+
+  it("節約モード：「割り込み30分」は、選んだ開始・後ろの予定の扱いで割り込ませる", async () => {
+    const { data } = await send({ message: "割り込み30分", aiMode: "save", interruptPrefs: { start: "now", mode: "trim" } });
+    expect(create).not.toHaveBeenCalled();
+    expect(data.reply).toContain("13:15-13:45 に「割り込み」を割り込ませました。\n重なる予定はありませんでした。");
+  });
+
+  it("節約モード：読めない依頼は AI に頼む（使用量が増える）", async () => {
+    create.mockReset();
+    create.mockResolvedValueOnce(done);
+    const { data } = await send({ message: "今日の残りを組み直して", aiMode: "save" });
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(data.local).toBeUndefined();
+    expect(await cost()).toBeCloseTo(0.03, 10);
+  });
+
+  it("強化モード：決まった形の依頼でも AI が考える（使用量が増える）", async () => {
+    create.mockReset();
+    create.mockResolvedValueOnce(done);
+    await send({ message: "14時から要件定義1時間", aiMode: "boost" });
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(await cost()).toBeCloseTo(0.03, 10);
   });
 });

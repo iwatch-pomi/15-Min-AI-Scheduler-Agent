@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef } from "react";
-import { AI_MODE_HELP, type ChatSettings } from "@/lib/interrupt";
+import type { ChatSettings } from "@/lib/interrupt";
 import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
 import { localDateString } from "@/lib/time";
@@ -13,6 +13,8 @@ import Segmented from "./Segmented";
 import UsageMeter from "./UsageMeter";
 
 const QUICK_ACTIONS = ["15分延長", "割り込み30分", "今のをスキップ", "今日の残りを組み直して"];
+/** 節約モードなら AI を使わずに処理できるワンタップ（上限に達していても使える） */
+const LOCAL_ACTIONS = new Set(["15分延長", "割り込み30分", "今のをスキップ"]);
 const EXAMPLES = ["14時から要件定義1時間、そのあと返信15分", "明日の午前に資料作成2時間", "今日の残りを組み直して"];
 
 export default function ChatView(props: {
@@ -29,14 +31,16 @@ export default function ChatView(props: {
   onSend: (text: string, opts?: { plain?: boolean }) => void;
   settings: ChatSettings;
   onSettingsChange: (patch: Partial<ChatSettings>) => void;
+  /** マイページ（AI の使い方の設定）を開く */
+  onOpenSettings: () => void;
   onUndo: (entryId: string) => void;
   onSaveEdits: (entryId: string, changes: ManualChange[]) => Promise<string | null>;
   onConfirm: (items: ChangeItem[]) => void;
   onBack: () => void;
 }) {
-  const { tz, usage, draft, entries, hasOlder, loadingOlder, onLoadOlder, sending, onSend, settings, onSettingsChange, onUndo, onSaveEdits, onConfirm, onBack } = props;
-  // 節約モードの割り込みは AI を使わずに処理できるので、上限に達していても送れる
-  const canSendWithoutAi = settings.interrupt && settings.aiMode === "save";
+  const { tz, usage, draft, entries, hasOlder, loadingOlder, onLoadOlder, sending, onSend, settings, onSettingsChange, onOpenSettings, onUndo, onSaveEdits, onConfirm, onBack } = props;
+  // 節約モードなら、アプリで読める依頼は AI を使わずに処理できるので、上限に達していても送れる
+  const save = settings.aiMode === "save";
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastId = entries.at(-1)?.id;
 
@@ -153,11 +157,22 @@ export default function ChatView(props: {
       </div>
 
       <div className="space-y-2 px-4 pt-1 pb-3">
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-muted"
+            data-testid="ai-mode-chip"
+          >
+            {save ? "節約モード" : "強化モード"}
+          </button>
           <UsageMeter usage={usage} compact />
         </div>
         {usage.exhausted && (
-          <p className="rounded-xl bg-now/10 px-3 py-2 text-xs text-now">今日のAIの利用上限に達しました。明日の0時にもとに戻ります。</p>
+          <p className="rounded-xl bg-now/10 px-3 py-2 text-xs text-now">
+            今日のAIの利用上限に達しました。明日の0時にもとに戻ります。
+            {save && "「14時から会議1時間」「15分延長」のような決まった形の依頼は、AIを使わずに処理できます。"}
+          </p>
         )}
         <InterruptPanel settings={settings} onChange={onSettingsChange} />
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
@@ -165,7 +180,7 @@ export default function ChatView(props: {
             <button
               key={a}
               type="button"
-              disabled={sending || usage.exhausted}
+              disabled={sending || (usage.exhausted && !(save && LOCAL_ACTIONS.has(a)))}
               onClick={() => onSend(a, { plain: true })}
               className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-50 ${
                 i === 0 ? "bg-accent text-white" : "border border-accent/40 bg-surface text-accent-ink"
@@ -179,7 +194,7 @@ export default function ChatView(props: {
           key={draft.key}
           initialText={draft.text}
           sending={sending}
-          disabled={usage.exhausted && !canSendWithoutAi}
+          disabled={usage.exhausted && !save}
           onSend={(text) => onSend(text)}
           placeholder={settings.interrupt ? "例：45分 買い物" : undefined}
           highlight={settings.interrupt}
@@ -232,19 +247,8 @@ function InterruptPanel({ settings, onChange }: { settings: ChatSettings; onChan
             onChange={(mode) => onChange({ mode })}
             testId="interrupt-mode"
           />
-          <Segmented
-            label="AIの使い方"
-            value={settings.aiMode}
-            options={[
-              { value: "save", label: "節約モード" },
-              { value: "boost", label: "強化モード" },
-            ]}
-            onChange={(aiMode) => onChange({ aiMode })}
-            testId="ai-mode"
-          />
           <p className="pl-[72px] text-[10px] text-muted">
             {settings.mode === "slide" ? "後ろの予定を、割り込みの分だけ後ろにずらします。" : "重なった分だけ削り、そのあとの予定は動かしません。"}
-            {AI_MODE_HELP[settings.aiMode]}
           </p>
         </div>
       )}
