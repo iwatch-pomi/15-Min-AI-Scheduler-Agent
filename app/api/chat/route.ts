@@ -7,6 +7,7 @@ import { UnauthorizedError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http";
 import { withAiBudget } from "@/lib/budget";
 import { parseCommand, runCommand, type LocalCommand } from "@/lib/commands";
+import { HISTORY_LIMIT, compactHistory } from "@/lib/context-window";
 import { interruptInstruction, interruptLabel, parseInterrupt } from "@/lib/interrupt";
 import { usageOf } from "@/lib/limits";
 import { RecordingCalendar } from "@/lib/ops";
@@ -14,7 +15,6 @@ import { localDateString, safeTimeZone } from "@/lib/time";
 
 export const maxDuration = 60;
 
-const HISTORY_LIMIT = 10;
 
 const interruptSettings = z.object({ start: z.enum(["now", "after_current"]), mode: z.enum(["slide", "trim"]) });
 
@@ -70,7 +70,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const history = await store.recentMessages(userId, HISTORY_LIMIT);
+    // 直近5件はそのまま、その前の5件は短い要約にして渡す（費用を下げる）
+    const history = compactHistory(await store.recentMessages(userId, HISTORY_LIMIT));
     const prompt = interrupt ? `${interruptInstruction(interrupt)}\n${message}` : message;
     // Claude を使うので、必ず予算の確認と費用の記録をする（使い切っていたら 429 で AI は呼ばない）
     const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now }, async (meter) => {
