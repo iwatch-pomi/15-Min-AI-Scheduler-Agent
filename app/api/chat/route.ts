@@ -3,12 +3,12 @@ import { z } from "zod";
 import { runAgent } from "@/lib/agent";
 import { getUserContext } from "@/lib/context";
 import { errorResponse } from "@/lib/http";
+import { dailyChatLimit } from "@/lib/limits";
 import { RecordingCalendar } from "@/lib/ops";
 import { localDateString, safeTimeZone } from "@/lib/time";
 
 export const maxDuration = 60;
 
-const DAILY_LIMIT = Number(process.env.DAILY_CHAT_LIMIT ?? 50);
 const HISTORY_LIMIT = 10;
 
 const body = z.object({ message: z.string().trim().min(1).max(1000), tz: z.string().optional() });
@@ -23,8 +23,9 @@ export async function POST(req: NextRequest) {
 
     const { userId, calendar, store } = await getUserContext();
     const used = await store.incrementUsage(userId, localDateString(now, tz));
-    if (used > DAILY_LIMIT) {
-      return NextResponse.json({ error: `今日のAI利用回数の上限（${DAILY_LIMIT}回）に達しました` }, { status: 429 });
+    const limit = dailyChatLimit();
+    if (used > limit) {
+      return NextResponse.json({ error: `今日のAI利用回数の上限（${limit}回）に達しました` }, { status: 429 });
     }
 
     const recording = new RecordingCalendar(calendar);
@@ -60,5 +61,10 @@ function summarize(ops: RecordingCalendar["ops"]) {
     created: ops.filter((o) => o.kind === "create").length,
     updated: ops.filter((o) => o.kind === "update").length,
     deleted: ops.filter((o) => o.kind === "delete").length,
+    // 画面の結果カード用。作成・変更は変更後、削除は削除前の予定を返す
+    items: ops.flatMap((o) => {
+      const b = o.kind === "delete" ? o.before : o.after;
+      return b ? [{ kind: o.kind, title: b.title, start: b.start, end: b.end, energy: b.energy }] : [];
+    }),
   };
 }

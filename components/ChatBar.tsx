@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
-const QUICK_ACTIONS = ["15分延長", "今のをスキップ", "割り込み30分", "今日の残りを組み直して"];
+import { MicIcon, SendIcon } from "./icons";
 
 type SpeechRecognitionLike = {
   lang: string;
@@ -54,71 +53,51 @@ export default function ChatBar({ sending, onSend }: { sending: boolean; onSend:
   };
 
   return (
-    <div className="space-y-2">
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none]">
-        {QUICK_ACTIONS.map((a) => (
+    <form
+      className="flex items-end gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(text);
+      }}
+    >
+      <div className="flex min-w-0 flex-1 items-end rounded-3xl bg-surface pr-1 shadow-card ring-1 ring-line focus-within:ring-accent">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              submit(text);
+            }
+          }}
+          rows={1}
+          placeholder="メッセージを入力…"
+          aria-label="AIへのメッセージ"
+          className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-4 py-2.5 text-[16px] leading-6 outline-none placeholder:text-muted"
+        />
+        {canListen && (
           <button
-            key={a}
             type="button"
-            disabled={sending}
-            onClick={() => submit(a)}
-            className="shrink-0 rounded-full border border-line bg-surface px-3 py-1.5 text-xs text-text transition active:scale-95 disabled:opacity-50"
+            onClick={toggleMic}
+            aria-label={listening ? "音声入力を止める" : "音声で入力"}
+            className={`mb-1 grid size-9 place-items-center rounded-full ${listening ? "bg-now text-white" : "text-muted"}`}
           >
-            {a}
+            <MicIcon className="size-5" />
           </button>
-        ))}
+        )}
       </div>
-      <form
-        className="flex items-end gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit(text);
-        }}
+      <button
+        type="submit"
+        disabled={sending || !text.trim()}
+        aria-label="送信"
+        className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-white shadow-card transition active:scale-95 disabled:opacity-40"
       >
-        <div className="flex min-w-0 flex-1 items-end rounded-2xl border border-line bg-surface pr-1 focus-within:border-accent">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                submit(text);
-              }
-            }}
-            rows={1}
-            placeholder="例：14時から資料作成1時間"
-            aria-label="AIへのメッセージ"
-            className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3.5 py-2.5 text-[16px] leading-6 outline-none placeholder:text-muted"
-          />
-          {canListen && (
-            <button
-              type="button"
-              onClick={toggleMic}
-              aria-label={listening ? "音声入力を止める" : "音声で入力"}
-              className={`mb-1 grid size-9 place-items-center rounded-full ${listening ? "bg-now text-white" : "text-muted"}`}
-            >
-              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <rect x="9" y="3" width="6" height="11" rx="3" />
-                <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-              </svg>
-            </button>
-          )}
-        </div>
-        <button
-          type="submit"
-          disabled={sending || !text.trim()}
-          aria-label="送信"
-          className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-white transition active:scale-95 disabled:opacity-40"
-        >
-          {sending ? (
-            <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-          ) : (
-            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 19V5M5 12l7-7 7 7" />
-            </svg>
-          )}
-        </button>
-      </form>
-    </div>
+        {sending ? (
+          <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+        ) : (
+          <SendIcon className="size-5" />
+        )}
+      </button>
+    </form>
   );
 }

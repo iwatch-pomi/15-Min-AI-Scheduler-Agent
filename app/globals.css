@@ -1,27 +1,58 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f7f7f5;
+  --bg: #f3f8fd;
+  --bg-top: #e6f0fb;
   --surface: #ffffff;
-  --text: #1c1c1e;
-  --muted: #6b6b70;
-  --line: #e6e6e3;
-  --line-soft: #f0f0ee;
-  --accent: #4f46e5;
+  --surface-2: #f4f8fd;
+  --text: #1b2a41;
+  --muted: #6b7a90;
+  --line: #e2eaf4;
+  --line-soft: #eef3f9;
+  --accent: #2f7cf6;
+  --accent-soft: #e7f0fe;
   --now: #ef4444;
+  --ok: #22a565;
+
+  /* 予定ブロック（パステル背景 + 左線） */
+  --blk-blue: #3b82f6;
+  --blk-blue-bg: #e8f1fe;
+  --blk-green: #22a565;
+  --blk-green-bg: #e6f6ed;
+  --blk-orange: #f08a24;
+  --blk-orange-bg: #fff1e2;
+  --blk-gray: #a6b2c3;
+  --blk-gray-bg: #f1f4f8;
+
+  --shadow: 0 1px 2px rgb(30 60 110 / 0.04), 0 4px 16px rgb(30 60 110 / 0.06);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f0f11;
-    --surface: #18181b;
-    --text: #f4f4f5;
-    --muted: #a1a1aa;
-    --line: #2a2a2e;
-    --line-soft: #1f1f23;
-    --accent: #818cf8;
+    --bg: #0b1220;
+    --bg-top: #0f1a30;
+    --surface: #131c2e;
+    --surface-2: #18233a;
+    --text: #e6edf7;
+    --muted: #93a1b8;
+    --line: #22304a;
+    --line-soft: #1a263c;
+    --accent: #5b9bff;
+    --accent-soft: #1a2b4d;
     --now: #f87171;
+    --ok: #4ade80;
+
+    --blk-blue: #5b9bff;
+    --blk-blue-bg: #1a2b4d;
+    --blk-green: #4ade80;
+    --blk-green-bg: #14301f;
+    --blk-orange: #fbaa5a;
+    --blk-orange-bg: #3a2614;
+    --blk-gray: #5d6b82;
+    --blk-gray-bg: #1a2335;
+
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
     color-scheme: dark;
   }
 }
@@ -29,13 +60,37 @@
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-text: var(--text);
   --color-muted: var(--muted);
   --color-line: var(--line);
   --color-line-soft: var(--line-soft);
   --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-now: var(--now);
+  --color-ok: var(--ok);
+  --color-blk-blue: var(--blk-blue);
+  --color-blk-blue-bg: var(--blk-blue-bg);
+  --color-blk-green: var(--blk-green);
+  --color-blk-green-bg: var(--blk-green-bg);
+  --color-blk-orange: var(--blk-orange);
+  --color-blk-orange-bg: var(--blk-orange-bg);
+  --color-blk-gray: var(--blk-gray);
+  --color-blk-gray-bg: var(--blk-gray-bg);
+  --shadow-card: var(--shadow);
   --font-sans: "Noto Sans JP", ui-sans-serif, system-ui, -apple-system, "Hiragino Sans", sans-serif;
+
+  --animate-wave: wave 1s ease-in-out infinite;
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
 }
 
 html,
@@ -44,4 +99,8 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 320px) no-repeat, var(--bg);
 }
