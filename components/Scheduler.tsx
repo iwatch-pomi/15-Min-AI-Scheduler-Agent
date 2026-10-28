@@ -46,6 +46,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usage, setUsage] = useState<Usage>({ used: 0, limit: dailyLimit, remaining: dailyLimit });
+  const [older, setOlder] = useState<{ hasOlder: boolean; loading: boolean }>({ hasOlder: false, loading: false });
   // Google との接続切れ（期限切れ・権限の取り消し）。再読み込みではなくログインし直しの画面を出す
   const [authExpired, setAuthExpired] = useState(false);
 
@@ -97,6 +98,39 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
     };
   }, [loadAll]);
 
+  // 保存されたチャット履歴。before を付けるとそれより古いものを読む
+  const loadHistory = useCallback(async (before?: string) => {
+    setOlder((h) => ({ ...h, loading: true }));
+    try {
+      const res = await fetch(`/api/messages${before ? `?before=${before}` : ""}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data: { entries: ChatEntry[]; hasMore: boolean } = await res.json();
+      setEntries((prev) => {
+        const known = new Set(prev.map((e) => e.id));
+        return [...data.entries.filter((e) => !known.has(e.id)), ...prev];
+      });
+      setOlder({ hasOlder: data.hasMore, loading: false });
+    } catch {
+      // 履歴が読めなくても、新しいチャットはできる
+    } finally {
+      setOlder((h) => ({ ...h, loading: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadHistory();
+  }, [loadHistory]);
+
+  const clearHistory = async () => {
+    const res = await fetch("/api/messages", { method: "DELETE" });
+    if (res.status === 401) return setAuthExpired(true);
+    if (!res.ok) return false;
+    setEntries([]);
+    setOlder({ hasOlder: false, loading: false });
+    return true;
+  };
+
   // AI の残り回数。日付が変わったら（0時に）読み直す
   useEffect(() => {
     fetch(`/api/usage?tz=${encodeURIComponent(tz)}`, { cache: "no-store" })
@@ -116,11 +150,11 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
   }, [tz]);
 
   const send = async (message: string) => {
-    const userEntry: ChatEntry = { id: crypto.randomUUID(), role: "user", text: message };
+    const userEntry: ChatEntry = { id: crypto.randomUUID(), role: "user", text: message, at: new Date().toISOString() };
     setEntries((prev) => [...prev, userEntry]);
     setSending(true);
     const reply = (text: string, extra: Partial<Extract<ChatEntry, { role: "assistant" }>> = {}) =>
-      setEntries((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", text, ...extra }]);
+      setEntries((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", text, at: new Date().toISOString(), ...extra }]);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -180,9 +214,10 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
 
   // 結果カードでの手動編集を保存する。失敗したらエラーメッセージを返す
   const saveEdits = async (entryId: string, changes: ManualChange[]): Promise<string | null> => {
-    const { res, data } = await postJson("/api/blocks", { changes });
+    // そのチャットの操作グループに続けて記録する（履歴の結果カードと［元に戻す］をそろえるため）
+    const { res, data } = await postJson("/api/blocks", { changes, opId: resultOf(entryId)?.opIds[0] });
     if (res.status === 401) return null;
-    if (data.opId) updateResult(entryId, (r) => ({ ...r, opIds: [...r.opIds, data.opId] }));
+    if (data.opId) updateResult(entryId, (r) => ({ ...r, opIds: r.opIds.includes(data.opId) ? r.opIds : [...r.opIds, data.opId] }));
     if (!res.ok) {
       await loadAll();
       return data.error ?? "保存できませんでした";
@@ -249,6 +284,9 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
       {tab === "ai" && (
         <ChatView
           tz={tz}
+          hasOlder={older.hasOlder}
+          loadingOlder={older.loading}
+          onLoadOlder={() => loadHistory(entries[0]?.id)}
           usage={usage}
           draft={draft}
           entries={entries}
@@ -265,7 +303,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
           onBack={() => setTab("home")}
         />
       )}
-      {tab === "settings" && <SettingsView tz={tz} email={email} demo={demo} usage={usage} />}
+      {tab === "settings" && <SettingsView tz={tz} email={email} demo={demo} usage={usage} onClearHistory={clearHistory} />}
       <TabBar tab={tab} onChange={setTab} />
     </div>
   );

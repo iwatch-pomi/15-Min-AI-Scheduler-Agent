@@ -11,6 +11,8 @@ const start = z.iso.datetime({ offset: true });
 const minutes = z.number().int().min(SLOT_MINUTES).max(8 * 60);
 
 export const manualChangesSchema = z.object({
+  /** 結果カードのもとになったチャットの操作グループ。指定するとそのグループに続けて記録する */
+  opId: z.uuid().optional(),
   changes: z
     .array(
       z.discriminatedUnion("op", [

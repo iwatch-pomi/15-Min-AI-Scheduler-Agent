@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       failure = err;
     }
     // 途中で失敗しても、反映済みの分は Undo できるように記録する
-    const opId = recording.ops.length ? crypto.randomUUID() : null;
+    const opId = recording.ops.length ? (parsed.data.opId ?? crypto.randomUUID()) : null;
     if (opId) await store.recordOps(userId, opId, recording.ops);
 
     if (failure instanceof ManualEditError) {

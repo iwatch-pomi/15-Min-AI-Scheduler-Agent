@@ -13,11 +13,13 @@ export type ChangeItem = {
 };
 
 export type ChatEntry =
-  | { id: string; role: "user"; text: string }
+  | { id: string; role: "user"; text: string; at?: string }
   | {
       id: string;
       role: "assistant";
       text: string;
+      /** 送った日時（ISO）。日付の区切りの表示に使う */
+      at?: string;
       /** opIds は AI の変更と、そのあとの手動編集の操作グループ（古い順）。元に戻すときは全部を逆順に取り消す */
       result?: { opIds: string[]; items: ChangeItem[]; undone?: boolean };
       error?: boolean;

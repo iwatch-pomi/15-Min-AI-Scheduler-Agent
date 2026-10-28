@@ -1,12 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { logout } from "@/app/actions";
 import type { Usage } from "@/lib/limits";
 import UsageMeter from "./UsageMeter";
 import { AppLogo, CalendarIcon, ClockIcon, ShareIcon, UserIcon } from "./icons";
 
-export default function SettingsView(props: { tz: string; email?: string; demo?: boolean; usage: Usage }) {
-  const { tz, email, demo, usage } = props;
+export default function SettingsView(props: {
+  tz: string;
+  email?: string;
+  demo?: boolean;
+  usage: Usage;
+  onClearHistory: () => Promise<boolean | void>;
+}) {
+  const { tz, email, demo, usage, onClearHistory } = props;
+  const [cleared, setCleared] = useState(false);
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
@@ -35,6 +43,21 @@ export default function SettingsView(props: { tz: string; email?: string; demo?:
           <p className="px-4 py-3 text-xs text-muted">
             AI の予定は、Google カレンダーに自動で作られる専用カレンダー「AIスケジューラー」に入ります。メインのカレンダーは読むだけで、変更しません。色や表示の切り替えは Google カレンダーの設定から変えられます。
           </p>
+        </Section>
+
+        <Section title="AIとのチャット">
+          <div className="space-y-2 px-4 py-3">
+            <p className="text-xs text-muted">AIとのチャットは保存され、AI画面でいつでも見返せます。消してもカレンダーの予定はそのままです。</p>
+            <button
+              onClick={async () => {
+                if (!window.confirm("AIとのチャット履歴をすべて削除しますか？（カレンダーの予定は消えません）")) return;
+                if (await onClearHistory()) setCleared(true);
+              }}
+              className="w-full rounded-full border border-now/40 py-2 text-sm font-bold text-now"
+            >
+              {cleared ? "削除しました" : "チャット履歴を削除"}
+            </button>
+          </div>
         </Section>
 
         <Section title="ホーム画面に追加（iPhone）">

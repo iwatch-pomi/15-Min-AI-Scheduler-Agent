@@ -1,7 +1,14 @@
 import type { ChatMessage, Operation } from "../types";
 
+/** 保存されたチャットの1件（画面の履歴表示用） */
+export type StoredMessage = { id: string; role: "user" | "assistant"; content: string; opGroupId: string | null; createdAt: string };
+
+/** 操作グループ（AI の変更と、そのあとの手動編集）。undone は全部取り消し済みか */
+export type OpGroup = { ops: Operation[]; undone: boolean };
+
 /** 操作ログ（Undo）・チャット履歴・利用回数の保存先 */
 export interface Store {
+  /** 操作を記録する。同じ groupId に続けて記録すると、そのグループの後ろに追加する */
   recordOps(userId: string, groupId: string, ops: Operation[]): Promise<void>;
   /** まだ取り消していない操作を記録順で返す */
   getOps(userId: string, groupId: string): Promise<Operation[]>;
@@ -11,6 +18,11 @@ export interface Store {
   recentMessages(userId: string, limit: number): Promise<ChatMessage[]>;
   /** 今日の利用回数を1増やし、増やした後の回数を返す */
   incrementUsage(userId: string, date: string): Promise<number>;
+  /** チャット履歴を古い順に。before（その id より前）から limit 件 */
+  listMessages(userId: string, opts: { before?: string; limit: number }): Promise<{ messages: StoredMessage[]; hasMore: boolean }>;
+  /** 履歴の結果カードを作るための操作グループ（取り消し済みも含む） */
+  getOpGroups(userId: string, groupIds: string[]): Promise<Map<string, OpGroup>>;
+  deleteMessages(userId: string): Promise<void>;
   /** 今日の利用回数（増やさずに読む） */
   getUsage(userId: string, date: string): Promise<number>;
 }
