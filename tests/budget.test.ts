@@ -91,6 +91,7 @@ describe("AIのおすすめ", () => {
     await withAiBudget({ store, userId, tz, now }, (meter) => generateSuggestions(meter, { date, tz, now, today: date, events, tone: "stoic" }));
     await withAiBudget({ store, userId, tz, now }, (meter) => generateSuggestions(meter, { date, tz, now, today: date, events }));
     expect(create.mock.calls[0][0].system).toContain("口調（ストイック）");
+    expect(create.mock.calls[0][0].system).toContain("敬語（です・ます・ください）は使わない");
     expect(create.mock.calls[1][0].system).not.toContain("口調（ストイック）");
   });
 

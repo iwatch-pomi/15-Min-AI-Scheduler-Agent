@@ -16,14 +16,16 @@ describe("suggestions", () => {
     const soft = run(events, "08:00");
     const stoic = run(events, "08:00", { tone: "stoic" });
     expect(stoic.find((x) => x.id === "break")).toMatchObject({
-      text: "12:00まで予定が続きます。そのあと15分、リカバリーを入れますか？",
+      text: "12:00まで予定が続く。そのあと15分、リカバリーを入れろ。",
       prompt: "12:00から15分のリカバリーを入れて",
     });
-    expect(stoic.find((x) => x.id === "free")?.text).toBe("08:00–09:00 が空いています（60分）。今日のタスクを積みますか？");
+    expect(stoic.find((x) => x.id === "free")?.text).toBe("08:00–09:00 が空いている（60分）。今日のタスクを積め。");
     expect(soft.find((x) => x.id === "break")?.text).toContain("ひと息つきませんか？");
     // 今日以外の日は「この日の」
     const other = suggestions({ date: "2026-10-30", tz, now: jst("08:00"), today: date, events: [], tone: "stoic" });
-    expect(other.find((x) => x.id === "free")?.text).toBe("08:00–22:00 が空いています（840分）。この日のタスクを積みますか？");
+    expect(other.find((x) => x.id === "free")?.text).toBe("08:00–22:00 が空いている（840分）。この日のタスクを積め。");
+    // ストイックは敬語を使わない
+    for (const x of stoic) expect(x.text).not.toMatch(/です|ます|ください|しょう/);
     // 予定・空き時間の中身はどちらも同じ
     expect(stoic.map((x) => x.id)).toEqual(soft.map((x) => x.id));
   });

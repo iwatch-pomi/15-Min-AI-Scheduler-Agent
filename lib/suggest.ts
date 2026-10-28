@@ -41,7 +41,7 @@ export function suggestions(opts: {
       id: "break",
       icon: "leaf",
       text: stoic
-        ? `${t(runEnd)}まで予定が続きます。そのあと15分、リカバリーを入れますか？`
+        ? `${t(runEnd)}まで予定が続く。そのあと15分、リカバリーを入れろ。`
         : `${t(runEnd)}まで予定が続きます。そのあと15分、ひと息つきませんか？`,
       prompt: stoic ? `${t(runEnd)}から15分のリカバリーを入れて` : `${t(runEnd)}から15分の休憩を入れて`,
     });
@@ -58,7 +58,7 @@ export function suggestions(opts: {
       id: "free",
       icon: "calendar",
       text: stoic
-        ? `${t(slot.start)}–${t(slot.end)} が空いています（${m}分）。${isToday ? "今日" : "この日"}のタスクを積みますか？`
+        ? `${t(slot.start)}–${t(slot.end)} が空いている（${m}分）。${isToday ? "今日" : "この日"}のタスクを積め。`
         : `${t(slot.start)}〜${t(slot.end)}が空いています（${m}分）。やることを入れますか？`,
       prompt: `${isToday ? "今日" : dayLabel(date)}の${t(slot.start)}から${Math.min(m, 120)}分で、`,
     });
@@ -81,7 +81,7 @@ export function suggestions(opts: {
     out.push({
       id: "tomorrow",
       icon: "bulb",
-      text: stoic ? "明日の勝負は、今夜の段取りで決まる。明日の予定を組んでおこう。" : "明日の予定を、今のうちに組み立てておきましょう。",
+      text: stoic ? "明日の勝負は、今夜の段取りで決まる。明日の予定を組んでおけ。" : "明日の予定を、今のうちに組み立てておきましょう。",
       prompt: `明日（${dayLabel(addDays(date, 1))}）やりたいこと：`,
     });
   }

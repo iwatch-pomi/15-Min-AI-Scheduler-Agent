@@ -187,9 +187,13 @@ export default function HomeView(props: {
             </div>
             <p className="mb-2 px-1 text-[11px] text-muted" data-testid="suggest-note">
               {usageExhausted
-                ? "今日のAIの利用上限に達したので、更新できません"
+                ? stoic
+                  ? "今日のAIは上限に到達。更新できない"
+                  : "今日のAIの利用上限に達したので、更新できません"
                 : aiSuggest
-                  ? `AIが${localTime(new Date(aiSuggest.at), tz)}に考えた${stoic ? "ブリーフ" : "おすすめ"}（この更新で今日のAIを${aiSuggest.costPercent < 0.1 ? "0.1%未満" : `${aiSuggest.costPercent}%`}使いました）`
+                  ? stoic
+                    ? `AIが${localTime(new Date(aiSuggest.at), tz)}に考えたブリーフ（今日のAIを${aiSuggest.costPercent < 0.1 ? "0.1%未満" : `${aiSuggest.costPercent}%`}使用）`
+                    : `AIが${localTime(new Date(aiSuggest.at), tz)}に考えたおすすめ（この更新で今日のAIを${aiSuggest.costPercent < 0.1 ? "0.1%未満" : `${aiSuggest.costPercent}%`}使いました）`
                   : stoic
                     ? "予定から自動で出したブリーフ。「AIで更新」でAIが考える（今日のAIを少し使う）"
                     : "予定から自動で出したおすすめです。「AIで更新」でAIが考えます（今日のAIを少し使います）"}
