@@ -28,8 +28,11 @@ export default function SettingsView(props: {
   onThemeChange: (t: Theme) => void;
   /** 挑戦の名前と期間。null は初期値に戻す */
   onArcChange: (arc: Arc | null) => void;
+  /** ストイックの時間帯のひと言（AI の名言）を出すか */
+  quoteOn: boolean;
+  onQuoteOnChange: (on: boolean) => void;
 }) {
-  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange, today, onThemeChange, onArcChange } = props;
+  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange, today, onThemeChange, onArcChange, quoteOn, onQuoteOnChange } = props;
   const { theme, arc } = useTheme();
   const stoic = theme === "stoic";
   const [editingArc, setEditingArc] = useState(false);
@@ -96,6 +99,28 @@ export default function SettingsView(props: {
               </span>
               <ChevronRightIcon className="size-4 shrink-0 text-muted" />
             </button>
+          )}
+          {stoic && (
+            <div className="px-4 py-3" data-testid="quote-setting">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={quoteOn}
+                onClick={() => onQuoteOnChange(!quoteOn)}
+                className="flex w-full items-center gap-3 text-left"
+                data-testid="quote-toggle"
+              >
+                <span className="flex-1 text-sm">時間帯のひと言（AIの名言）</span>
+                <span className={`relative h-7 w-[46px] shrink-0 rounded-full border transition ${quoteOn ? "border-accent bg-accent" : "border-line bg-surface-2"}`}>
+                  <span className={`absolute top-[3px] size-5 rounded-full transition-[left] ${quoteOn ? "left-[21px] bg-on-accent" : "left-[3px] bg-muted"}`} />
+                </span>
+              </button>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted">
+                {quoteOn
+                  ? "ホームの日付の下に、AIが考えた名言を出します。朝・昼・夕方・夜に1回ずつ作り、1回で今日のAIを0.1%未満使います。上限に達したときは、アプリが用意したひと言を出します。"
+                  : "オフのときは、ひと言を出さず、AIも使いません。"}
+              </p>
+            </div>
           )}
         </Section>
         {editingArc && arc && (

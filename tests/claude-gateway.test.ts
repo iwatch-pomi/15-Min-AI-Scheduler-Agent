@@ -24,7 +24,7 @@ describe("Claude を使ったら必ず使用量を消費する", () => {
   });
 
   it("AI を使う処理を呼ぶ API は、すべて withAiBudget で予算を通している", () => {
-    const aiModules = /from\s+["']@\/lib\/(agent|ai-suggest|claude)["']/;
+    const aiModules = /from\s+["']@\/lib\/(agent|ai-suggest|quote|claude)["']/;
     const routes = source.filter((f) => f.startsWith("app") && aiModules.test(readFileSync(path.join(root, f), "utf8")));
     expect(routes.length).toBeGreaterThan(0);
     for (const f of routes) {

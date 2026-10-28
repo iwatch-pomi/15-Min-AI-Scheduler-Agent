@@ -47,9 +47,17 @@ const LINES = {
   night: ["今日もやり切った。休むのも訓練。", "眠るまでが、今日のメニュー。", "明日の自分に、いいバトンを。"],
 };
 
-/** 時間帯に合わせたひと言。同じ日・同じ時間帯なら同じ文 */
+export type TimeSlot = keyof typeof LINES;
+export const TIME_SLOTS = Object.keys(LINES) as TimeSlot[];
+
+/** 時間帯：朝 5〜11時／昼 11〜17時／夕方 17〜21時／夜 21〜5時 */
+export function timeSlot(hour: number): TimeSlot {
+  return hour >= 5 && hour < 11 ? "morning" : hour >= 11 && hour < 17 ? "day" : hour >= 17 && hour < 21 ? "evening" : "night";
+}
+
+/** 時間帯に合わせたひと言（アプリが用意したもの）。同じ日・同じ時間帯なら同じ文。AI の名言が使えないときに出す */
 export function stoicLine(hour: number, date: string): string {
-  const list = hour >= 5 && hour < 11 ? LINES.morning : hour >= 11 && hour < 17 ? LINES.day : hour >= 17 && hour < 21 ? LINES.evening : LINES.night;
+  const list = LINES[timeSlot(hour)];
   return list[dayNumber(date) % list.length];
 }
 

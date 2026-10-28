@@ -4,7 +4,7 @@ import type { Suggestion } from "@/lib/suggest";
 import type { Block } from "@/lib/types";
 import { dayRange, localTime, minutesBetween } from "@/lib/time";
 import { durationLabel } from "@/lib/routines";
-import { arcProgress, shortDuration, stoicLine, type Arc } from "@/lib/theme";
+import { arcProgress, shortDuration, type Arc } from "@/lib/theme";
 import { greeting, iconFor } from "@/lib/ui";
 import BlockIcon from "./BlockIcon";
 import {
@@ -46,12 +46,14 @@ export default function HomeView(props: {
   suggestError: string | null;
   usageExhausted: boolean;
   onRefreshSuggestions: () => void;
+  /** ストイックの時間帯のひと言（AI の名言）。null は出さない、"" は作っている途中 */
+  stoicQuote: string | null;
   error: string | null;
   demo?: boolean;
   onDateChange: (d: string) => void;
   onOpenAi: (draft?: string) => void;
 }) {
-  const { date, today, tz, now, events, suggestions, aiSuggest, suggestLoading, suggestError, usageExhausted, onRefreshSuggestions, error, demo, onDateChange, onOpenAi } = props;
+  const { date, today, tz, now, events, suggestions, aiSuggest, suggestLoading, suggestError, usageExhausted, onRefreshSuggestions, stoicQuote, error, demo, onDateChange, onOpenAi } = props;
   const timed = events.filter((e) => !e.allDay);
   const allDay = events.filter((e) => e.allDay);
   const isToday = date === today;
@@ -68,7 +70,7 @@ export default function HomeView(props: {
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-28">
         {stoic ? (
-          <StoicHeader date={date} today={today} now={now} tz={tz} suggestionCount={suggestions.length} onOpenAi={() => onOpenAi()} arc={arc} />
+          <StoicHeader date={date} today={today} quote={stoicQuote} suggestionCount={suggestions.length} onOpenAi={() => onOpenAi()} arc={arc} />
         ) : (
         <header className="pt-5">
           <div className="flex items-center justify-between gap-3">
@@ -230,13 +232,12 @@ export default function HomeView(props: {
 function StoicHeader(props: {
   date: string;
   today: string;
-  now: Date;
-  tz: string;
+  quote: string | null;
   suggestionCount: number;
   onOpenAi: () => void;
   arc: Arc | null;
 }) {
-  const { date, today, now, tz, suggestionCount, onOpenAi, arc } = props;
+  const { date, today, quote, suggestionCount, onOpenAi, arc } = props;
   const [y, m, d] = date.split("-").map(Number);
   const dow = new Date(`${date}T12:00:00Z`).getUTCDay();
   const progress = arc ? arcProgress(arc, today) : null;
@@ -266,7 +267,11 @@ function StoicHeader(props: {
           )}
         </button>
       </div>
-      <p className="mt-2 text-[13px] text-muted">{stoicLine(Number(localTime(now, tz).slice(0, 2)), today)}</p>
+      {quote !== null && (
+        <p className={`mt-2 min-h-5 text-[13px] text-muted transition-opacity duration-500 ${quote ? "opacity-100" : "opacity-0"}`} data-testid="stoic-quote">
+          {quote}
+        </p>
+      )}
       {arc && progress && (
         <div className="mt-5" data-testid="arc">
           <div className="t-label flex items-center justify-between gap-3 tracking-[0.12em]">

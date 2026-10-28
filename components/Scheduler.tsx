@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { login } from "@/app/actions";
 import type { Block } from "@/lib/types";
 import { noteText } from "@/lib/history";
 import { suggestions, type Suggestion } from "@/lib/suggest";
-import { DEFAULT_TZ, addDays, localDateString } from "@/lib/time";
+import { DEFAULT_TZ, addDays, localDateString, localTime } from "@/lib/time";
 import { DEFAULT_CHAT_SETTINGS, interruptLabel, type ChatSettings } from "@/lib/interrupt";
-import { THEME_COOKIE, defaultArc, isValidArc, parseTheme, type Arc, type Theme } from "@/lib/theme";
+import { THEME_COOKIE, arcProgress, defaultArc, isValidArc, parseTheme, stoicLine, timeSlot, type Arc, type Theme } from "@/lib/theme";
 import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
 import type { Routine, RoutineInput } from "@/lib/routines";
@@ -28,6 +28,23 @@ function browserTz(): string {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TZ;
   } catch {
     return DEFAULT_TZ;
+  }
+}
+
+/** この端末の保存（使えない環境では何もしない） */
+function readLocal(key: string): string | null {
+  try {
+    return typeof window === "undefined" ? null : localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeLocal(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // 保存できなくても、この画面では使える
   }
 }
 
@@ -180,6 +197,55 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       // 保存できなくても、この画面では使える
     }
   };
+
+  // ストイックのホームに出す「時間帯のひと言」。AI が名言のように考える（使用量を少し使う）。
+  // 時間帯ごとに1回だけ作り、この端末に保存する。オフにすると出さず、AI も使わない
+  const [quoteOn, setQuoteOn] = useState(() => readLocal("ai15:quote-on") !== "0");
+  type QuoteCache = { key: string; text: string | null; recent: string[] };
+  const [quote, setQuote] = useState<QuoteCache | null>(() => {
+    try {
+      return JSON.parse(readLocal("ai15:quote") ?? "null");
+    } catch {
+      return null;
+    }
+  });
+  const hour = Number(localTime(now, tz).slice(0, 2));
+  const quoteKey = `${today}:${timeSlot(hour)}`;
+  const quoteRequested = useRef<string | null>(null);
+  const changeQuoteOn = (on: boolean) => {
+    setQuoteOn(on);
+    writeLocal("ai15:quote-on", on ? "1" : "0");
+  };
+  useEffect(() => {
+    if (theme !== "stoic" || !quoteOn || quote?.key === quoteKey || quoteRequested.current === quoteKey) return;
+    quoteRequested.current = quoteKey;
+    const recent = quote?.recent ?? [];
+    const save = (text: string | null) => {
+      // 作れなかったとき（上限・エラー）は null を保存し、この時間帯はアプリのひと言を出す（何度も AI を呼ばない）
+      const next = { key: quoteKey, text, recent: text ? [text, ...recent].slice(0, 5) : recent };
+      setQuote(next);
+      writeLocal("ai15:quote", JSON.stringify(next));
+    };
+    const p = arcProgress(arc, today);
+    fetch("/api/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        slot: timeSlot(hour),
+        tz,
+        arc: p.status === "active" ? { name: arc.name, day: p.day, total: p.total } : null,
+        recent: recent.slice(0, 5),
+      }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (data.usage) setUsage(data.usage);
+        save(res.ok && typeof data.quote === "string" ? data.quote : null);
+      })
+      .catch(() => save(null));
+  }, [theme, quoteOn, quote, quoteKey, hour, arc, today, tz]);
+  // 画面に出すひと言。null は出さない、"" は作っている途中
+  const stoicQuote = !quoteOn ? null : quote?.key === quoteKey ? (quote.text ?? stoicLine(hour, today)) : "";
 
   // AI で作ったおすすめ（日付ごと）。再読み込みでもう一度費用がかからないよう、この端末に保存する
   // tone は作ったときのデザイン。今のデザインと違えば使わない（ストイックとやさしいで口調が違うため）
@@ -442,6 +508,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           suggestError={suggestState.error}
           usageExhausted={usage.exhausted}
           onRefreshSuggestions={() => refreshSuggestions(date)}
+          stoicQuote={stoicQuote}
           error={error}
           demo={demo}
           onDateChange={setDate}
@@ -493,6 +560,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           today={today}
           onThemeChange={changeTheme}
           onArcChange={changeArc}
+          quoteOn={quoteOn}
+          onQuoteOnChange={changeQuoteOn}
           routines={routines}
           onSaveRoutine={saveRoutine}
           onDeleteRoutine={deleteRoutine}
