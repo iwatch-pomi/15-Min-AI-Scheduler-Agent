@@ -20,6 +20,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
 const { runAgent } = await import("@/lib/agent");
 const { MemoryCalendar } = await import("@/lib/calendar/memory");
 const { RecordingCalendar } = await import("@/lib/ops");
+const { CostMeter } = await import("@/lib/pricing");
 
 const now = new Date("2026-10-26T04:00:00Z"); // 13:00 JST
 
@@ -45,7 +46,7 @@ describe("runAgent", () => {
       .mockResolvedValueOnce({ stop_reason: "end_turn", content: [{ type: "text", text: "14:00-15:00 要件定義 を入れました" }] });
 
     const calendar = new RecordingCalendar(new MemoryCalendar(crypto.randomUUID()));
-    const { reply } = await runAgent({ message: "14時から要件定義1時間", history: [], calendar, tz: "Asia/Tokyo", now });
+    const { reply } = await runAgent({ message: "14時から要件定義1時間", history: [], calendar, tz: "Asia/Tokyo", now, meter: new CostMeter() });
 
     expect(reply).toBe("14:00-15:00 要件定義 を入れました");
     expect(calendar.ops).toHaveLength(1);
@@ -71,14 +72,14 @@ describe("runAgent", () => {
       .mockResolvedValueOnce({ stop_reason: "end_turn", content: [{ type: "text", text: "見つかりませんでした" }] });
 
     const calendar = new RecordingCalendar(new MemoryCalendar(crypto.randomUUID()));
-    await runAgent({ message: "消して", history: [], calendar, tz: "Asia/Tokyo", now });
+    await runAgent({ message: "消して", history: [], calendar, tz: "Asia/Tokyo", now, meter: new CostMeter() });
     expect(requests[1].messages.at(-1)!.content[0]).toMatchObject({ is_error: true });
   });
 
   it("refusal のときは定型文を返す", async () => {
     create.mockResolvedValueOnce({ stop_reason: "refusal", content: [] });
     const calendar = new RecordingCalendar(new MemoryCalendar(crypto.randomUUID()));
-    const { reply } = await runAgent({ message: "x", history: [], calendar, tz: "Asia/Tokyo", now });
+    const { reply } = await runAgent({ message: "x", history: [], calendar, tz: "Asia/Tokyo", now, meter: new CostMeter() });
     expect(reply).toContain("お応えできません");
   });
 });
@@ -95,14 +96,13 @@ describe("runAgent の認証エラー", () => {
       throw new UnauthorizedError("接続切れ");
     };
     const calendar = new RecordingCalendar(base);
-    await expect(runAgent({ message: "予定は？", history: [], calendar, tz: "Asia/Tokyo", now })).rejects.toBeInstanceOf(UnauthorizedError);
+    await expect(runAgent({ message: "予定は？", history: [], calendar, tz: "Asia/Tokyo", now, meter: new CostMeter() })).rejects.toBeInstanceOf(UnauthorizedError);
     expect(create).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("runAgent の費用の記録", () => {
   it("ツールを使ったやり取りも含めて、すべての回の費用を足す", async () => {
-    const { CostMeter } = await import("@/lib/pricing");
     create
       .mockResolvedValueOnce({
         model: "claude-opus-5-5",

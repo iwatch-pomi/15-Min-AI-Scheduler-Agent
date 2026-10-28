@@ -5,7 +5,7 @@ import type { Block } from "@/lib/types";
 import { localTime, minutesBetween } from "@/lib/time";
 import { greeting, iconFor } from "@/lib/ui";
 import BlockIcon from "./BlockIcon";
-import { BulbIcon, CalendarIcon, ChevronRightIcon, LeafIcon, Mascot, MoonIcon, PinIcon, PlusIcon, RepeatIcon, SparkleIcon, SunIcon } from "./icons";
+import { BulbIcon, CalendarIcon, ChevronRightIcon, LeafIcon, Mascot, MoonIcon, PinIcon, PlusIcon, RefreshIcon, RepeatIcon, SparkleIcon, SunIcon } from "./icons";
 import WeekStrip from "./WeekStrip";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -18,12 +18,18 @@ export default function HomeView(props: {
   now: Date;
   events: Block[];
   suggestions: Suggestion[];
+  /** AI で作ったおすすめなら、その情報（null は決まりごとで作ったもの） */
+  aiSuggest: { costPercent: number; at: string } | null;
+  suggestLoading: boolean;
+  suggestError: string | null;
+  usageExhausted: boolean;
+  onRefreshSuggestions: () => void;
   error: string | null;
   demo?: boolean;
   onDateChange: (d: string) => void;
   onOpenAi: (draft?: string) => void;
 }) {
-  const { date, today, tz, now, events, suggestions, error, demo, onDateChange, onOpenAi } = props;
+  const { date, today, tz, now, events, suggestions, aiSuggest, suggestLoading, suggestError, usageExhausted, onRefreshSuggestions, error, demo, onDateChange, onOpenAi } = props;
   const timed = events.filter((e) => !e.allDay);
   const allDay = events.filter((e) => e.allDay);
   const isToday = date === today;
@@ -109,13 +115,35 @@ export default function HomeView(props: {
           )}
         </section>
 
-        {suggestions.length > 0 && (
+        {date >= today && (
           <section className="mt-6" data-testid="suggestions">
-            <h2 className="mb-2 flex items-center gap-1.5 px-1 text-sm font-bold text-accent-ink">
-              <Mascot className="size-7" />
-              AIのおすすめ
-              <SparkleIcon className="size-4" />
-            </h2>
+            <div className="mb-2 flex items-center gap-1.5 px-1">
+              <h2 className="flex flex-1 items-center gap-1.5 text-sm font-bold text-accent-ink">
+                <Mascot className="size-7" />
+                AIのおすすめ
+                <SparkleIcon className="size-4" />
+              </h2>
+              <button
+                onClick={onRefreshSuggestions}
+                disabled={suggestLoading || usageExhausted}
+                className="flex items-center gap-1 rounded-full bg-surface px-3 py-1.5 text-xs font-bold text-accent-ink shadow-card disabled:opacity-50"
+                data-testid="refresh-suggestions"
+              >
+                <RefreshIcon className={`size-3.5 ${suggestLoading ? "animate-spin" : ""}`} />
+                {suggestLoading ? "考え中…" : "AIで更新"}
+              </button>
+            </div>
+            <p className="mb-2 px-1 text-[11px] text-muted" data-testid="suggest-note">
+              {usageExhausted
+                ? "今日のAIの利用上限に達したので、更新できません"
+                : aiSuggest
+                  ? `AIが${localTime(new Date(aiSuggest.at), tz)}に考えたおすすめ（この更新で今日のAIを${aiSuggest.costPercent < 0.1 ? "0.1%未満" : `${aiSuggest.costPercent}%`}使いました）`
+                  : "予定から自動で出したおすすめです。「AIで更新」でAIが考えます（今日のAIを少し使います）"}
+            </p>
+            {suggestError && <p className="mb-2 px-1 text-xs text-now">{suggestError}</p>}
+            {suggestions.length === 0 && (
+              <p className="rounded-2xl bg-surface px-4 py-4 text-center text-sm text-muted shadow-card">今のところ、おすすめはありません</p>
+            )}
             <ul className="divide-y divide-line-soft overflow-hidden rounded-2xl bg-surface shadow-card">
               {suggestions.map((s) => {
                 const Icon = SUGGESTION_ICONS[s.icon];

@@ -222,6 +222,13 @@ export const MoonIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const RefreshIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M20 12a8 8 0 1 1-2.4-5.7" />
+    <path d="M20 4v4.5h-4.5" />
+  </Svg>
+);
+
 export const RepeatIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M17 2.5l3 3-3 3" />

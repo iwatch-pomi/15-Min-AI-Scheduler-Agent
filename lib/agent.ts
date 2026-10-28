@@ -1,4 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
+import { createMessage } from "./claude";
 import type { RecordingCalendar } from "./ops";
 import { UnauthorizedError } from "./errors";
 import type { CostMeter } from "./pricing";
@@ -6,7 +7,6 @@ import { toLocalIso } from "./time";
 import { ToolError, executeTool, toolDefinitions } from "./tools";
 import type { ChatMessage } from "./types";
 
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5";
 const MAX_TURNS = 10;
 
 // キャッシュが効くように、毎回変わる情報（現在時刻など）はここに入れずユーザーメッセージ側に付ける
@@ -35,10 +35,9 @@ export async function runAgent(opts: {
   calendar: RecordingCalendar;
   tz: string;
   now: Date;
-  /** 費用の記録先。途中でエラーになっても、それまでにかかった分が残る */
-  meter?: CostMeter;
+  /** 費用の記録先（必須）。途中でエラーになっても、それまでにかかった分が残る */
+  meter: CostMeter;
 }): Promise<AgentResult> {
-  const client = new Anthropic();
   const context = `[現在時刻: ${toLocalIso(opts.now, opts.tz)} / タイムゾーン: ${opts.tz}]`;
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     ...opts.history.map((m) => ({ role: m.role, content: m.content })),
@@ -46,17 +45,13 @@ export async function runAgent(opts: {
   ];
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const response = await client.beta.messages.create({
-      model: MODEL,
+    const response = await createMessage(opts.meter, {
       max_tokens: 16000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
       output_config: { effort: "medium" },
       system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
       tools: toolDefinitions,
       messages,
     });
-    opts.meter?.add(response.model ?? MODEL, response.usage);
 
     if (response.stop_reason === "refusal") {
       return { reply: "すみません、この依頼にはお応えできませんでした。言い方を変えてもう一度送ってください。" };

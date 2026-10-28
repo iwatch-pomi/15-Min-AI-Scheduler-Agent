@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { login } from "@/app/actions";
 import type { Block } from "@/lib/types";
-import { suggestions } from "@/lib/suggest";
+import { suggestions, type Suggestion } from "@/lib/suggest";
 import { DEFAULT_TZ, addDays, localDateString } from "@/lib/time";
 import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
@@ -122,6 +122,48 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadHistory();
   }, [loadHistory]);
+
+  // AI で作ったおすすめ（日付ごと）。再読み込みでもう一度費用がかからないよう、この端末に保存する
+  type AiSuggest = { items: Suggestion[]; costPercent: number; at: string };
+  const [aiSuggest, setAiSuggest] = useState<Record<string, AiSuggest>>({});
+  const [suggestState, setSuggestState] = useState<{ loading: boolean; error: string | null }>({ loading: false, error: null });
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("ai15:suggest") ?? "{}") as Record<string, AiSuggest>;
+      // 過去の日のものは捨てる
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAiSuggest(Object.fromEntries(Object.entries(saved).filter(([d]) => d >= today)));
+    } catch {
+      // 保存できない環境（プライベートブラウズなど）では毎回作り直す
+    }
+  }, [today]);
+
+  const refreshSuggestions = async (d: string) => {
+    setSuggestState({ loading: true, error: null });
+    try {
+      const res = await fetch("/api/suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: d, tz }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) return setAuthExpired(true);
+      if (data.usage) setUsage(data.usage);
+      if (!res.ok) return setSuggestState({ loading: false, error: data.error ?? "おすすめを更新できませんでした" });
+      setAiSuggest((prev) => {
+        const next = { ...prev, [d]: { items: data.suggestions, costPercent: data.costPercent, at: new Date().toISOString() } };
+        try {
+          localStorage.setItem("ai15:suggest", JSON.stringify(next));
+        } catch {
+          // 保存できなくても表示はする
+        }
+        return next;
+      });
+      setSuggestState({ loading: false, error: null });
+    } catch {
+      setSuggestState({ loading: false, error: "通信に失敗しました" });
+    }
+  };
 
   // 毎日のルーティン（null は読み込み中）
   const [routines, setRoutines] = useState<Routine[] | null>(null);
@@ -300,14 +342,22 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           tz={tz}
           now={now}
           events={eventsByDate[date] ?? []}
-          suggestions={suggestions({
-            date,
-            tz,
-            now,
-            today,
-            events: eventsByDate[date] ?? [],
-            tomorrow: eventsByDate[addDays(today, 1)],
-          })}
+          suggestions={
+            aiSuggest[date]?.items ??
+            suggestions({
+              date,
+              tz,
+              now,
+              today,
+              events: eventsByDate[date] ?? [],
+              tomorrow: eventsByDate[addDays(today, 1)],
+            })
+          }
+          aiSuggest={aiSuggest[date] ? { costPercent: aiSuggest[date].costPercent, at: aiSuggest[date].at } : null}
+          suggestLoading={suggestState.loading}
+          suggestError={suggestState.error}
+          usageExhausted={usage.exhausted}
+          onRefreshSuggestions={() => refreshSuggestions(date)}
           error={error}
           demo={demo}
           onDateChange={setDate}
