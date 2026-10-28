@@ -1,16 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MicIcon, SendIcon } from "./icons";
+import { MicIcon, SendIcon, StopIcon } from "./icons";
 
 type SpeechRecognitionLike = {
   lang: string;
   interimResults: boolean;
+  continuous: boolean;
   start(): void;
   stop(): void;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
   onend: (() => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
 };
+
+/** 停止を押し忘れても、マイクが入ったままにならないよう、この秒数で自動で止める */
+const MAX_LISTEN_SEC = 60;
 
 function getRecognition(): (new () => SpeechRecognitionLike) | null {
   if (typeof window === "undefined") return null;
@@ -32,6 +37,9 @@ export default function ChatBar(props: {
   const [listening, setListening] = useState(false);
   const [canListen, setCanListen] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  // 聞き取りを始めてからの秒数
+  const [elapsed, setElapsed] = useState(0);
+  const [micError, setMicError] = useState<string | null>(null);
 
   // 音声入力はブラウザが対応しているときだけ出す（SSR との不一致を避けるためマウント後に判定）
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -40,28 +48,86 @@ export default function ChatBar(props: {
   const submit = (value: string) => {
     const v = value.trim();
     if (!v || sending || disabled) return;
+    // 聞き取り中に送ったら、マイクも止める
+    stopMic();
     onSend(v);
     setText("");
   };
 
-  const toggleMic = () => {
+  const stopMic = () => recognitionRef.current?.stop();
+
+  // 音声入力は、話し終わったら［停止］を押して終える（話すのをやめても自動では終わらない）
+  const startMic = () => {
     const Recognition = getRecognition();
-    if (!Recognition) return;
-    if (listening) {
-      recognitionRef.current?.stop();
-      return;
-    }
+    if (!Recognition || listening) return;
     const r = new Recognition();
     r.lang = "ja-JP";
-    r.interimResults = false;
-    r.onresult = (e) => setText((prev) => prev + (e.results[0]?.[0]?.transcript ?? ""));
-    r.onend = () => setListening(false);
+    r.continuous = true;
+    r.interimResults = true;
+    // 話し始める前に入力欄にあった文に、聞き取った文を足していく（途中の文もその場で見せる）
+    const base = text;
+    r.onresult = (e) => {
+      let heard = "";
+      for (let i = 0; i < e.results.length; i++) heard += e.results[i][0]?.transcript ?? "";
+      setText(base + heard);
+    };
+    r.onend = () => {
+      recognitionRef.current = null;
+      setListening(false);
+    };
+    // マイクが許可されていない・使えないときは、聞き取り中のままにしない
+    r.onerror = (e) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") setMicError("マイクの使用が許可されていません。ブラウザの設定で許可してください");
+      else if (e.error && e.error !== "no-speech" && e.error !== "aborted") setMicError("音声を聞き取れませんでした。もう一度お試しください");
+      recognitionRef.current = null;
+      setListening(false);
+    };
+    setMicError(null);
     recognitionRef.current = r;
     setListening(true);
+    setElapsed(0);
     r.start();
   };
 
+  // 聞き取り中の経過時間。上限で自動で止める
+  useEffect(() => {
+    if (!listening) return;
+    const id = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [listening]);
+  useEffect(() => {
+    if (listening && elapsed >= MAX_LISTEN_SEC) stopMic();
+  }, [listening, elapsed]);
+  // 画面を離れた・アプリを閉じた・この欄が消えたときも止める
+  useEffect(() => {
+    const onHidden = () => document.visibilityState === "hidden" && stopMic();
+    document.addEventListener("visibilitychange", onHidden);
+    return () => {
+      document.removeEventListener("visibilitychange", onHidden);
+      recognitionRef.current?.stop();
+    };
+  }, []);
+
   return (
+    <div className="space-y-2">
+      {micError && !listening && (
+        <p className="rounded-xl bg-now/10 px-3 py-2 text-xs text-now" role="alert">
+          {micError}
+        </p>
+      )}
+      {listening && (
+        <div className="flex items-center gap-2 rounded-2xl bg-now/10 px-3 py-2 text-xs text-now stoic:rounded-xl" role="status" data-testid="listening">
+          <span className="size-2 shrink-0 animate-pulse rounded-full bg-now" />
+          <span className="flex-1">
+            聞き取り中…話し終わったら［停止］を押してください
+            <span className="t-code ml-1 text-muted">（{MAX_LISTEN_SEC - elapsed}秒で自動停止）</span>
+          </span>
+          <button type="button" onClick={stopMic} className="flex shrink-0 items-center gap-1 rounded-full bg-now px-3 py-1.5 font-bold text-white stoic:rounded-lg">
+            <StopIcon className="size-3.5" />
+            停止
+          </button>
+        </div>
+      )}
     <form
       className="flex items-end gap-2"
       onSubmit={(e) => {
@@ -89,11 +155,12 @@ export default function ChatBar(props: {
         {canListen && (
           <button
             type="button"
-            onClick={toggleMic}
-            aria-label={listening ? "音声入力を止める" : "音声で入力"}
-            className={`mb-1 grid size-9 place-items-center rounded-full ${listening ? "bg-now text-white" : "text-muted"}`}
+            onClick={listening ? stopMic : startMic}
+            aria-label={listening ? "音声入力を停止" : "音声で入力"}
+            aria-pressed={listening}
+            className={`mb-1 grid size-9 place-items-center rounded-full stoic:mb-0 ${listening ? "bg-now text-white" : "text-muted"}`}
           >
-            <MicIcon className="size-5" />
+            {listening ? <StopIcon className="size-5" /> : <MicIcon className="size-5" />}
           </button>
         )}
       </div>
@@ -110,5 +177,6 @@ export default function ChatBar(props: {
         )}
       </button>
     </form>
+    </div>
   );
 }

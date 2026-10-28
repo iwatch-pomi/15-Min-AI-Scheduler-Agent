@@ -294,3 +294,9 @@ export const CalendarPlusIcon = (p: IconProps) => (
     <path d="M3.5 10h17M8 3v4M16 3v4M12 12.5v5M9.5 15h5" />
   </Svg>
 );
+
+export const StopIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none" />
+  </Svg>
+);
