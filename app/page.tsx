@@ -59,7 +59,7 @@ function SignIn() {
           Google でログイン
         </button>
         <p className="text-center text-xs text-muted">
-          ログインすると、Google カレンダーの予定の閲覧と、このアプリによる予定の追加・変更を許可します。
+          ログインすると、Google カレンダーの予定の閲覧と、AI 専用カレンダー「15分スケジューラー」の作成・編集を許可します。メインのカレンダーは変更しません。
         </p>
       </form>
     </main>

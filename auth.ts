@@ -7,7 +7,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       authorization: {
         params: {
-          scope: "openid email profile https://www.googleapis.com/auth/calendar.events",
+          // メインのカレンダーは読むだけ。書き込めるのはこのアプリが作ったカレンダー（AI 専用）だけ
+          scope: [
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/calendar.events.readonly",
+            "https://www.googleapis.com/auth/calendar.app.created",
+          ].join(" "),
           // リフレッシュトークンを受け取るため
           access_type: "offline",
           prompt: "consent",

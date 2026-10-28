@@ -1,7 +1,7 @@
 "use client";
 
 import { logout } from "@/app/actions";
-import { AppLogo, ClockIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
+import { AppLogo, CalendarIcon, ClockIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
 
 export default function SettingsView(props: { tz: string; email?: string; demo?: boolean; dailyLimit: number }) {
   const { tz, email, demo, dailyLimit } = props;
@@ -27,6 +27,10 @@ export default function SettingsView(props: { tz: string; email?: string; demo?:
         <Section title="スケジュール">
           <Row icon={<ClockIcon className="size-5" />} label="タイムゾーン" value={tz} />
           <Row icon={<SparkleIcon className="size-5" />} label="AIの利用上限" value={`1日${dailyLimit}回まで`} />
+          <Row icon={<CalendarIcon className="size-5" />} label="AIの予定の保存先" value="15分スケジューラー" />
+          <p className="px-4 py-3 text-xs text-muted">
+            AI の予定は、Google カレンダーに自動で作られる専用カレンダー「15分スケジューラー」に入ります。メインのカレンダーは読むだけで、変更しません。色や表示の切り替えは Google カレンダーの設定から変えられます。
+          </p>
         </Section>
 
         <Section title="ホーム画面に追加（iPhone）">

@@ -99,7 +99,7 @@ function AgendaRow({ block, tz, now }: { block: Block; tz: string; now: Date }) 
             </>
           ) : (
             <>
-              <LockIcon className="size-3" /> Google カレンダー
+              <LockIcon className="size-3" /> メインのカレンダー
             </>
           )}
           {current && <span className="ml-1 font-medium text-accent">・ 進行中</span>}

@@ -20,11 +20,11 @@ export async function GET() {
   const encKey = process.env.TOKEN_ENC_KEY;
   checks.TOKEN_ENC_KEY = encKey && Buffer.from(encKey, "base64").length === 32 ? "ok" : "ng";
 
-  // schema.sql を実行済みか（users テーブルが読めるか）
+  // schema.sql を実行済みか（users テーブルと、あとから追加した列が読めるか）
   checks.supabase_schema = "ng";
   if (checks.SUPABASE_URL === "ok" && checks.SUPABASE_SERVICE_ROLE_KEY === "ok") {
     try {
-      const { error } = await db().from("users").select("id").limit(1);
+      const { error } = await db().from("users").select("id, ai_calendar_id").limit(1);
       if (!error) checks.supabase_schema = "ok";
     } catch {
       // 接続できない場合は ng のまま

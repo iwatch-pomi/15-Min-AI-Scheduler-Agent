@@ -8,9 +8,13 @@ create table if not exists users (
   google_sub text not null unique,
   email text,
   refresh_token_enc text,          -- AES-256-GCM で暗号化したリフレッシュトークン
+  ai_calendar_id text,             -- AI 専用の Google カレンダー（アプリが自動で作る）
   timezone text not null default 'Asia/Tokyo',
   created_at timestamptz not null default now()
 );
+
+-- 既存のデータベース向け（2026-10 の更新で追加した列）
+alter table users add column if not exists ai_calendar_id text;
 
 -- Undo 用の操作ログ。1回のチャットで行った変更は同じ op_group_id にまとまる
 create table if not exists operations (

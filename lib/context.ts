@@ -7,7 +7,7 @@ import { MemoryStore } from "./store/memory";
 import { SupabaseStore } from "./store/supabase";
 import type { Store } from "./store/types";
 import { UnauthorizedError } from "./errors";
-import { getRefreshToken } from "./users";
+import { clearAiCalendarId, getGoogleAccount, saveAiCalendarId } from "./users";
 
 export { UnauthorizedError };
 
@@ -27,7 +27,13 @@ export async function getUserContext(): Promise<UserContext> {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) throw new UnauthorizedError("ログインしてください");
-  const refreshToken = await getRefreshToken(userId);
-  if (!refreshToken) throw new UnauthorizedError("Google カレンダーの権限がありません。もう一度ログインしてください");
-  return { userId, calendar: new GoogleCalendar(refreshToken), store: new SupabaseStore() };
+  const account = await getGoogleAccount(userId);
+  if (!account.refreshToken) throw new UnauthorizedError("Google カレンダーの権限がありません。もう一度ログインしてください");
+  const calendar = new GoogleCalendar(
+    account.refreshToken,
+    account.aiCalendarId,
+    { save: (id) => saveAiCalendarId(userId, id), clear: (id) => clearAiCalendarId(userId, id) },
+    account.timezone,
+  );
+  return { userId, calendar, store: new SupabaseStore() };
 }

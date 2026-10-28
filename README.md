@@ -15,7 +15,7 @@
 - チャット / 音声入力で予定を追加・移動・削除。大きいタスクは AI が15〜60分のアクションに分解
 - ワンタップの「15分延長」「今のをスキップ」「割り込み30分」→ 後続の AI ブロックを自動で後ろ倒し
 - 1回のチャットで行った変更をまとめて **Undo**
-- AI が動かせるのは**自分で作ったブロックだけ**（Google の会議などには触らない）
+- AI の予定は Google カレンダーの**専用カレンダー「15分スケジューラー」**に入る（自動で作成・色分け）。メインのカレンダーは読むだけの権限で、変更しない
 - 1ユーザー1日あたりの AI 呼び出し回数の上限（公開時のコスト対策）
 
 ## 構成
@@ -43,7 +43,7 @@
 | `lib/store/` | 操作ログ・履歴・利用回数の保存（Supabase / メモリ） |
 | `supabase/schema.sql` | DB スキーマ |
 
-AI ブロックは Google カレンダーの予定に `extendedProperties.private.ai15 = "1"` を付けて見分けています。
+AI ブロックは、アプリが自動で作る専用カレンダー（id は `users.ai_calendar_id`）に入れて見分けています。メインのカレンダーは `calendar.events.readonly` で読むだけです。
 
 ## まずデモで動かす（Google / Supabase 不要）
 
@@ -64,7 +64,9 @@ npm run dev   # → http://localhost:3000
 2. 「API とサービス」→「ライブラリ」で **Google Calendar API** を有効化
 3. 「OAuth 同意画面」
    - ユーザーの種類：**外部**、公開ステータス：**テスト**
-   - スコープに `.../auth/calendar.events` を追加
+   - スコープ（データアクセス）に次の2つを追加
+     - `.../auth/calendar.events.readonly`（メインのカレンダーを読む）
+     - `.../auth/calendar.app.created`（AI 専用カレンダーを作って書き込む）
    - **テストユーザー**に自分（と試してもらう人）の Google アカウントを追加（最大100人）
 4. 「認証情報」→「OAuth クライアント ID」→ 種類：**ウェブアプリケーション**
    - 承認済みのリダイレクト URI：
@@ -75,7 +77,7 @@ npm run dev   # → http://localhost:3000
 ### 2. Supabase（データ保存）
 
 1. [Supabase](https://supabase.com/) で New project
-2. SQL Editor で `supabase/schema.sql` を実行
+2. SQL Editor で `supabase/schema.sql` を実行（何度実行しても大丈夫。アップデートで列が増えたときも、もう一度実行すればよい）
 3. Project Settings → API の **Project URL** と **service_role** キーを `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` に（service_role はサーバーの環境変数だけに置く）
 
 ### 3. 環境変数
