@@ -58,3 +58,19 @@ describe("iconFor", () => {
     expect(iconFor({ title: "なにか", ai: false })).toBe("event");
   });
 });
+
+describe("isUndoRequest", () => {
+  it("「元に戻して」だけの依頼は AI を呼ばずに取り消す", async () => {
+    const { isUndoRequest } = await import("@/lib/ui");
+    for (const m of ["元に戻して", "もとに戻して。", "さっきのを元に戻して", "取り消して", "やっぱりやめて！", "元に戻してください", " 今のを 取り消して "]) {
+      expect(isUndoRequest(m), m).toBe(true);
+    }
+  });
+
+  it("対象や条件がある依頼は AI に任せる", async () => {
+    const { isUndoRequest } = await import("@/lib/ui");
+    for (const m of ["会議の前の予定を元に戻して", "15時の課題を取り消して", "元に戻して、そのあと30分延長", "元の時間に戻して"]) {
+      expect(isUndoRequest(m), m).toBe(false);
+    }
+  });
+});

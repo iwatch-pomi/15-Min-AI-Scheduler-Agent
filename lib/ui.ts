@@ -67,3 +67,13 @@ export function greeting(hour: number): { text: string; icon: "sun" | "moon" } {
   if (hour < 17) return { text: "午後も、マイペースにいきましょう", icon: "sun" };
   return { text: "今日もおつかれさまでした", icon: "moon" };
 }
+
+/**
+ * メッセージ全体が「直前の変更を取り消して」だけか。
+ * そうなら AI を呼ばずに画面側で［元に戻す］と同じことをする（AI の利用回数を使わない）。
+ * 「会議の前の予定を元に戻して」のように対象がある依頼は AI に任せる
+ */
+export function isUndoRequest(message: string): boolean {
+  const m = message.trim().replace(/[\s　]+/g, "");
+  return /^(さっきの?(を|の)?|今の?(を)?|直前の(を)?)?((元|もと)に戻して|取り消して|とりけして|キャンセルして|やっぱり?やめて|undo)(ください|下さい|ほしい|欲しい)?[。．.!！]*$/i.test(m);
+}

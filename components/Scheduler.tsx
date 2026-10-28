@@ -7,7 +7,7 @@ import { suggestions } from "@/lib/suggest";
 import { DEFAULT_TZ, addDays, localDateString } from "@/lib/time";
 import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
-import type { ChangeItem, ChatEntry, Tab } from "@/lib/ui";
+import { isUndoRequest, type ChangeItem, type ChatEntry, type Tab } from "@/lib/ui";
 import CalendarView from "./CalendarView";
 import ChatView from "./ChatView";
 import HomeView from "./HomeView";
@@ -155,6 +155,19 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
     setSending(true);
     const reply = (text: string, extra: Partial<Extract<ChatEntry, { role: "assistant" }>> = {}) =>
       setEntries((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", text, at: new Date().toISOString(), ...extra }]);
+
+    // 「元に戻して」だけのときは AI を呼ばず、いちばん新しい変更を取り消す（AI の利用回数を使わない）
+    if (isUndoRequest(message)) {
+      const latest = [...entries].reverse().find((e) => e.role === "assistant" && e.result && !e.result.undone);
+      try {
+        if (!latest) reply("取り消せる変更がありません。（AIの利用回数は使っていません）");
+        else if (await undo(latest.id)) reply("直前の変更を元に戻しました。（AIの利用回数は使っていません）");
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -197,19 +210,21 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
   };
 
   // AI の変更と、そのあとの手動編集をまとめて取り消す
-  const undo = async (entryId: string) => {
+  // ［元に戻す］。AI は呼ばないので、AI の利用回数は使わない
+  const undo = async (entryId: string): Promise<boolean> => {
     const result = resultOf(entryId);
-    if (!result) return;
+    if (!result) return false;
     const { res, data } = await postJson("/api/undo", { opIds: result.opIds });
-    if (res.status === 401) return;
+    if (res.status === 401) return false;
     // 404 は取り消し済み（二重タップなど）
     const failed = !res.ok && res.status !== 404 ? (data.error ?? "元に戻せませんでした") : null;
     if (failed) {
-      setEntries((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", text: failed, error: true }]);
+      setEntries((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", text: failed, error: true, at: new Date().toISOString() }]);
     } else {
       updateResult(entryId, (r) => ({ ...r, undone: true }));
     }
     await loadAll();
+    return !failed;
   };
 
   // 結果カードでの手動編集を保存する。失敗したらエラーメッセージを返す
