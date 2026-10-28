@@ -124,15 +124,27 @@ export default function SettingsView(props: {
           </div>
         </Section>
 
-        <Section title="ホーム画面に追加（iPhone）">
-          <ol className="space-y-2 px-4 py-3 text-sm">
-            <li>1. Safari でこのページを開く</li>
-            <li className="flex items-center gap-1">
-              2. 画面下の共有ボタン <ShareIcon className="inline size-4 text-accent-ink" /> をタップ
-            </li>
-            <li>3.「ホーム画面に追加」を選ぶ</li>
-          </ol>
-          <p className="px-4 pb-3 text-xs text-muted">ホーム画面のアイコンから、アプリのように全画面で開けます。</p>
+        <Section title="ホーム画面に追加">
+          <div className="px-4 py-3" data-testid="install-iphone">
+            <p className="mb-2 text-xs font-bold text-accent-ink">iPhone</p>
+            <ol className="space-y-2 text-sm">
+              <li>1. Safari でこのページを開く</li>
+              <li className="flex items-center gap-1">
+                2. 画面下の共有ボタン <ShareIcon className="inline size-4 text-accent-ink" /> をタップ
+              </li>
+              <li>3.「ホーム画面に追加」を選ぶ</li>
+            </ol>
+          </div>
+          <div className="px-4 py-3" data-testid="install-android">
+            <p className="mb-2 text-xs font-bold text-accent-ink">Android</p>
+            <ol className="space-y-2 text-sm">
+              <li>1. Chrome でこのページを開く</li>
+              <li>2. 右上のメニュー（︙）をタップ</li>
+              <li>3.「ホーム画面に追加」を選び、「インストール」（または「追加」）をタップ</li>
+            </ol>
+            <p className="mt-2 text-xs text-muted">画面の下に「アプリをインストール」と出たときは、そこからでも追加できます。</p>
+          </div>
+          <p className="px-4 py-3 text-xs text-muted">ホーム画面のアイコンから、アプリのように全画面で開けます。</p>
         </Section>
 
         <div className="flex items-center justify-center gap-2 pt-2 text-xs text-muted">
