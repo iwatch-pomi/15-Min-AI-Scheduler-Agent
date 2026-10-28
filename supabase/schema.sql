@@ -47,14 +47,23 @@ create table if not exists usage (
   user_id uuid not null references users(id) on delete cascade,
   date date not null,
   llm_calls int not null default 0,
+  cost_microusd bigint not null default 0, -- AI の費用（100万分の1ドル単位）。1日の上限はこれで決める
   primary key (user_id, date)
 );
+alter table usage add column if not exists cost_microusd bigint not null default 0;
 
 create or replace function increment_usage(p_user_id uuid, p_date date)
 returns int language sql as $$
   insert into usage (user_id, date, llm_calls) values (p_user_id, p_date, 1)
   on conflict (user_id, date) do update set llm_calls = usage.llm_calls + 1
   returning llm_calls;
+$$;
+
+create or replace function add_usage_cost(p_user_id uuid, p_date date, p_cost bigint)
+returns bigint language sql as $$
+  insert into usage (user_id, date, cost_microusd) values (p_user_id, p_date, p_cost)
+  on conflict (user_id, date) do update set cost_microusd = usage.cost_microusd + excluded.cost_microusd
+  returning cost_microusd;
 $$;
 
 alter table users enable row level security;

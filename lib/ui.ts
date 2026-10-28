@@ -20,6 +20,8 @@ export type ChatEntry =
       text: string;
       /** 送った日時（ISO）。日付の区切りの表示に使う */
       at?: string;
+      /** この依頼で1日の予算の何％を使ったか（その場の表示だけ。履歴には残さない） */
+      costPercent?: number;
       /** opIds は AI の変更と、そのあとの手動編集の操作グループ（古い順）。元に戻すときは全部を逆順に取り消す */
       result?: { opIds: string[]; items: ChangeItem[]; undone?: boolean };
       error?: boolean;

@@ -75,10 +75,21 @@ export class SupabaseStore implements Store {
     return data as number;
   }
 
-  async getUsage(userId: string, date: string) {
-    const { data, error } = await db().from("usage").select("llm_calls").eq("user_id", userId).eq("date", date).maybeSingle();
+  async addCost(userId: string, date: string, usd: number) {
+    const { data, error } = await db().rpc("add_usage_cost", {
+      p_user_id: userId,
+      p_date: date,
+      p_cost: Math.ceil(usd * 1_000_000),
+    });
     if (error) throw error;
-    return (data?.llm_calls as number | undefined) ?? 0;
+    return Number(data) / 1_000_000;
+  }
+
+  async getCost(userId: string, date: string) {
+    // "*" で読むのは、schema.sql の更新（cost_microusd 列の追加）前でも動くようにするため
+    const { data, error } = await db().from("usage").select("*").eq("user_id", userId).eq("date", date).maybeSingle();
+    if (error) throw error;
+    return Number(data?.cost_microusd ?? 0) / 1_000_000;
   }
 
   async listMessages(userId: string, opts: { before?: string; limit: number }) {

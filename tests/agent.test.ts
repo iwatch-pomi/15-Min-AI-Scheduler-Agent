@@ -99,3 +99,21 @@ describe("runAgent の認証エラー", () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("runAgent の費用の記録", () => {
+  it("ツールを使ったやり取りも含めて、すべての回の費用を足す", async () => {
+    const { CostMeter } = await import("@/lib/pricing");
+    create
+      .mockResolvedValueOnce({
+        model: "claude-opus-5-5",
+        stop_reason: "tool_use",
+        usage: { input_tokens: 1000, output_tokens: 100 },
+        content: [{ type: "tool_use", id: "t1", name: "get_schedule", input: { from: "2026-10-26", to: "2026-10-26" } }],
+      })
+      .mockResolvedValueOnce({ model: "claude-opus-5-5", stop_reason: "end_turn", usage: { input_tokens: 2000, output_tokens: 50 }, content: [{ type: "text", text: "空いています" }] });
+    const meter = new CostMeter();
+    const calendar = new RecordingCalendar(new MemoryCalendar(crypto.randomUUID()));
+    await runAgent({ message: "空いてる？", history: [], calendar, tz: "Asia/Tokyo", now, meter });
+    expect(meter.usd).toBeCloseTo((3000 * 4 + 150 * 20) / 1e6, 10);
+  });
+});

@@ -2,18 +2,17 @@ import { auth } from "@/auth";
 import { CalendarIcon, ClockIcon, Mascot, SparkleIcon } from "@/components/icons";
 import Scheduler from "@/components/Scheduler";
 import { isDemo } from "@/lib/context";
-import { dailyChatLimit } from "@/lib/limits";
 import { login } from "./actions";
 
 // DEMO_MODE などの環境変数をビルド時ではなくリクエスト時に読む
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  if (isDemo()) return <Scheduler demo dailyLimit={dailyChatLimit()} />;
+  if (isDemo()) return <Scheduler demo />;
 
   const session = await auth();
   if (!session?.user?.id) return <SignIn />;
-  return <Scheduler email={session.user.email ?? undefined} dailyLimit={dailyChatLimit()} />;
+  return <Scheduler email={session.user.email ?? undefined} />;
 }
 
 const FEATURES = [

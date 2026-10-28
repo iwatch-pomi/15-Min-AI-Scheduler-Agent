@@ -4,7 +4,8 @@ import { runAgent } from "@/lib/agent";
 import { getUserContext } from "@/lib/context";
 import { UnauthorizedError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http";
-import { dailyChatLimit, usageOf } from "@/lib/limits";
+import { percentOfBudget, usageOf } from "@/lib/limits";
+import { CostMeter } from "@/lib/pricing";
 import { RecordingCalendar } from "@/lib/ops";
 import { localDateString, safeTimeZone } from "@/lib/time";
 
@@ -23,18 +24,21 @@ export async function POST(req: NextRequest) {
     const now = new Date();
 
     const { userId, calendar, store } = await getUserContext();
-    const used = await store.incrementUsage(userId, localDateString(now, tz));
-    const limit = dailyChatLimit();
-    if (used > limit) {
-      return NextResponse.json({ error: `今日のAI利用回数の上限（${limit}回）に達しました。明日また使えます`, usage: usageOf(used) }, { status: 429 });
+    const date = localDateString(now, tz);
+    // 1日の予算（費用）を使い切っていたら AI を呼ばない。1回の依頼は途中で止めないので、最後の1回は少し超えることがある
+    const spent = await store.getCost(userId, date);
+    if (usageOf(spent).exhausted) {
+      return NextResponse.json({ error: "今日のAIの利用上限に達しました。明日の0時にもとに戻ります", usage: usageOf(spent) }, { status: 429 });
     }
+    await store.incrementUsage(userId, date);
+    const meter = new CostMeter();
 
     const recording = new RecordingCalendar(calendar);
     const history = await store.recentMessages(userId, HISTORY_LIMIT);
     let reply: string;
     let authError: UnauthorizedError | null = null;
     try {
-      ({ reply } = await runAgent({ message: parsed.data.message, history, calendar: recording, tz, now }));
+      ({ reply } = await runAgent({ message: parsed.data.message, history, calendar: recording, tz, now, meter }));
     } catch (err) {
       if (err instanceof UnauthorizedError) authError = err;
       else console.error(err);
@@ -44,6 +48,11 @@ export async function POST(req: NextRequest) {
     // 途中で失敗しても、反映済みの変更は Undo できるように記録する
     const opId = recording.ops.length ? crypto.randomUUID() : null;
     if (opId) await store.recordOps(userId, opId, recording.ops);
+    // かかった費用を記録する（失敗した依頼でも、AI を呼んだ分は数える）
+    const total = await store.addCost(userId, date, meter.usd).catch((err) => {
+      console.error("AI の費用を記録できませんでした（schema.sql の更新が必要かもしれません）", err);
+      return spent + meter.usd;
+    });
     if (authError) throw authError;
     await store.addMessages(
       userId,
@@ -54,7 +63,7 @@ export async function POST(req: NextRequest) {
       opId ?? undefined,
     );
 
-    return NextResponse.json({ reply, opId, changes: summarize(recording.ops), usage: usageOf(used) });
+    return NextResponse.json({ reply, opId, changes: summarize(recording.ops), usage: usageOf(total), costPercent: percentOfBudget(meter.usd) });
   } catch (err) {
     return errorResponse(err);
   }

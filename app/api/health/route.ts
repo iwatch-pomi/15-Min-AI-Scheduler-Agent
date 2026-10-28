@@ -25,7 +25,8 @@ export async function GET() {
   if (checks.SUPABASE_URL === "ok" && checks.SUPABASE_SERVICE_ROLE_KEY === "ok") {
     try {
       const { error } = await db().from("users").select("id, ai_calendar_id").limit(1);
-      if (!error) checks.supabase_schema = "ok";
+      const { error: usageError } = await db().from("usage").select("cost_microusd").limit(1);
+      if (!error && !usageError) checks.supabase_schema = "ok";
     } catch {
       // 接続できない場合は ng のまま
     }

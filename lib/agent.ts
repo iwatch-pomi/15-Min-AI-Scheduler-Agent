@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { RecordingCalendar } from "./ops";
 import { UnauthorizedError } from "./errors";
+import type { CostMeter } from "./pricing";
 import { toLocalIso } from "./time";
 import { ToolError, executeTool, toolDefinitions } from "./tools";
 import type { ChatMessage } from "./types";
@@ -33,6 +34,8 @@ export async function runAgent(opts: {
   calendar: RecordingCalendar;
   tz: string;
   now: Date;
+  /** 費用の記録先。途中でエラーになっても、それまでにかかった分が残る */
+  meter?: CostMeter;
 }): Promise<AgentResult> {
   const client = new Anthropic();
   const context = `[現在時刻: ${toLocalIso(opts.now, opts.tz)} / タイムゾーン: ${opts.tz}]`;
@@ -52,6 +55,7 @@ export async function runAgent(opts: {
       tools: toolDefinitions,
       messages,
     });
+    opts.meter?.add(response.model ?? MODEL, response.usage);
 
     if (response.stop_reason === "refusal") {
       return { reply: "すみません、この依頼にはお応えできませんでした。言い方を変えてもう一度送ってください。" };

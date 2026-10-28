@@ -16,13 +16,15 @@ export interface Store {
   addMessages(userId: string, messages: ChatMessage[], groupId?: string): Promise<void>;
   /** 古い順に、直近 limit 件 */
   recentMessages(userId: string, limit: number): Promise<ChatMessage[]>;
-  /** 今日の利用回数を1増やし、増やした後の回数を返す */
+  /** 今日の AI 呼び出し回数を1増やす（記録用。上限には使わない） */
   incrementUsage(userId: string, date: string): Promise<number>;
+  /** 今日の AI の費用（米ドル）を足し、足した後の合計を返す */
+  addCost(userId: string, date: string, usd: number): Promise<number>;
   /** チャット履歴を古い順に。before（その id より前）から limit 件 */
   listMessages(userId: string, opts: { before?: string; limit: number }): Promise<{ messages: StoredMessage[]; hasMore: boolean }>;
   /** 履歴の結果カードを作るための操作グループ（取り消し済みも含む） */
   getOpGroups(userId: string, groupIds: string[]): Promise<Map<string, OpGroup>>;
   deleteMessages(userId: string): Promise<void>;
-  /** 今日の利用回数（増やさずに読む） */
-  getUsage(userId: string, date: string): Promise<number>;
+  /** 今日の AI の費用の合計（米ドル） */
+  getCost(userId: string, date: string): Promise<number>;
 }

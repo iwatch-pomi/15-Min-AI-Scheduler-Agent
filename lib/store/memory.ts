@@ -6,6 +6,7 @@ type MemoryData = {
   messages: Map<string, StoredMessage[]>;
   nextMessageId: number;
   usage: Map<string, number>;
+  cost: Map<string, number>;
 };
 
 const g = globalThis as Record<string, unknown>;
@@ -13,8 +14,10 @@ const data: MemoryData = (g.__ai15MemoryStore as MemoryData) ?? {
   ops: new Map(),
   messages: new Map(),
   usage: new Map(),
+  cost: new Map(),
   nextMessageId: 1,
 };
+data.cost ??= new Map();
 g.__ai15MemoryStore = data;
 
 export class MemoryStore implements Store {
@@ -70,7 +73,14 @@ export class MemoryStore implements Store {
     return next;
   }
 
-  async getUsage(userId: string, date: string) {
-    return data.usage.get(`${userId}:${date}`) ?? 0;
+  async addCost(userId: string, date: string, usd: number) {
+    const key = `${userId}:${date}`;
+    const next = (data.cost.get(key) ?? 0) + usd;
+    data.cost.set(key, next);
+    return next;
+  }
+
+  async getCost(userId: string, date: string) {
+    return data.cost.get(`${userId}:${date}`) ?? 0;
   }
 }

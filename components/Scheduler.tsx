@@ -32,8 +32,8 @@ function tabFromHash(): Tab {
   return TABS.includes(t) ? t : "home";
 }
 
-export default function Scheduler(props: { demo?: boolean; email?: string; dailyLimit: number }) {
-  const { demo, email, dailyLimit } = props;
+export default function Scheduler(props: { demo?: boolean; email?: string }) {
+  const { demo, email } = props;
   const [tz] = useState(browserTz);
   const [today, setToday] = useState(() => localDateString(new Date(), tz));
   const [date, setDate] = useState(today);
@@ -45,7 +45,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [usage, setUsage] = useState<Usage>({ used: 0, limit: dailyLimit, remaining: dailyLimit });
+  const [usage, setUsage] = useState<Usage>({ remainingPercent: 100, exhausted: false });
   const [older, setOlder] = useState<{ hasOlder: boolean; loading: boolean }>({ hasOlder: false, loading: false });
   // Google との接続切れ（期限切れ・権限の取り消し）。再読み込みではなくログインし直しの画面を出す
   const [authExpired, setAuthExpired] = useState(false);
@@ -185,7 +185,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
         return;
       }
       const items: ChangeItem[] = data.changes?.items ?? [];
-      reply(data.reply, data.opId ? { result: { opIds: [data.opId], items } } : {});
+      reply(data.reply, { costPercent: data.costPercent, ...(data.opId ? { result: { opIds: [data.opId], items } } : {}) });
       await loadAll();
     } catch {
       reply("通信に失敗しました。電波の良いところでもう一度お試しください。", { error: true });

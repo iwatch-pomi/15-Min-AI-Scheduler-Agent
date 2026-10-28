@@ -98,6 +98,11 @@ export default function ChatView(props: {
                 >
                   {entry.text}
                 </p>
+                {entry.costPercent !== undefined && (
+                  <p className="pl-1 text-[10px] text-muted" data-testid="cost">
+                    この依頼で今日のAIを {entry.costPercent < 0.1 ? "0.1% 未満" : `${entry.costPercent}%`} 使いました
+                  </p>
+                )}
                 {entry.result && entry.result.items.length > 0 && (
                   <ResultCard
                     items={entry.result.items}
@@ -134,15 +139,15 @@ export default function ChatView(props: {
         <div className="flex justify-end">
           <UsageMeter usage={usage} compact />
         </div>
-        {usage.remaining === 0 && (
-          <p className="rounded-xl bg-now/10 px-3 py-2 text-xs text-now">今日のAIの利用回数を使い切りました。明日の0時にもとに戻ります。</p>
+        {usage.exhausted && (
+          <p className="rounded-xl bg-now/10 px-3 py-2 text-xs text-now">今日のAIの利用上限に達しました。明日の0時にもとに戻ります。</p>
         )}
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
           {QUICK_ACTIONS.map((a, i) => (
             <button
               key={a}
               type="button"
-              disabled={sending || usage.remaining === 0}
+              disabled={sending || usage.exhausted}
               onClick={() => onSend(a)}
               className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-50 ${
                 i === 0 ? "bg-accent text-white" : "border border-accent/40 bg-surface text-accent-ink"
@@ -152,7 +157,7 @@ export default function ChatView(props: {
             </button>
           ))}
         </div>
-        <ChatBar key={draft.key} initialText={draft.text} sending={sending} disabled={usage.remaining === 0} onSend={onSend} />
+        <ChatBar key={draft.key} initialText={draft.text} sending={sending} disabled={usage.exhausted} onSend={onSend} />
       </div>
     </div>
   );
