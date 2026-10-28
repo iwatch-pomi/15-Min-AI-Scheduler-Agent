@@ -4,9 +4,12 @@ import type { Block, BlockInput, BlockPatch, Energy } from "../types";
 import type { CalendarBackend } from "./types";
 
 /** AI 専用カレンダーの名前と色（Google カレンダー上での表示） */
-export const AI_CALENDAR_NAME = "15分スケジューラー";
+export const AI_CALENDAR_NAME = "AIスケジューラー";
 const AI_CALENDAR_COLOR = "#8e24aa";
 const MAIN = "primary";
+
+// 名前を確認済みの専用カレンダー（サーバーのプロセスごとに1回だけ確認する）
+const nameChecked = new Set<string>();
 
 /** AI 専用カレンダーの id の保存先（ユーザーごと） */
 export interface AiCalendarStore {
@@ -37,7 +40,7 @@ export class GoogleCalendar implements CalendarBackend {
   }
 
   async list(from: Date, to: Date): Promise<Block[]> {
-    const [main, ai] = await Promise.all([this.listIn(MAIN, from, to, false), this.listAi(from, to)]);
+    const [main, ai] = await Promise.all([this.listIn(MAIN, from, to, false), this.listAi(from, to), this.syncAiCalendarName()]);
     return [...main, ...ai].sort((a, b) => a.start.localeCompare(b.start));
   }
 
@@ -114,6 +117,24 @@ export class GoogleCalendar implements CalendarBackend {
       if (!isNotFound(err)) throw err;
       await this.forgetAiCalendar(id);
       return [];
+    }
+  }
+
+  /**
+   * 以前の名前で作られた専用カレンダーを、今の名前（AI_CALENDAR_NAME）に変える。
+   * 表示のためだけなので、失敗しても予定の読み書きには影響させない
+   */
+  private async syncAiCalendarName(): Promise<void> {
+    const id = this.aiCalendarId;
+    if (!id || nameChecked.has(id)) return;
+    try {
+      const res = await this.api.calendars.get({ calendarId: id });
+      if (res.data.summary !== AI_CALENDAR_NAME) {
+        await this.api.calendars.patch({ calendarId: id, requestBody: { summary: AI_CALENDAR_NAME } });
+      }
+      nameChecked.add(id);
+    } catch {
+      // 権限不足やカレンダーの削除は、予定の読み書きのほうで扱う
     }
   }
 

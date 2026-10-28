@@ -5,6 +5,7 @@ type Ev = { id: string; summary?: string; start: { dateTime: string }; end: { da
 const fake = {
   calendars: new Map<string, Map<string, Ev>>(),
   colors: new Map<string, string>(),
+  names: new Map<string, string>(),
   writes: [] as string[], // 書き込んだカレンダー id（メインに書いていないかの確認用）
   denyScopes: false,
   nextCal: 0,
@@ -48,10 +49,19 @@ vi.mock("@googleapis/calendar", () => ({
       },
     },
     calendars: {
-      insert: async () => {
+      insert: async ({ requestBody }: { requestBody: { summary: string } }) => {
         const id = `ai-cal-${++fake.nextCal}`;
         fake.calendars.set(id, new Map());
+        fake.names.set(id, requestBody.summary);
         return { data: { id } };
+      },
+      get: async ({ calendarId }: { calendarId: string }) => {
+        cal(calendarId);
+        return { data: { id: calendarId, summary: fake.names.get(calendarId) } };
+      },
+      patch: async ({ calendarId, requestBody }: { calendarId: string; requestBody: { summary: string } }) => {
+        fake.names.set(calendarId, requestBody.summary);
+        return { data: {} };
       },
       delete: async ({ calendarId }: { calendarId: string }) => fake.calendars.delete(calendarId),
     },
@@ -80,6 +90,7 @@ const make = () => new GoogleCalendar("refresh", saved, store, "Asia/Tokyo");
 beforeEach(() => {
   fake.calendars = new Map([["primary", new Map([["mtg", { id: "mtg", summary: "MTG", start: { dateTime: t("01:00") }, end: { dateTime: t("02:00") } }]])]]);
   fake.colors.clear();
+  fake.names.clear();
   fake.writes = [];
   fake.denyScopes = false;
   fake.nextCal = 0;
@@ -134,5 +145,17 @@ describe("GoogleCalendar（AI 専用カレンダー）", () => {
   it("権限が足りない（古いログインのまま）ときは、ログインし直しのエラーにする", async () => {
     fake.denyScopes = true;
     await expect(make().list(new Date(t("00:00")), new Date(t("23:00")))).rejects.toBeInstanceOf(UnauthorizedError);
+  });
+
+  it("専用カレンダーは「AIスケジューラー」で作り、以前の名前のものは名前を変える", async () => {
+    await make().create({ title: "課題", start: t("03:00"), end: t("03:30") });
+    expect(fake.names.get("ai-cal-1")).toBe("AIスケジューラー");
+
+    // 以前の名前で作られていたカレンダー
+    fake.calendars.set("old-cal", new Map());
+    fake.names.set("old-cal", "15分スケジューラー");
+    saved = "old-cal";
+    await make().list(new Date(t("00:00")), new Date(t("23:00")));
+    expect(fake.names.get("old-cal")).toBe("AIスケジューラー");
   });
 });
