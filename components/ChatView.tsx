@@ -7,15 +7,13 @@ import type { ManualChange } from "@/lib/manual";
 import { localDateString } from "@/lib/time";
 import { formatDateJa, type ChangeItem, type ChatEntry } from "@/lib/ui";
 import ChatBar from "./ChatBar";
-import { BoltIcon, ChevronLeftIcon, GaugeIcon, Mascot } from "./icons";
+import { BoltIcon, ChevronLeftIcon, GaugeIcon, Mascot, PencilIcon } from "./icons";
+import { worksWithoutAi } from "./QuickActionsEditor";
 import ResultCard from "./ResultCard";
 import Segmented from "./Segmented";
 import { useTheme } from "./ThemeContext";
 import UsageMeter from "./UsageMeter";
 
-const QUICK_ACTIONS = ["15分延長", "割り込み30分", "今のをスキップ", "今日の残りを組み直して"];
-/** 節約モードなら AI を使わずに処理できるワンタップ（上限に達していても使える） */
-const LOCAL_ACTIONS = new Set(["15分延長", "割り込み30分", "今のをスキップ"]);
 const EXAMPLES = ["14時から要件定義1時間、そのあと返信15分", "明日の午前に資料作成2時間", "今日の残りを組み直して"];
 
 export default function ChatView(props: {
@@ -34,12 +32,15 @@ export default function ChatView(props: {
   onSettingsChange: (patch: Partial<ChatSettings>) => void;
   /** マイページ（AI の使い方の設定）を開く */
   onOpenSettings: () => void;
+  /** クイックボタン（端末間で共有）と、その編集シートを開く */
+  quickActions: string[];
+  onEditQuickActions: () => void;
   onUndo: (entryId: string) => void;
   onSaveEdits: (entryId: string, changes: ManualChange[]) => Promise<string | null>;
   onConfirm: (items: ChangeItem[]) => void;
   onBack: () => void;
 }) {
-  const { tz, usage, draft, entries, hasOlder, loadingOlder, onLoadOlder, sending, onSend, settings, onSettingsChange, onOpenSettings, onUndo, onSaveEdits, onConfirm, onBack } = props;
+  const { tz, usage, draft, entries, hasOlder, loadingOlder, onLoadOlder, sending, onSend, settings, onSettingsChange, onOpenSettings, quickActions, onEditQuickActions, onUndo, onSaveEdits, onConfirm, onBack } = props;
   // 節約モードなら、アプリで読める依頼は AI を使わずに処理できるので、上限に達していても送れる
   const save = settings.aiMode === "save";
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -205,21 +206,33 @@ export default function ChatView(props: {
         )}
         <InterruptPanel settings={settings} onChange={onSettingsChange} />
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
-          {QUICK_ACTIONS.map((a, i) => (
+          {quickActions.map((a, i) => (
             <button
               key={a}
               type="button"
-              disabled={sending || (usage.exhausted && !(save && LOCAL_ACTIONS.has(a)))}
+              // 節約モードなら、AI を使わずに処理できるボタンは上限に達していても押せる
+              disabled={sending || (usage.exhausted && !(save && worksWithoutAi(a)))}
               onClick={() => onSend(a, { plain: true })}
               className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-50 stoic:h-9 stoic:rounded-[10px] stoic:py-0 ${
                 i === 0
                   ? "bg-accent text-on-accent stoic:border stoic:border-accent"
                   : "border border-accent/40 bg-surface text-accent-ink stoic:border-line stoic:bg-transparent stoic:font-medium stoic:text-heading"
               }`}
+              data-testid="quick-action"
             >
-              {stoic && i === 0 ? `+${a}` : a}
+              {stoic && /^\d+分延長$/.test(a) ? `+${a}` : a}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={onEditQuickActions}
+            aria-label="クイックボタンを編集"
+            className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-line px-3 py-1.5 text-xs text-muted stoic:h-9 stoic:rounded-[10px] stoic:py-0"
+            data-testid="edit-quick-actions"
+          >
+            <PencilIcon className="size-3.5" />
+            編集
+          </button>
         </div>
         <ChatBar
           key={draft.key}

@@ -35,4 +35,7 @@ export interface Store {
   /** AI のおすすめを保存する（同じ日付・口調のものは置き換える）。keepFrom より前の日付のものは消す */
   saveBrief(userId: string, brief: SavedBrief, keepFrom: string): Promise<void>;
   getBrief(userId: string, date: string, tone: Theme): Promise<SavedBrief | null>;
+  /** クイックボタン（端末間で共有）。null はまだ決めていない（初期値を使う） */
+  getQuickActions(userId: string): Promise<string[] | null>;
+  saveQuickActions(userId: string, actions: string[]): Promise<void>;
 }

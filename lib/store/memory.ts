@@ -9,6 +9,7 @@ type MemoryData = {
   usage: Map<string, number>;
   cost: Map<string, number>;
   briefs: Map<string, SavedBrief[]>;
+  quickActions: Map<string, string[]>;
 };
 
 const g = globalThis as Record<string, unknown>;
@@ -21,6 +22,7 @@ const data: MemoryData = (g.__ai15MemoryStore as MemoryData) ?? {
 };
 data.cost ??= new Map();
 data.briefs ??= new Map();
+data.quickActions ??= new Map();
 g.__ai15MemoryStore = data;
 
 export class MemoryStore implements Store {
@@ -90,6 +92,14 @@ export class MemoryStore implements Store {
   async saveBrief(userId: string, brief: SavedBrief, keepFrom: string) {
     const list = (data.briefs.get(userId) ?? []).filter((b) => b.date >= keepFrom && !(b.date === brief.date && b.tone === brief.tone));
     data.briefs.set(userId, [...list, brief]);
+  }
+
+  async getQuickActions(userId: string) {
+    return data.quickActions.get(userId) ?? null;
+  }
+
+  async saveQuickActions(userId: string, actions: string[]) {
+    data.quickActions.set(userId, [...actions]);
   }
 
   async getBrief(userId: string, date: string, tone: Theme) {

@@ -27,7 +27,8 @@ export async function GET() {
       const { error } = await db().from("users").select("id, ai_calendar_id").limit(1);
       const { error: usageError } = await db().from("usage").select("cost_microusd").limit(1);
       const { error: briefsError } = await db().from("briefs").select("date").limit(1);
-      if (!error && !usageError && !briefsError) checks.supabase_schema = "ok";
+      const { error: settingsError } = await db().from("user_settings").select("quick_actions").limit(1);
+      if (!error && !usageError && !briefsError && !settingsError) checks.supabase_schema = "ok";
     } catch {
       // 接続できない場合は ng のまま
     }

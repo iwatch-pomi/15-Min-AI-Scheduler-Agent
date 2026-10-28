@@ -164,4 +164,17 @@ export class SupabaseStore implements Store {
     if (error) throw error;
     return data ? { date: data.date, tone: data.tone, items: data.items, costPercent: Number(data.cost_percent), createdAt: data.created_at } : null;
   }
+
+  async getQuickActions(userId: string) {
+    const { data, error } = await db().from("user_settings").select("quick_actions").eq("user_id", userId).maybeSingle();
+    if (error) throw error;
+    return Array.isArray(data?.quick_actions) ? (data.quick_actions as string[]) : null;
+  }
+
+  async saveQuickActions(userId: string, actions: string[]) {
+    const { error } = await db()
+      .from("user_settings")
+      .upsert({ user_id: userId, quick_actions: actions, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    if (error) throw error;
+  }
 }

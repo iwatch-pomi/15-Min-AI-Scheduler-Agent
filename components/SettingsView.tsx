@@ -10,7 +10,7 @@ import ArcEditor from "./ArcEditor";
 import RoutineList from "./RoutineList";
 import Segmented from "./Segmented";
 import UsageMeter from "./UsageMeter";
-import { AppLogo, CalendarIcon, ChevronRightIcon, ClockIcon, GaugeIcon, RepeatIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
+import { AppLogo, CalendarIcon, ChevronRightIcon, ClockIcon, GaugeIcon, PencilIcon, RepeatIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
 export default function SettingsView(props: {
@@ -31,8 +31,10 @@ export default function SettingsView(props: {
   /** ストイックの時間帯のひと言（AI の名言）を出すか */
   quoteOn: boolean;
   onQuoteOnChange: (on: boolean) => void;
+  quickActionCount: number;
+  onEditQuickActions: () => void;
 }) {
-  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange, today, onThemeChange, onArcChange, quoteOn, onQuoteOnChange } = props;
+  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange, today, onThemeChange, onArcChange, quoteOn, onQuoteOnChange, quickActionCount, onEditQuickActions } = props;
   const { theme, arc } = useTheme();
   const stoic = theme === "stoic";
   const [editingArc, setEditingArc] = useState(false);
@@ -182,6 +184,14 @@ export default function SettingsView(props: {
               </p>
             )}
           </div>
+          <button onClick={onEditQuickActions} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2" data-testid="quick-actions-link">
+            <span className="text-accent-ink">
+              <PencilIcon className="size-5" />
+            </span>
+            <span className="flex-1 text-sm">クイックボタン</span>
+            <span className="t-code text-sm text-muted stoic:text-xs">{stoic ? `${quickActionCount} BUTTONS` : `${quickActionCount}個`}</span>
+            <ChevronRightIcon className="size-4 shrink-0 text-muted" />
+          </button>
         </Section>
 
         <Section title={t("AIとのチャット", "CHAT LOG")}>

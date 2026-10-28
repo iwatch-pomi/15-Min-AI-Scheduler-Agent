@@ -77,11 +77,19 @@ create table if not exists briefs (
   primary key (user_id, date, tone)
 );
 
+-- 端末間で共有する設定（クイックボタンなど）。1ユーザー1行
+create table if not exists user_settings (
+  user_id uuid primary key references users(id) on delete cascade,
+  quick_actions jsonb,
+  updated_at timestamptz not null default now()
+);
+
 alter table users enable row level security;
 alter table operations enable row level security;
 alter table messages enable row level security;
 alter table usage enable row level security;
 alter table briefs enable row level security;
+alter table user_settings enable row level security;
 
 -- 関数はサーバー（service_role）からだけ呼べるようにする。
 -- anon / authenticated キーが漏れても、ほかの人の使用量を書き換えられないように

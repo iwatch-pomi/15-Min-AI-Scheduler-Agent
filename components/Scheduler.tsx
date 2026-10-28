@@ -7,6 +7,7 @@ import { noteText } from "@/lib/history";
 import { suggestions, type Suggestion } from "@/lib/suggest";
 import { DEFAULT_TZ, addDays, localDateString, localTime } from "@/lib/time";
 import { DEFAULT_CHAT_SETTINGS, interruptLabel, type ChatSettings } from "@/lib/interrupt";
+import { DEFAULT_QUICK_ACTIONS } from "@/lib/quick-actions";
 import { THEME_COOKIE, arcProgress, defaultArc, isValidArc, parseTheme, stoicLine, timeSlot, type Arc, type Theme } from "@/lib/theme";
 import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
@@ -17,6 +18,7 @@ import ChatView from "./ChatView";
 import HomeView from "./HomeView";
 import { AppLogo } from "./icons";
 import SettingsView from "./SettingsView";
+import QuickActionsEditor from "./QuickActionsEditor";
 import TabBar from "./TabBar";
 import { ThemeContext } from "./ThemeContext";
 
@@ -253,6 +255,32 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   }, [theme, quoteOn, quote, quoteKey, hour, arc, today, tz]);
   // 画面に出すひと言。null は出さない、"" は作っている途中
   const stoicQuote = !quoteOn ? null : quote?.key === quoteKey ? (quote.text ?? stoicLine(hour, today)) : "";
+
+  // クイックボタン（AI 画面のワンタップのボタン）。サーバーに保存し、端末間で共有する
+  const [quickActions, setQuickActions] = useState<string[]>(DEFAULT_QUICK_ACTIONS);
+  const [editingQuick, setEditingQuick] = useState(false);
+  useEffect(() => {
+    fetch("/api/quick-actions", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { actions: string[] } | null) => data && setQuickActions(data.actions))
+      .catch(() => {});
+  }, []);
+  const saveQuickActions = async (actions: string[]): Promise<string | null> => {
+    const res = await fetch("/api/quick-actions", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actions }),
+    }).catch(() => null);
+    if (!res) return "通信に失敗しました";
+    if (res.status === 401) {
+      setAuthExpired(true);
+      return null;
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return data.error ?? "保存できませんでした";
+    setQuickActions(data.actions);
+    return null;
+  };
 
   // AI で作ったおすすめ（AIブリーフ）。サーバー（Supabase）に日付とデザイン（口調）ごとに保存してあり、
   // Web を閉じても・ほかの端末でも同じものが出る。キーは「日付:口調」、null は保存なし
@@ -556,6 +584,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           settings={chatSettings}
           onSettingsChange={changeChatSettings}
           onOpenSettings={() => setTab("settings")}
+          quickActions={quickActions}
+          onEditQuickActions={() => setEditingQuick(true)}
           onUndo={undo}
           onSaveEdits={saveEdits}
           onConfirm={(items) => {
@@ -573,6 +603,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           today={today}
           onThemeChange={changeTheme}
           onArcChange={changeArc}
+          quickActionCount={quickActions.length}
+          onEditQuickActions={() => setEditingQuick(true)}
           quoteOn={quoteOn}
           onQuoteOnChange={changeQuoteOn}
           routines={routines}
@@ -580,6 +612,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           onDeleteRoutine={deleteRoutine}
         />}
       <TabBar tab={tab} onChange={setTab} />
+      {editingQuick && <QuickActionsEditor actions={quickActions} onSave={saveQuickActions} onClose={() => setEditingQuick(false)} />}
     </div>
     </ThemeContext>
   );
