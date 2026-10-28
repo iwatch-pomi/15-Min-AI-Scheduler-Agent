@@ -32,15 +32,9 @@ export function formatDateJa(date: string): string {
   return `${m}月${d}日(${w})`;
 }
 
-/** 予定ブロックの色（パステル背景 + 左線）。Google の既存予定はグレー */
-export function blockTone(b: Pick<Block, "ai" | "energy">): { bg: string; line: string; dot: string } {
-  if (!b.ai) return { bg: "bg-blk-gray-bg", line: "border-l-blk-gray", dot: "text-blk-gray" };
-  switch (b.energy) {
-    case "HIGH":
-      return { bg: "bg-blk-orange-bg", line: "border-l-blk-orange", dot: "text-blk-orange" };
-    case "LOW":
-      return { bg: "bg-blk-green-bg", line: "border-l-blk-green", dot: "text-blk-green" };
-    default:
-      return { bg: "bg-blk-blue-bg", line: "border-l-blk-blue", dot: "text-blk-blue" };
-  }
+/** 予定ブロックの色（パステル背景 + 左線）。AI の予定は青、メインのカレンダーの予定はグレー */
+export function blockTone(b: Pick<Block, "ai">): { bg: string; line: string; dot: string } {
+  return b.ai
+    ? { bg: "bg-blk-blue-bg", line: "border-l-blk-blue", dot: "text-blk-blue" }
+    : { bg: "bg-blk-gray-bg", line: "border-l-blk-gray", dot: "text-blk-gray" };
 }

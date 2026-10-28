@@ -17,10 +17,6 @@
   /* 予定ブロック（パステル背景 + 左線） */
   --blk-blue: #3b82f6;
   --blk-blue-bg: #e8f1fe;
-  --blk-green: #22a565;
-  --blk-green-bg: #e6f6ed;
-  --blk-orange: #f08a24;
-  --blk-orange-bg: #fff1e2;
   --blk-gray: #a6b2c3;
   --blk-gray-bg: #f1f4f8;
 
@@ -45,10 +41,6 @@
 
     --blk-blue: #5b9bff;
     --blk-blue-bg: #1a2b4d;
-    --blk-green: #4ade80;
-    --blk-green-bg: #14301f;
-    --blk-orange: #fbaa5a;
-    --blk-orange-bg: #3a2614;
     --blk-gray: #5d6b82;
     --blk-gray-bg: #1a2335;
 
@@ -71,10 +63,6 @@
   --color-ok: var(--ok);
   --color-blk-blue: var(--blk-blue);
   --color-blk-blue-bg: var(--blk-blue-bg);
-  --color-blk-green: var(--blk-green);
-  --color-blk-green-bg: var(--blk-green-bg);
-  --color-blk-orange: var(--blk-orange);
-  --color-blk-orange-bg: var(--blk-orange-bg);
   --color-blk-gray: var(--blk-gray);
   --color-blk-gray-bg: var(--blk-gray-bg);
   --shadow-card: var(--shadow);

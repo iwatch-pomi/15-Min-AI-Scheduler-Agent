@@ -9,7 +9,7 @@ import { CheckCircleIcon, PencilIcon, PlusIcon, TrashIcon, UndoIcon } from "./ic
 const KIND_LABEL: Record<ChangeItem["kind"], string> = { create: "追加", update: "変更", delete: "削除" };
 const KIND_STYLE: Record<ChangeItem["kind"], string> = {
   create: "border-l-blk-blue",
-  update: "border-l-blk-orange",
+  update: "border-l-blk-blue",
   delete: "border-l-blk-gray",
 };
 
