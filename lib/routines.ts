@@ -8,10 +8,40 @@ import { SLOT_MINUTES, addDays, zonedToUtc } from "./time";
 export type Routine = { id: string; title: string; time: string; minutes: number; days: number[] };
 export type RoutineInput = Omit<Routine, "id">;
 
+export const MAX_ROUTINE_MINUTES = 24 * 60 - SLOT_MINUTES;
+const toMin = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+const toHHMM = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+/** 開始と長さから終了時刻。日付をまたぐときは nextDay が true（例：23:00 から 8時間 → 翌 07:00） */
+export function endOf(time: string, minutes: number): { time: string; nextDay: boolean } {
+  const end = toMin(time) + minutes;
+  return { time: toHHMM(end % (24 * 60)), nextDay: end >= 24 * 60 };
+}
+
+/** 開始と終了から長さ。終了が開始と同じか前なら、翌日の時刻として数える */
+export function minutesFromTimes(start: string, end: string): number {
+  const diff = toMin(end) - toMin(start);
+  return diff > 0 ? diff : diff + 24 * 60;
+}
+
+/** 長さの表示（45分・8時間・7時間30分） */
+export function durationLabel(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? `${h}時間${m ? `${m}分` : ""}` : `${m}分`;
+}
+
+/** 一覧の表示（07:00〜07:30・23:00〜翌07:00） */
+export function rangeLabel(r: Pick<Routine, "time" | "minutes">): string {
+  const end = endOf(r.time, r.minutes);
+  return `${r.time}〜${end.nextDay ? "翌" : ""}${end.time}`;
+}
+
 export const routineInputSchema = z.object({
   title: z.string().trim().min(1, "名前を入力してください").max(100),
   time: z.string().regex(/^([01]\d|2[0-3]):(00|15|30|45)$/, "時刻は15分刻みで選んでください"),
-  minutes: z.number().int().min(SLOT_MINUTES).max(8 * 60).multipleOf(SLOT_MINUTES),
+  // 睡眠（23:00〜翌7:00）や授業のような長いものも登録できるよう、最大 23時間45分
+  minutes: z.number().int().min(SLOT_MINUTES).max(MAX_ROUTINE_MINUTES).multipleOf(SLOT_MINUTES),
   days: z
     .array(z.number().int().min(0).max(6))
     .min(1, "曜日を1つ以上選んでください")

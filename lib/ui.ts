@@ -45,10 +45,11 @@ export function blockTone(b: Pick<Block, "ai">): { bg: string; line: string; dot
     : { bg: "bg-blk-main-bg", line: "border-l-blk-main", dot: "text-blk-main" };
 }
 
-export type IconKind = "meal" | "coffee" | "study" | "meeting" | "lab" | "work" | "gym" | "ai" | "event";
+export type IconKind = "sleep" | "meal" | "coffee" | "study" | "meeting" | "lab" | "work" | "gym" | "ai" | "event";
 
 // タイトルの言葉から、予定カードのアイコンを選ぶ（上から順に判定）
 const ICON_RULES: [IconKind, RegExp][] = [
+  ["sleep", /睡眠|寝る|就寝|仮眠|昼寝|おやすみ/],
   ["coffee", /朝食|朝の準備|カフェ|コーヒー|休憩/],
   ["meal", /昼食|夕食|ランチ|ディナー|ご飯|ごはん|食事|昼ご飯|晩ご飯/],
   ["gym", /ジム|運動|筋トレ|ランニング|ラン(?![チ])|ヨガ|散歩|ストレッチ/],

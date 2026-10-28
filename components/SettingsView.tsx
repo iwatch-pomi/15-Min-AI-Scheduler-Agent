@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { logout } from "@/app/actions";
 import type { Usage } from "@/lib/limits";
-import { daysLabel, type Routine, type RoutineInput } from "@/lib/routines";
+import { daysLabel, rangeLabel, type Routine, type RoutineInput } from "@/lib/routines";
 import RoutineEditor from "./RoutineEditor";
 import UsageMeter from "./UsageMeter";
 import { AppLogo, CalendarIcon, ChevronRightIcon, ClockIcon, PlusIcon, RepeatIcon, ShareIcon, UserIcon } from "./icons";
@@ -55,7 +55,7 @@ export default function SettingsView(props: {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-heading">{r.title}</span>
                   <span className="block text-xs text-muted tabular-nums">
-                    {r.time}〜{endTime(r)}・{daysLabel(r.days)}
+                    {rangeLabel(r)}・{daysLabel(r.days)}
                   </span>
                 </span>
                 <ChevronRightIcon className="size-4 shrink-0 text-muted" />
@@ -139,10 +139,4 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
       <span className="min-w-0 truncate text-sm text-muted">{value}</span>
     </div>
   );
-}
-
-function endTime(r: Routine): string {
-  const [h, m] = r.time.split(":").map(Number);
-  const total = (h * 60 + m + r.minutes) % (24 * 60);
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }

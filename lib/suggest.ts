@@ -29,7 +29,9 @@ export function suggestions(opts: {
   const isToday = date === today;
 
   // 長く続く予定のあとの休憩
-  const runEnd = longRunEnd(timed, LONG_RUN_MIN);
+  // 前の日から続く予定（睡眠など）は数えない。起きた直後に「ひと息」と出さないため
+  const dayStart = zonedToUtc(date, 0, 0, tz);
+  const runEnd = longRunEnd(timed.filter((b) => new Date(b.start) >= dayStart), LONG_RUN_MIN);
   if (runEnd && (!isToday || runEnd > now) && isFree(timed, runEnd, 15)) {
     out.push({
       id: "break",

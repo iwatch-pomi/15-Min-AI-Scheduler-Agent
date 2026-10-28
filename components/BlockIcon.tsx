@@ -1,7 +1,8 @@
 import type { IconKind } from "@/lib/ui";
-import { BookIcon, CalendarIcon, CoffeeIcon, DumbbellIcon, FlaskIcon, LaptopIcon, LeafIcon, UsersIcon, UtensilsIcon } from "./icons";
+import { BookIcon, CalendarIcon, CoffeeIcon, DumbbellIcon, FlaskIcon, LaptopIcon, LeafIcon, MoonIcon, UsersIcon, UtensilsIcon } from "./icons";
 
 const ICONS: Record<IconKind, typeof CalendarIcon> = {
+  sleep: MoonIcon,
   meal: UtensilsIcon,
   coffee: CoffeeIcon,
   study: BookIcon,

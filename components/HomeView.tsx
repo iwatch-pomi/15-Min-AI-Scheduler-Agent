@@ -2,7 +2,8 @@
 
 import type { Suggestion } from "@/lib/suggest";
 import type { Block } from "@/lib/types";
-import { localTime, minutesBetween } from "@/lib/time";
+import { dayRange, localTime, minutesBetween } from "@/lib/time";
+import { durationLabel } from "@/lib/routines";
 import { greeting, iconFor } from "@/lib/ui";
 import BlockIcon from "./BlockIcon";
 import { BulbIcon, CalendarIcon, ChevronRightIcon, LeafIcon, Mascot, MoonIcon, PinIcon, PlusIcon, RefreshIcon, RepeatIcon, SparkleIcon, SunIcon } from "./icons";
@@ -109,7 +110,15 @@ export default function HomeView(props: {
           ) : (
             <ul className="space-y-2">
               {timed.map((e) => (
-                <AgendaRow key={e.id} block={e} tz={tz} now={now} current={e.id === current?.id} past={isToday && new Date(e.end) <= now} />
+                <AgendaRow
+                  key={e.id}
+                  block={e}
+                  tz={tz}
+                  now={now}
+                  day={dayRange(date, tz)}
+                  current={e.id === current?.id}
+                  past={isToday && new Date(e.end) <= now}
+                />
               ))}
             </ul>
           )}
@@ -175,15 +184,19 @@ export default function HomeView(props: {
   );
 }
 
-function AgendaRow({ block, tz, now, current, past }: { block: Block; tz: string; now: Date; current: boolean; past: boolean }) {
+function AgendaRow(props: { block: Block; tz: string; now: Date; day: { start: Date; end: Date }; current: boolean; past: boolean }) {
+  const { block, tz, now, day, current, past } = props;
   const start = new Date(block.start);
   const end = new Date(block.end);
+  // 睡眠のように日付をまたぐ予定（前の日から続いている／次の日まで続く）
+  const fromPrevDay = start < day.start;
+  const toNextDay = end > day.end;
   const minutes = minutesBetween(start, end);
   const remainingSec = Math.max(0, Math.round((end.getTime() - now.getTime()) / 1000));
 
   return (
     <li className={`flex gap-3 ${past ? "opacity-50" : ""}`}>
-      <span className="w-10 shrink-0 pt-3.5 text-right text-xs tabular-nums text-muted">{localTime(start, tz)}</span>
+      <span className="w-10 shrink-0 pt-3.5 text-right text-xs tabular-nums text-muted">{fromPrevDay ? "前日" : localTime(start, tz)}</span>
       <div
         className={`flex min-w-0 flex-1 items-start gap-3 rounded-2xl px-3.5 py-3 ${block.ai ? "bg-blk-ai-bg" : "bg-blk-main-bg"} ${
           current ? "ring-2 ring-accent" : ""
@@ -192,6 +205,11 @@ function AgendaRow({ block, tz, now, current, past }: { block: Block; tz: string
         <BlockIcon kind={iconFor(block)} className={`mt-0.5 size-5 shrink-0 ${block.ai ? "text-accent-ink" : "text-text"}`} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-medium text-heading">{block.title}</p>
+          {(fromPrevDay || toNextDay) && (
+            <p className="mt-0.5 text-[11px] text-muted tabular-nums" data-testid="overnight">
+              {fromPrevDay ? `〜${localTime(end, tz)}まで` : `${localTime(start, tz)}〜翌${localTime(end, tz)}`}
+            </p>
+          )}
           {block.routine && (
             <p className="mt-0.5 flex items-center gap-1 text-[11px] text-accent-ink">
               <RepeatIcon className="size-3" />
@@ -210,7 +228,7 @@ function AgendaRow({ block, tz, now, current, past }: { block: Block; tz: string
             </p>
           )}
         </div>
-        <span className="shrink-0 pt-0.5 text-xs tabular-nums text-muted">{minutes}分</span>
+        <span className="shrink-0 pt-0.5 text-xs tabular-nums text-muted">{minutes < 180 ? `${minutes}分` : durationLabel(minutes)}</span>
       </div>
     </li>
   );
