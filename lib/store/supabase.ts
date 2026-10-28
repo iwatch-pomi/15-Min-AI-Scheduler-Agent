@@ -63,4 +63,10 @@ export class SupabaseStore implements Store {
     if (error) throw error;
     return data as number;
   }
+
+  async getUsage(userId: string, date: string) {
+    const { data, error } = await db().from("usage").select("llm_calls").eq("user_id", userId).eq("date", date).maybeSingle();
+    if (error) throw error;
+    return (data?.llm_calls as number | undefined) ?? 0;
+  }
 }

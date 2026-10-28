@@ -11,4 +11,6 @@ export interface Store {
   recentMessages(userId: string, limit: number): Promise<ChatMessage[]>;
   /** 今日の利用回数を1増やし、増やした後の回数を返す */
   incrementUsage(userId: string, date: string): Promise<number>;
+  /** 今日の利用回数（増やさずに読む） */
+  getUsage(userId: string, date: string): Promise<number>;
 }

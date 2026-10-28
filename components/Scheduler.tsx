@@ -5,6 +5,7 @@ import { login } from "@/app/actions";
 import type { Block } from "@/lib/types";
 import { suggestions } from "@/lib/suggest";
 import { DEFAULT_TZ, addDays, localDateString } from "@/lib/time";
+import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
 import type { ChangeItem, ChatEntry, Tab } from "@/lib/ui";
 import CalendarView from "./CalendarView";
@@ -44,6 +45,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<Usage>({ used: 0, limit: dailyLimit, remaining: dailyLimit });
   // Google との接続切れ（期限切れ・権限の取り消し）。再読み込みではなくログインし直しの画面を出す
   const [authExpired, setAuthExpired] = useState(false);
 
@@ -95,6 +97,14 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
     };
   }, [loadAll]);
 
+  // AI の残り回数。日付が変わったら（0時に）読み直す
+  useEffect(() => {
+    fetch(`/api/usage?tz=${encodeURIComponent(tz)}`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((u: Usage | null) => u && setUsage(u))
+      .catch(() => {});
+  }, [today, tz]);
+
   // カウントダウン用に1秒ごとに時刻を進める。日付が変わったら「今日」も更新
   useEffect(() => {
     const id = setInterval(() => {
@@ -122,6 +132,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
         setAuthExpired(true);
         return;
       }
+      if (data.usage) setUsage(data.usage);
       if (!res.ok) {
         reply(data.error ?? "送信に失敗しました", { error: true });
         return;
@@ -238,6 +249,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
       {tab === "ai" && (
         <ChatView
           tz={tz}
+          usage={usage}
           draft={draft}
           entries={entries}
           sending={sending}
@@ -253,7 +265,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string; daily
           onBack={() => setTab("home")}
         />
       )}
-      {tab === "settings" && <SettingsView tz={tz} email={email} demo={demo} dailyLimit={dailyLimit} />}
+      {tab === "settings" && <SettingsView tz={tz} email={email} demo={demo} usage={usage} />}
       <TabBar tab={tab} onChange={setTab} />
     </div>
   );

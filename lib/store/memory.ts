@@ -44,4 +44,8 @@ export class MemoryStore implements Store {
     data.usage.set(key, next);
     return next;
   }
+
+  async getUsage(userId: string, date: string) {
+    return data.usage.get(`${userId}:${date}`) ?? 0;
+  }
 }

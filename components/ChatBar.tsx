@@ -18,8 +18,8 @@ function getRecognition(): (new () => SpeechRecognitionLike) | null {
   return (w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null) as (new () => SpeechRecognitionLike) | null;
 }
 
-export default function ChatBar(props: { sending: boolean; onSend: (text: string) => void; initialText?: string }) {
-  const { sending, onSend, initialText = "" } = props;
+export default function ChatBar(props: { sending: boolean; disabled?: boolean; onSend: (text: string) => void; initialText?: string }) {
+  const { sending, disabled, onSend, initialText = "" } = props;
   const [text, setText] = useState(initialText);
   const [listening, setListening] = useState(false);
   const [canListen, setCanListen] = useState(false);
@@ -31,7 +31,7 @@ export default function ChatBar(props: { sending: boolean; onSend: (text: string
 
   const submit = (value: string) => {
     const v = value.trim();
-    if (!v || sending) return;
+    if (!v || sending || disabled) return;
     onSend(v);
     setText("");
   };
@@ -91,7 +91,7 @@ export default function ChatBar(props: { sending: boolean; onSend: (text: string
       </div>
       <button
         type="submit"
-        disabled={sending || !text.trim()}
+        disabled={sending || disabled || !text.trim()}
         aria-label="送信"
         className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-white shadow-card transition active:scale-95 disabled:opacity-40"
       >

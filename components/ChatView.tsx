@@ -8,12 +8,15 @@ import type { ChangeItem, ChatEntry } from "@/lib/ui";
 import ChatBar from "./ChatBar";
 import { ChevronLeftIcon, Mascot } from "./icons";
 import ResultCard from "./ResultCard";
+import UsageMeter from "./UsageMeter";
+import type { Usage } from "@/lib/limits";
 
 const QUICK_ACTIONS = ["15分延長", "割り込み30分", "今のをスキップ", "今日の残りを組み直して"];
 const EXAMPLES = ["14時から要件定義1時間、そのあと返信15分", "明日の午前に資料作成2時間", "今日の残りを組み直して"];
 
 export default function ChatView(props: {
   tz: string;
+  usage: Usage;
   draft: { text: string; key: number };
   entries: ChatEntry[];
   sending: boolean;
@@ -23,7 +26,7 @@ export default function ChatView(props: {
   onConfirm: (items: ChangeItem[]) => void;
   onBack: () => void;
 }) {
-  const { tz, draft, entries, sending, onSend, onUndo, onSaveEdits, onConfirm, onBack } = props;
+  const { tz, usage, draft, entries, sending, onSend, onUndo, onSaveEdits, onConfirm, onBack } = props;
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // 新しいメッセージが来たら一番下までスクロール
@@ -106,12 +109,18 @@ export default function ChatView(props: {
       </div>
 
       <div className="space-y-2 px-4 pt-1 pb-3">
+        <div className="flex justify-end">
+          <UsageMeter usage={usage} compact />
+        </div>
+        {usage.remaining === 0 && (
+          <p className="rounded-xl bg-now/10 px-3 py-2 text-xs text-now">今日のAIの利用回数を使い切りました。明日の0時にもとに戻ります。</p>
+        )}
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
           {QUICK_ACTIONS.map((a, i) => (
             <button
               key={a}
               type="button"
-              disabled={sending}
+              disabled={sending || usage.remaining === 0}
               onClick={() => onSend(a)}
               className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-50 ${
                 i === 0 ? "bg-accent text-white" : "border border-accent/40 bg-surface text-accent-ink"
@@ -121,7 +130,7 @@ export default function ChatView(props: {
             </button>
           ))}
         </div>
-        <ChatBar key={draft.key} initialText={draft.text} sending={sending} onSend={onSend} />
+        <ChatBar key={draft.key} initialText={draft.text} sending={sending} disabled={usage.remaining === 0} onSend={onSend} />
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { runAgent } from "@/lib/agent";
 import { getUserContext } from "@/lib/context";
 import { UnauthorizedError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http";
-import { dailyChatLimit } from "@/lib/limits";
+import { dailyChatLimit, usageOf } from "@/lib/limits";
 import { RecordingCalendar } from "@/lib/ops";
 import { localDateString, safeTimeZone } from "@/lib/time";
 
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const used = await store.incrementUsage(userId, localDateString(now, tz));
     const limit = dailyChatLimit();
     if (used > limit) {
-      return NextResponse.json({ error: `今日のAI利用回数の上限（${limit}回）に達しました` }, { status: 429 });
+      return NextResponse.json({ error: `今日のAI利用回数の上限（${limit}回）に達しました。明日また使えます`, usage: usageOf(used) }, { status: 429 });
     }
 
     const recording = new RecordingCalendar(calendar);
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       opId ?? undefined,
     );
 
-    return NextResponse.json({ reply, opId, changes: summarize(recording.ops) });
+    return NextResponse.json({ reply, opId, changes: summarize(recording.ops), usage: usageOf(used) });
   } catch (err) {
     return errorResponse(err);
   }
