@@ -46,7 +46,7 @@ export default function SettingsView(props: { tz: string; email?: string; demo?:
 
         <div className="flex items-center justify-center gap-2 pt-2 text-xs text-muted">
           <AppLogo className="size-5 rounded-md" />
-          15-Min AI Scheduler
+          AIスケジュールアシスタント
         </div>
       </div>
     </div>

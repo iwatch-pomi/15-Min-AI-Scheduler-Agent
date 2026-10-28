@@ -1,4 +1,5 @@
 // 線のアイコン集（外部ライブラリを使わずインライン SVG で持つ）
+import Image from "next/image";
 import type { SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement>;
@@ -246,23 +247,7 @@ export function Mascot({ className }: { className?: string }) {
   );
 }
 
-/** アプリのロゴ（カレンダー型に「15」） */
+/** アプリのロゴ（アプリアイコンと同じ画像。角は透明） */
 export function AppLogo({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
-      <defs>
-        <linearGradient id="ai15-logo" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#34d399" />
-          <stop offset="1" stopColor="#059669" />
-        </linearGradient>
-      </defs>
-      <rect width="48" height="48" rx="12" fill="url(#ai15-logo)" />
-      <rect x="9.5" y="12" width="29" height="27" rx="6" fill="#fff" />
-      <rect x="15" y="8.5" width="3.6" height="8" rx="1.8" fill="#fff" stroke="#059669" strokeWidth="1.4" />
-      <rect x="29.4" y="8.5" width="3.6" height="8" rx="1.8" fill="#fff" stroke="#059669" strokeWidth="1.4" />
-      <text x="24" y="33.5" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontWeight="700" fontSize="15" fill="#059669">
-        15
-      </text>
-    </svg>
-  );
+  return <Image src="/logo.png" alt="" width={180} height={180} className={className} />;
 }

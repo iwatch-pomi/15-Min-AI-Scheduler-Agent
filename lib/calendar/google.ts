@@ -138,7 +138,7 @@ export class GoogleCalendar implements CalendarBackend {
       this.api.calendars.insert({
         requestBody: {
           summary: AI_CALENDAR_NAME,
-          description: "15-Min AI Scheduler が作成した予定です。このカレンダーの予定は AI が変更することがあります。",
+          description: "AIスケジュールアシスタント が作成した予定です。このカレンダーの予定は AI が変更することがあります。",
           timeZone: this.timeZone,
         },
       }),

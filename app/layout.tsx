@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "15分スケジューラー",
+  title: "AIスケジュールアシスタント",
   description: "15分単位のタイムラインと、予定を組んでくれるAI秘書",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "15分", statusBarStyle: "default" },
+  icons: { icon: [{ url: "/favicon-32.png", sizes: "32x32" }, { url: "/icon-192.png", sizes: "192x192" }], apple: "/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "AIスケジュールアシスタント", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
