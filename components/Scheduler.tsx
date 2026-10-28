@@ -317,7 +317,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       const res = await fetch("/api/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: d, tz, tone, aiMode: chatSettings.aiMode }),
+        body: JSON.stringify({ date: d, tz, tone }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) return setAuthExpired(true);

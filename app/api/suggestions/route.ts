@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { SuggestError, generateSuggestions } from "@/lib/ai-suggest";
 import { withAiBudget } from "@/lib/budget";
-import { modelFor } from "@/lib/claude";
+import { MODELS } from "@/lib/claude";
 import { getUserContext } from "@/lib/context";
 import { errorResponse } from "@/lib/http";
 import { addDays, dayRange, localDateString, safeTimeZone } from "@/lib/time";
@@ -35,11 +35,10 @@ const body = z.object({
   tz: z.string().optional(),
   /** 画面のデザイン。ストイックならコーチの口調で出す */
   tone: z.enum(["soft", "stoic"]).optional(),
-  /** AI の使い方。節約・通常は Haiku、強化は Sonnet、最大は Opus で作る */
-  aiMode: z.enum(["save", "normal", "boost", "max"]).optional(),
 });
 
-// POST /api/suggestions { date, tz, tone? } → その日の「AIのおすすめ」を Claude で作り、保存する（AI の使用量を消費する）
+// POST /api/suggestions { date, tz, tone? } → その日の「AIのおすすめ」を Claude で作り、保存する（AI の使用量を消費する）。
+// AI の使い方（モード）に関係なく、いつも Sonnet で作る
 export async function POST(req: NextRequest) {
   try {
     const parsed = body.safeParse(await req.json().catch(() => null));
@@ -52,7 +51,7 @@ export async function POST(req: NextRequest) {
     const events = (await calendar.list(start, end)).filter((b) => !b.allDay || b.start.slice(0, 10) === date);
 
     const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now }, (meter) =>
-      generateSuggestions(meter, { date, tz, now, today: localDateString(now, tz), events, tone: parsed.data.tone, model: modelFor(parsed.data.aiMode) }).catch((err) => {
+      generateSuggestions(meter, { date, tz, now, today: localDateString(now, tz), events, tone: parsed.data.tone, model: MODELS.standard }).catch((err) => {
         if (err instanceof SuggestError) return err;
         throw err;
       }),
