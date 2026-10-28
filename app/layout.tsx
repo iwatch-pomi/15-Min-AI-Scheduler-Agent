@@ -3,13 +3,25 @@ import { cookies } from "next/headers";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "AIスケジュールアシスタント",
-  description: "15分単位のタイムラインと、予定を組んでくれるAI秘書",
-  manifest: "/manifest.webmanifest",
-  icons: { icon: [{ url: "/favicon-32.png", sizes: "32x32" }, { url: "/icon-192.png", sizes: "192x192" }], apple: "/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "AIスケジュールアシスタント", statusBarStyle: "default" },
-};
+// アイコンは、開いているデザイン（cookie）のものを返す。
+// ホーム画面に追加したときのデザインのアイコンになる（あとで切り替えても変わらない。変えたいときは追加し直す）
+export async function generateMetadata(): Promise<Metadata> {
+  const stoic = parseTheme((await cookies()).get(THEME_COOKIE)?.value) === "stoic";
+  const prefix = stoic ? "/stoic-" : "/";
+  return {
+    title: "AIスケジュールアシスタント",
+    description: "15分単位のタイムラインと、予定を組んでくれるAI秘書",
+    manifest: stoic ? "/manifest-stoic.webmanifest" : "/manifest.webmanifest",
+    icons: {
+      icon: [
+        { url: `${prefix}favicon-32.png`, sizes: "32x32" },
+        { url: stoic ? "/stoic-icon-192.png" : "/icon-192.png", sizes: "192x192" },
+      ],
+      apple: `${prefix}apple-touch-icon.png`,
+    },
+    appleWebApp: { capable: true, title: "AIスケジュールアシスタント", statusBarStyle: stoic ? "black" : "default" },
+  };
+}
 
 // デザイン（cookie）に合わせて、スマホの上の帯の色も変える
 export async function generateViewport(): Promise<Viewport> {

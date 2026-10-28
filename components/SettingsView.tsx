@@ -219,7 +219,9 @@ export default function SettingsView(props: {
             </ol>
             <p className="mt-2 text-xs text-muted">画面の下に「アプリをインストール」と出たときは、そこからでも追加できます。</p>
           </div>
-          <p className="px-4 py-3 text-xs text-muted">ホーム画面のアイコンから、アプリのように全画面で開けます。</p>
+          <p className="px-4 py-3 text-xs text-muted">
+            ホーム画面のアイコンから、アプリのように全画面で開けます。アイコンは、追加したときのデザイン（{stoic ? "今はストイック：黒 × 水色のメーター" : "今はやさしい：緑の芽"}）のものになります。あとでデザインを切り替えてもアイコンは変わらないので、変えたいときはホーム画面から削除して、追加し直してください。
+          </p>
         </Section>
 
         <div className="flex items-center justify-center gap-2 pt-2 text-xs text-muted">

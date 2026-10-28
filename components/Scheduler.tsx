@@ -175,6 +175,13 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     document.documentElement.dataset.theme = t;
     document.cookie = `${THEME_COOKIE}=${t}; path=/; max-age=${60 * 60 * 24 * 400}; samesite=lax`;
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", t === "stoic" ? "#0a0a0b" : "#faf9f6");
+    // 読み込み直さずにホーム画面に追加しても、今のデザインのアイコンになるように差し替える
+    const icon = (soft: string) => (t === "stoic" ? soft.replace(/^\/(stoic-)?/, "/stoic-") : soft.replace(/^\/stoic-/, "/"));
+    document.querySelectorAll<HTMLLinkElement>('link[rel="icon"], link[rel="apple-touch-icon"]').forEach((l) => {
+      l.href = icon(new URL(l.href).pathname);
+    });
+    document.querySelector<HTMLLinkElement>('link[rel="manifest"]')?.setAttribute("href", t === "stoic" ? "/manifest-stoic.webmanifest" : "/manifest.webmanifest");
+    document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute("content", t === "stoic" ? "black" : "default");
   };
   // 挑戦（Winter Arc など）の名前と期間。この端末に保存する
   const [savedArc, setSavedArc] = useState<Arc | null>(null);
