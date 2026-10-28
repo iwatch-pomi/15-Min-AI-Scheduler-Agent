@@ -18,8 +18,16 @@ function getRecognition(): (new () => SpeechRecognitionLike) | null {
   return (w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null) as (new () => SpeechRecognitionLike) | null;
 }
 
-export default function ChatBar(props: { sending: boolean; disabled?: boolean; onSend: (text: string) => void; initialText?: string }) {
-  const { sending, disabled, onSend, initialText = "" } = props;
+export default function ChatBar(props: {
+  sending: boolean;
+  disabled?: boolean;
+  onSend: (text: string) => void;
+  initialText?: string;
+  placeholder?: string;
+  /** 割り込みモードのときは枠をエメラルドにする */
+  highlight?: boolean;
+}) {
+  const { sending, disabled, onSend, initialText = "", placeholder = "メッセージを入力…", highlight } = props;
   const [text, setText] = useState(initialText);
   const [listening, setListening] = useState(false);
   const [canListen, setCanListen] = useState(false);
@@ -61,7 +69,7 @@ export default function ChatBar(props: { sending: boolean; disabled?: boolean; o
         submit(text);
       }}
     >
-      <div className="flex min-w-0 flex-1 items-end rounded-3xl bg-surface pr-1 shadow-card ring-1 ring-line focus-within:ring-accent">
+      <div className={`flex min-w-0 flex-1 items-end rounded-3xl bg-surface pr-1 shadow-card ${highlight ? "ring-2 ring-accent" : "ring-1 ring-line"} focus-within:ring-accent`}>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -74,7 +82,7 @@ export default function ChatBar(props: { sending: boolean; disabled?: boolean; o
           rows={1}
           autoFocus={!!initialText}
           onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
-          placeholder="メッセージを入力…"
+          placeholder={placeholder}
           aria-label="AIへのメッセージ"
           className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-4 py-2.5 text-[16px] leading-6 outline-none placeholder:text-muted"
         />

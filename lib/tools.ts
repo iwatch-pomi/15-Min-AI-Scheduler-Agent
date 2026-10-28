@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { applyInterrupt } from "./interrupt";
 import type { RecordingCalendar } from "./ops";
 import { freeSlots, overlapping, planShift } from "./slots";
 import type { Block } from "./types";
@@ -53,6 +54,14 @@ const schemas = {
     from: z.string().describe("この時刻以降に始まるAIブロックが対象（オフセット付き ISO）"),
     minutes: z.number().int().min(-8 * 60).max(8 * 60).describe("ずらす分数。正で後ろ倒し、負で前倒し。15の倍数"),
   }),
+  interrupt: z.object({
+    title: z.string().min(1).max(100).describe("割り込む予定の名前"),
+    minutes: minutes.describe("長さ（分）。15の倍数に切り上げる"),
+    start: z.enum(["now", "after_current"]).describe("now＝次の15分の区切りから、after_current＝今進行中の予定が終わってから"),
+    mode: z
+      .enum(["slide", "trim"])
+      .describe("slide＝後ろのAIブロックを割り込みの分だけ後ろ倒し、trim＝重なったAIブロックだけを削る（後ろはそのまま）"),
+  }),
 };
 
 type ToolName = keyof typeof schemas;
@@ -64,7 +73,9 @@ const descriptions: Record<ToolName, string> = {
   update_block: "AIブロック（ai=true）のタイトル・開始時刻・長さを変える。",
   delete_block: "AIブロック（ai=true）を削除する。",
   shift_following:
-    "指定時刻以降・同じ日のうちに始まるAIブロックをまとめて前後にずらす。延長・遅れ・割り込みのときに使う。Google の既存予定とルーティンは動かない。",
+    "指定時刻以降・同じ日のうちに始まるAIブロックをまとめて前後にずらす。延長・遅れのときに使う。Google の既存予定とルーティンは動かない。",
+  interrupt:
+    "今（または今の予定の直後）から予定を割り込ませる。進行中のAIブロックは切って残りを「（続き）」にし、後ろのAIブロックをずらす（slide）か、重なった分だけ削る（trim）。Google の既存予定とルーティンは動かない。",
 };
 
 export const toolDefinitions: Anthropic.Beta.BetaTool[] = (Object.keys(schemas) as ToolName[]).map((name) => {
@@ -99,6 +110,8 @@ export async function executeTool(name: string, rawInput: unknown, ctx: ToolCont
       return deleteBlock(input as z.infer<typeof schemas.delete_block>, ctx);
     case "shift_following":
       return shiftFollowing(input as z.infer<typeof schemas.shift_following>, ctx);
+    case "interrupt":
+      return interrupt(input as z.infer<typeof schemas.interrupt>, ctx);
   }
 }
 
@@ -215,6 +228,18 @@ async function shiftFollowing(input: z.infer<typeof schemas.shift_following>, { 
   });
   const overflow = plan.filter((p) => p.end > dayEnd).map((p) => `「${p.block.title}」が日付をまたぎました`);
   return { moved, warnings: [...warnings, ...overflow] };
+}
+
+async function interrupt(input: z.infer<typeof schemas.interrupt>, { calendar, tz, now }: ToolContext) {
+  const r = await applyInterrupt(calendar, { ...input, minutes: roundMinutes(input.minutes), tz, now });
+  return {
+    created: view(r.block, tz),
+    moved: r.moved,
+    trimmed: r.trimmed,
+    deleted: r.deleted,
+    continued: r.continued,
+    warnings: r.warnings,
+  };
 }
 
 async function requireAiBlock(calendar: RecordingCalendar, id: string): Promise<Block> {

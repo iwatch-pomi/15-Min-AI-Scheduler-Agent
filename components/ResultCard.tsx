@@ -19,10 +19,12 @@ const MINUTE_OPTIONS = [15, 30, 45, 60, 75, 90, 105, 120, 150, 180, 210, 240];
 
 type Row = { key: string; id?: string; date: string; time: string; minutes: number; title: string };
 
-function heading(items: ChangeItem[]): string {
+function heading(items: ChangeItem[], local?: boolean): string {
+  // AI を使わずにアプリで処理したときは「AIが」と書かない
+  const who = local ? "" : "AIが";
   if (items.every((i) => i.kind === "delete")) return "予定を削除しました";
-  if (items.every((i) => i.kind === "create")) return "AIがスケジュールを作成しました";
-  return "AIがスケジュールを調整しました";
+  if (items.every((i) => i.kind === "create")) return `${who}スケジュールを作成しました`;
+  return `${who}スケジュールを調整しました`;
 }
 
 function toRow(item: ChangeItem, tz: string): Row {
@@ -69,12 +71,14 @@ export default function ResultCard(props: {
   items: ChangeItem[];
   tz: string;
   undone?: boolean;
+  /** AI を使わずにアプリで処理した変更 */
+  local?: boolean;
   onConfirm: () => void;
   onUndo: () => void;
   /** 手動編集を保存する。失敗したときはエラーメッセージを返す */
   onSave: (changes: ManualChange[]) => Promise<string | null>;
 }) {
-  const { items, tz, undone, onConfirm, onUndo, onSave } = props;
+  const { items, tz, undone, local, onConfirm, onUndo, onSave } = props;
   const sorted = [...items].sort((a, b) => a.start.localeCompare(b.start));
   const editable = sorted.filter((i) => i.kind !== "delete");
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -195,7 +199,7 @@ export default function ResultCard(props: {
     <div className="rounded-2xl bg-surface p-4 shadow-card" data-testid="result-card">
       <div className="flex items-center gap-2">
         <CheckCircleIcon className={`size-6 shrink-0 ${undone ? "text-muted" : "text-ok"}`} />
-        <p className="flex-1 font-bold">{undone ? "変更を元に戻しました" : heading(items)}</p>
+        <p className="flex-1 font-bold">{undone ? "変更を元に戻しました" : heading(items, local)}</p>
         {!undone && editable.length > 0 && (
           <button onClick={startEdit} className="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-sm font-bold text-accent-ink active:bg-accent-soft">
             <PencilIcon className="size-4" />

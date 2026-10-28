@@ -267,3 +267,9 @@ export function Mascot({ className }: { className?: string }) {
 export function AppLogo({ className }: { className?: string }) {
   return <Image src="/logo.png" alt="" width={180} height={180} className={className} />;
 }
+
+export const BoltIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M13 2.5 4.5 13.5H11l-1 8 8.5-11H12z" />
+  </Svg>
+);

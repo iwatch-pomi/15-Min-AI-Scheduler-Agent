@@ -1,13 +1,15 @@
 "use client";
 
 import { Fragment, useEffect, useRef } from "react";
+import { AI_MODE_HELP, type ChatSettings } from "@/lib/interrupt";
 import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
 import { localDateString } from "@/lib/time";
 import { formatDateJa, type ChangeItem, type ChatEntry } from "@/lib/ui";
 import ChatBar from "./ChatBar";
-import { ChevronLeftIcon, Mascot } from "./icons";
+import { BoltIcon, ChevronLeftIcon, Mascot } from "./icons";
 import ResultCard from "./ResultCard";
+import Segmented from "./Segmented";
 import UsageMeter from "./UsageMeter";
 
 const QUICK_ACTIONS = ["15分延長", "割り込み30分", "今のをスキップ", "今日の残りを組み直して"];
@@ -23,13 +25,18 @@ export default function ChatView(props: {
   loadingOlder: boolean;
   onLoadOlder: () => void;
   sending: boolean;
-  onSend: (text: string) => void;
+  /** plain は決まった依頼（ワンタップ・例文）。割り込みモードでも割り込みとして扱わない */
+  onSend: (text: string, opts?: { plain?: boolean }) => void;
+  settings: ChatSettings;
+  onSettingsChange: (patch: Partial<ChatSettings>) => void;
   onUndo: (entryId: string) => void;
   onSaveEdits: (entryId: string, changes: ManualChange[]) => Promise<string | null>;
   onConfirm: (items: ChangeItem[]) => void;
   onBack: () => void;
 }) {
-  const { tz, usage, draft, entries, hasOlder, loadingOlder, onLoadOlder, sending, onSend, onUndo, onSaveEdits, onConfirm, onBack } = props;
+  const { tz, usage, draft, entries, hasOlder, loadingOlder, onLoadOlder, sending, onSend, settings, onSettingsChange, onUndo, onSaveEdits, onConfirm, onBack } = props;
+  // 節約モードの割り込みは AI を使わずに処理できるので、上限に達していても送れる
+  const canSendWithoutAi = settings.interrupt && settings.aiMode === "save";
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastId = entries.at(-1)?.id;
 
@@ -66,7 +73,7 @@ export default function ChatView(props: {
               {EXAMPLES.map((ex) => (
                 <button
                   key={ex}
-                  onClick={() => onSend(ex)}
+                  onClick={() => onSend(ex, { plain: true })}
                   className="block w-full rounded-2xl bg-surface px-4 py-3 text-left text-sm shadow-card transition active:scale-[0.99]"
                 >
                   {ex}
@@ -102,6 +109,11 @@ export default function ChatView(props: {
                 >
                   {entry.text}
                 </p>
+                {entry.local && (
+                  <p className="pl-1 text-[10px] text-muted" data-testid="cost">
+                    AIを使わずに処理しました（今日のAIは減っていません）
+                  </p>
+                )}
                 {entry.costPercent !== undefined && (
                   <p className="pl-1 text-[10px] text-muted" data-testid="cost">
                     この依頼で今日のAIを {entry.costPercent < 0.1 ? "0.1% 未満" : `${entry.costPercent}%`} 使いました
@@ -112,6 +124,7 @@ export default function ChatView(props: {
                     items={entry.result.items}
                     tz={tz}
                     undone={entry.result.undone}
+                    local={entry.local}
                     onConfirm={() => onConfirm(entry.result!.items)}
                     onUndo={() => onUndo(entry.id)}
                     onSave={(changes) => onSaveEdits(entry.id, changes)}
@@ -146,13 +159,14 @@ export default function ChatView(props: {
         {usage.exhausted && (
           <p className="rounded-xl bg-now/10 px-3 py-2 text-xs text-now">今日のAIの利用上限に達しました。明日の0時にもとに戻ります。</p>
         )}
+        <InterruptPanel settings={settings} onChange={onSettingsChange} />
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
           {QUICK_ACTIONS.map((a, i) => (
             <button
               key={a}
               type="button"
               disabled={sending || usage.exhausted}
-              onClick={() => onSend(a)}
+              onClick={() => onSend(a, { plain: true })}
               className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-50 ${
                 i === 0 ? "bg-accent text-white" : "border border-accent/40 bg-surface text-accent-ink"
               }`}
@@ -161,8 +175,79 @@ export default function ChatView(props: {
             </button>
           ))}
         </div>
-        <ChatBar key={draft.key} initialText={draft.text} sending={sending} disabled={usage.exhausted} onSend={onSend} />
+        <ChatBar
+          key={draft.key}
+          initialText={draft.text}
+          sending={sending}
+          disabled={usage.exhausted && !canSendWithoutAi}
+          onSend={(text) => onSend(text)}
+          placeholder={settings.interrupt ? "例：45分 買い物" : undefined}
+          highlight={settings.interrupt}
+        />
       </div>
+    </div>
+  );
+}
+
+/** 割り込みモードの切り替えと、開始時刻・後ろの予定・AI の使い方の選択 */
+function InterruptPanel({ settings, onChange }: { settings: ChatSettings; onChange: (patch: Partial<ChatSettings>) => void }) {
+  const on = settings.interrupt;
+  return (
+    <div className={`rounded-2xl px-3 py-2 transition ${on ? "bg-surface shadow-card" : ""}`} data-testid="interrupt-panel">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        onClick={() => onChange({ interrupt: !on })}
+        className="flex w-full items-center gap-2 text-left"
+        data-testid="interrupt-toggle"
+      >
+        <BoltIcon className={`size-4 ${on ? "text-accent-ink" : "text-muted"}`} />
+        <span className={`flex-1 text-xs font-bold ${on ? "text-accent-ink" : "text-muted"}`}>
+          割り込みモード{on && <span className="ml-1.5 font-normal text-muted">送った予定を、すぐに割り込ませます</span>}
+        </span>
+        <span className={`relative h-5 w-9 shrink-0 rounded-full transition ${on ? "bg-accent" : "bg-line"}`}>
+          <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-[left] ${on ? "left-4.5" : "left-0.5"}`} />
+        </span>
+      </button>
+      {on && (
+        <div className="mt-2 space-y-1.5">
+          <Segmented
+            label="開始"
+            value={settings.start}
+            options={[
+              { value: "now", label: "今すぐ" },
+              { value: "after_current", label: "今の予定の後" },
+            ]}
+            onChange={(start) => onChange({ start })}
+            testId="interrupt-start"
+          />
+          <Segmented
+            label="後ろの予定"
+            value={settings.mode}
+            options={[
+              { value: "slide", label: "スライド" },
+              { value: "trim", label: "削る" },
+            ]}
+            onChange={(mode) => onChange({ mode })}
+            testId="interrupt-mode"
+          />
+          <Segmented
+            label="AIの使い方"
+            value={settings.aiMode}
+            options={[
+              { value: "save", label: "節約モード" },
+              { value: "boost", label: "強化モード" },
+            ]}
+            onChange={(aiMode) => onChange({ aiMode })}
+            testId="ai-mode"
+          />
+          <p className="pl-[72px] text-[10px] text-muted">
+            {settings.mode === "slide" ? "後ろの予定を、割り込みの分だけ後ろにずらします。" : "重なった分だけ削り、そのあとの予定は動かしません。"}
+            {AI_MODE_HELP[settings.aiMode]}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { logout } from "@/app/actions";
+import { AI_MODE_HELP, type AiMode } from "@/lib/interrupt";
 import type { Usage } from "@/lib/limits";
 import { daysLabel, rangeLabel, type Routine, type RoutineInput } from "@/lib/routines";
 import RoutineEditor from "./RoutineEditor";
+import Segmented from "./Segmented";
 import UsageMeter from "./UsageMeter";
 import { AppLogo, CalendarIcon, ChevronRightIcon, ClockIcon, PlusIcon, RepeatIcon, ShareIcon, UserIcon } from "./icons";
 
@@ -17,8 +19,10 @@ export default function SettingsView(props: {
   routines: Routine[] | null;
   onSaveRoutine: (id: string | null, input: RoutineInput) => Promise<string | null>;
   onDeleteRoutine: (id: string) => Promise<string | null>;
+  aiMode: AiMode;
+  onAiModeChange: (m: AiMode) => void;
 }) {
-  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine } = props;
+  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange } = props;
   // 編集中のルーティン（"new" は追加）
   const [editing, setEditing] = useState<Routine | "new" | null>(null);
   const [cleared, setCleared] = useState(false);
@@ -80,6 +84,21 @@ export default function SettingsView(props: {
           <Row icon={<ClockIcon className="size-5" />} label="タイムゾーン" value={tz} />
           <div className="px-4 py-3">
             <UsageMeter usage={usage} />
+          </div>
+          <div className="space-y-1.5 px-4 py-3">
+            <Segmented
+              label="AIの使い方"
+              value={aiMode}
+              options={[
+                { value: "save", label: "節約モード" },
+                { value: "boost", label: "強化モード" },
+              ]}
+              onChange={onAiModeChange}
+              testId="settings-ai-mode"
+            />
+            <p className="text-xs text-muted">
+              {AI_MODE_HELP[aiMode]}。いまは割り込みモードに使います。［元に戻す］はどちらでもAIを使いません。
+            </p>
           </div>
           <Row icon={<CalendarIcon className="size-5" />} label="AIの予定の保存先" value="AIスケジューラー" />
           <p className="px-4 py-3 text-xs text-muted">

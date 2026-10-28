@@ -24,6 +24,8 @@ export type ChatEntry =
       at?: string;
       /** この依頼で1日の予算の何％を使ったか（その場の表示だけ。履歴には残さない） */
       costPercent?: number;
+      /** AI を使わずにアプリで処理した（使用量は減っていない） */
+      local?: boolean;
       /** opIds は AI の変更と、そのあとの手動編集の操作グループ（古い順）。元に戻すときは全部を逆順に取り消す */
       result?: { opIds: string[]; items: ChangeItem[]; undone?: boolean };
       error?: boolean;

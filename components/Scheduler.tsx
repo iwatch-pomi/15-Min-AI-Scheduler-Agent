@@ -6,6 +6,7 @@ import type { Block } from "@/lib/types";
 import { noteText } from "@/lib/history";
 import { suggestions, type Suggestion } from "@/lib/suggest";
 import { DEFAULT_TZ, addDays, localDateString } from "@/lib/time";
+import { DEFAULT_CHAT_SETTINGS, interruptLabel, type ChatSettings } from "@/lib/interrupt";
 import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
 import type { Routine, RoutineInput } from "@/lib/routines";
@@ -124,6 +125,28 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     loadHistory();
   }, [loadHistory]);
 
+  // AI 画面の設定（割り込みモード・強化／節約）。次に開いたときも同じになるよう、この端末に保存する
+  const [chatSettings, setChatSettings] = useState<ChatSettings>(DEFAULT_CHAT_SETTINGS);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("ai15:chat-settings") ?? "{}") as Partial<ChatSettings>;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setChatSettings({ ...DEFAULT_CHAT_SETTINGS, ...saved });
+    } catch {
+      // 保存できない環境では既定のまま
+    }
+  }, []);
+  const changeChatSettings = (patch: Partial<ChatSettings>) =>
+    setChatSettings((prev) => {
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem("ai15:chat-settings", JSON.stringify(next));
+      } catch {
+        // 保存できなくても、この画面では使える
+      }
+      return next;
+    });
+
   // AI で作ったおすすめ（日付ごと）。再読み込みでもう一度費用がかからないよう、この端末に保存する
   type AiSuggest = { items: Suggestion[]; costPercent: number; at: string };
   const [aiSuggest, setAiSuggest] = useState<Record<string, AiSuggest>>({});
@@ -224,8 +247,15 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     return () => clearInterval(id);
   }, [tz]);
 
-  const send = async (message: string) => {
-    const userEntry: ChatEntry = { id: crypto.randomUUID(), role: "user", text: message, at: new Date().toISOString() };
+  const send = async (message: string, opts: { plain?: boolean } = {}) => {
+    // 割り込みモードでも「元に戻して」やワンタップの依頼は、そのまま扱う
+    const interrupt = chatSettings.interrupt && !opts.plain && !isUndoRequest(message);
+    const userEntry: ChatEntry = {
+      id: crypto.randomUUID(),
+      role: "user",
+      text: interrupt ? interruptLabel(message) : message,
+      at: new Date().toISOString(),
+    };
     setEntries((prev) => [...prev, userEntry]);
     setSending(true);
     const reply = (text: string, extra: Partial<Extract<ChatEntry, { role: "assistant" }>> = {}) =>
@@ -247,7 +277,12 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, tz }),
+        body: JSON.stringify({
+          message,
+          tz,
+          aiMode: chatSettings.aiMode,
+          ...(interrupt ? { interrupt: { start: chatSettings.start, mode: chatSettings.mode } } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) {
@@ -260,7 +295,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
         return;
       }
       const items: ChangeItem[] = data.changes?.items ?? [];
-      reply(data.reply, { costPercent: data.costPercent, ...(data.opId ? { result: { opIds: [data.opId], items } } : {}) });
+      reply(data.reply, { costPercent: data.costPercent, local: data.local, ...(data.opId ? { result: { opIds: [data.opId], items } } : {}) });
       await loadAll();
     } catch {
       reply("通信に失敗しました。電波の良いところでもう一度お試しください。", { error: true });
@@ -397,6 +432,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           entries={entries}
           sending={sending}
           onSend={send}
+          settings={chatSettings}
+          onSettingsChange={changeChatSettings}
           onUndo={undo}
           onSaveEdits={saveEdits}
           onConfirm={(items) => {
@@ -409,6 +446,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
         />
       )}
       {tab === "settings" && <SettingsView tz={tz} email={email} demo={demo} usage={usage} onClearHistory={clearHistory}
+          aiMode={chatSettings.aiMode}
+          onAiModeChange={(aiMode) => changeChatSettings({ aiMode })}
           routines={routines}
           onSaveRoutine={saveRoutine}
           onDeleteRoutine={deleteRoutine}
