@@ -129,8 +129,10 @@ describe("AI の使い方ごとのモデル", () => {
   it.each([
     ["save", "ちょっとコンビニ", "claude-haiku-5-5", "Haiku"],
     ["save", "今日の残りを組み直して", "claude-sonnet-5-5", "Sonnet"],
-    ["normal", "ちょっとコンビニ", "claude-sonnet-5-5", "Sonnet"],
-    ["boost", "ちょっとコンビニ", "claude-opus-5-5", "Opus"],
+    ["normal", "ちょっとコンビニ", "claude-haiku-5-5", "Haiku"],
+    ["normal", "直近2週間の時間の使い方を分析して", "claude-sonnet-5-5", "Sonnet"],
+    ["boost", "ちょっとコンビニ", "claude-sonnet-5-5", "Sonnet"],
+    ["max", "ちょっとコンビニ", "claude-opus-5-5", "Opus"],
   ])("%s「%s」→ %s", async (aiMode, message, model, label) => {
     create.mockReset();
     create.mockResolvedValue(reply);
@@ -139,12 +141,12 @@ describe("AI の使い方ごとのモデル", () => {
     expect(data.model).toBe(label);
   });
 
-  it("通常モードでは、決まった形の依頼でも AI（Sonnet）が考える", async () => {
+  it("通常モードでは、決まった形の依頼でも AI（Haiku）が考える", async () => {
     create.mockReset();
     create.mockResolvedValue(reply);
     const { data } = await send({ message: "14時から要件定義1時間", aiMode: "normal" });
     expect(create).toHaveBeenCalledTimes(1);
-    expect(requests[0].model).toBe("claude-sonnet-5-5");
+    expect(requests[0].model).toBe("claude-haiku-5-5");
     expect(data.local).toBeUndefined();
   });
 });
@@ -155,9 +157,23 @@ describe("Haiku へのリクエスト", () => {
     create.mockReset();
     create.mockResolvedValue(reply);
     await send({ message: "ちょっとコンビニ", aiMode: "save" });
-    await send({ message: "ちょっとコンビニ", aiMode: "normal" });
+    await send({ message: "ちょっとコンビニ", aiMode: "boost" });
     expect(requests[0]).not.toHaveProperty("fallbacks");
     expect(requests[0]).not.toHaveProperty("betas");
     expect(requests[1]).toMatchObject({ fallbacks: "default", betas: ["server-side-fallback-2026-07-01"] });
+  });
+});
+
+describe("最大モード（Opus）", () => {
+  it("考える量を増やし（effort high）、振り返り・分析の指示を持っている", async () => {
+    const reply = { model: "x", stop_reason: "end_turn", usage, content: [{ type: "text", text: "分析しました" }] };
+    create.mockReset();
+    create.mockResolvedValue(reply);
+    await send({ message: "直近2週間の時間の使い方を分析して", aiMode: "max" });
+    await send({ message: "直近2週間の時間の使い方を分析して", aiMode: "boost" });
+    const calls = create.mock.calls.map((c) => c[0]);
+    expect(calls[0]).toMatchObject({ model: "claude-opus-5-5", output_config: { effort: "high" } });
+    expect(calls[1]).toMatchObject({ model: "claude-sonnet-5-5", output_config: { effort: "medium" } });
+    expect(JSON.stringify(calls[0].system)).toContain("振り返り・分析");
   });
 });

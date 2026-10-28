@@ -11,10 +11,12 @@ export type InterruptMode = "slide" | "trim";
 export type InterruptSettings = { start: InterruptStart; mode: InterruptMode };
 /**
  * AI の使い方。
- * save＝節約（アプリで処理し、読めないときだけ AI。Sonnet）／normal＝通常（いつも AI。Sonnet）／boost＝強化（いつも AI。Opus）
+ * save＝節約（アプリで処理し、読めないときだけ AI。Haiku）／normal＝通常（いつも AI。Haiku）
+ * boost＝強化（Sonnet）／max＝最大（Opus。直近2週間の振り返り・時間の使い方の分析にも）
+ * 節約・通常でも、難しい依頼は Sonnet に回す
  */
-export type AiMode = "save" | "normal" | "boost";
-export const AI_MODES: AiMode[] = ["save", "normal", "boost"];
+export type AiMode = "save" | "normal" | "boost" | "max";
+export const AI_MODES: AiMode[] = ["save", "normal", "boost", "max"];
 
 /** AI 画面の設定（この端末に保存する） */
 export type ChatSettings = InterruptSettings & { interrupt: boolean; aiMode: AiMode };
@@ -22,8 +24,9 @@ export const DEFAULT_CHAT_SETTINGS: ChatSettings = { interrupt: false, start: "n
 
 export const AI_MODE_HELP: Record<AiMode, string> = {
   save: "「14時から会議1時間」「明日 資料作成2時間」「15分延長」「今のをスキップ」「割り込み30分」のような決まった形の依頼は、AIを使わずにアプリで処理します（使用量は減りません）。それ以外は安いAI（Haiku）が考え、「組み直して」のような難しい依頼だけ Sonnet に回します",
-  normal: "すべての依頼をAI（Sonnet）が考えます。予定の分け方や空き時間の選び方まで任せられ、そのたびに使用量を消費します",
-  boost: "すべての依頼を、いちばん賢いAI（Opus）が考えます。複雑な組み直しに強い分、使用量は通常のおよそ2倍です",
+  normal: "すべての依頼をAI（Haiku）が考えます。予定の分け方や空き時間の選び方まで任せられます。「組み直して」のような難しい依頼は Sonnet に回します",
+  boost: "すべての依頼を Sonnet が考えます。込み入った依頼も、より丁寧に組み立てます（使用量は通常のおよそ20倍）",
+  max: "すべての依頼を、いちばん賢いAI（Opus）が考えます。「直近2週間の時間の使い方を分析して」のように、カレンダーを振り返って時間の浪費や改善点を調べるのに向いています（使用量は強化のおよそ2倍）",
 };
 
 /** 節約モードで、AI を使わずに処理されやすい書き方のコツ（マイページ・AI 画面に出す） */

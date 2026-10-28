@@ -8,15 +8,16 @@ import type { CostMeter } from "./pricing";
 
 /**
  * AI の使い方ごとのモデル（環境変数ではなく、ここで決める）。
- * 節約は Haiku（難しい依頼だけ Sonnet）、通常は Sonnet、強化は Opus
+ * 節約・通常は Haiku（難しい依頼だけ Sonnet）、強化は Sonnet、最大は Opus
  */
-export const MODELS = { save: "claude-haiku-5-5", standard: "claude-sonnet-5-5", boost: "claude-opus-5-5" } as const;
+export const MODELS = { light: "claude-haiku-5-5", standard: "claude-sonnet-5-5", top: "claude-opus-5-5" } as const;
 export const MODEL = MODELS.standard;
 
-/** 依頼文を渡すと、節約モードでも難しい依頼は Sonnet に回す */
-export function modelFor(aiMode: "save" | "normal" | "boost" | undefined, message?: string): string {
-  if (aiMode === "boost") return MODELS.boost;
-  if (aiMode === "save") return message !== undefined && isHardRequest(message) ? MODELS.standard : MODELS.save;
+/** 依頼文を渡すと、節約・通常でも難しい依頼は Sonnet に回す */
+export function modelFor(aiMode: "save" | "normal" | "boost" | "max" | undefined, message?: string): string {
+  if (aiMode === "max") return MODELS.top;
+  if (aiMode === "boost") return MODELS.standard;
+  if (aiMode === "save" || aiMode === "normal") return message !== undefined && isHardRequest(message) ? MODELS.standard : MODELS.light;
   return MODELS.standard;
 }
 
@@ -26,10 +27,10 @@ export function modelLabel(model: string): string {
 }
 
 const HARD_WORDS =
-  /組み直|組みなお|組み立て|立て直|整理|見直|再調整|調整し|最適|優先|全部|すべて|全て|まとめて|計画|プラン|分解|分けて|振り分|割り振|週間|今週|来週|週末|毎日|リスケ|詰め|余裕|バランス/;
+  /分析|振り返|ふり返|浪費|無駄|ムダ|使い方|傾向|組み直|組みなお|組み立て|立て直|整理|見直|再調整|調整し|最適|優先|全部|すべて|全て|まとめて|計画|プラン|分解|分けて|振り分|割り振|週間|今週|来週|週末|毎日|リスケ|詰め|余裕|バランス/;
 
 /**
- * 節約モードで Sonnet に回す「難しい依頼」か（アプリで判定するので AI は使わない）。
+ * 節約・通常モードで Sonnet に回す「難しい依頼」か（アプリで判定するので AI は使わない）。
  * たくさんの予定を動かす・組み立てる言葉、予定が2つ以上、長い文、を難しいとみなす
  */
 export function isHardRequest(message: string): boolean {

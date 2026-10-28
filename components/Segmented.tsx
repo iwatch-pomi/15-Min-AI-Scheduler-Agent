@@ -28,7 +28,7 @@ export default function Segmented<T extends string>(props: {
               role="radio"
               aria-checked={on}
               onClick={() => onChange(o.value)}
-              className={`flex-1 rounded-full px-2 font-bold transition stoic:rounded-[7px] ${large ? "py-2 text-sm stoic:h-10 stoic:rounded-[9px] stoic:py-0 stoic:t-num stoic:text-[13px] stoic:tracking-[0.04em]" : "py-1 text-xs"} ${
+              className={`flex-1 whitespace-pre-line rounded-full px-1 font-bold leading-tight transition stoic:rounded-[7px] ${large ? "py-2 text-sm stoic:min-h-10 stoic:rounded-[9px] stoic:py-1.5 stoic:t-num stoic:text-[13px] stoic:tracking-[0.04em]" : "py-1 text-xs"} ${
                 on ? "bg-surface text-accent-ink shadow-card stoic:bg-accent stoic:text-on-accent stoic:shadow-none" : "text-muted"
               }`}
             >

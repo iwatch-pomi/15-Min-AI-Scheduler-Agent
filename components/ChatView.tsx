@@ -14,6 +14,8 @@ import Segmented from "./Segmented";
 import { useTheme } from "./ThemeContext";
 import UsageMeter from "./UsageMeter";
 
+/** 最大モード（Opus）向け：カレンダーを振り返って時間の使い方を調べる */
+const ANALYZE_EXAMPLE = "直近2週間の時間の使い方を分析して、浪費している時間と改善案を教えて";
 const EXAMPLES = ["14時から要件定義1時間、そのあと返信15分", "明日の午前に資料作成2時間", "今日の残りを組み直して"];
 
 export default function ChatView(props: {
@@ -95,7 +97,7 @@ export default function ChatView(props: {
               </p>
             )}
             <div className="space-y-2 pt-2">
-              {EXAMPLES.map((ex) => (
+              {(settings.aiMode === "max" ? [ANALYZE_EXAMPLE, ...EXAMPLES] : EXAMPLES).map((ex) => (
                 <button
                   key={ex}
                   onClick={() => onSend(ex, { plain: true })}
@@ -194,7 +196,9 @@ export default function ChatView(props: {
             className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-muted stoic:t-label stoic:rounded-md stoic:border stoic:border-line stoic:bg-transparent stoic:px-2 stoic:py-[5px] stoic:text-[10px] stoic:font-normal stoic:tracking-[0.12em] stoic:text-[#a8a8ae]"
             data-testid="ai-mode-chip"
           >
-            {stoic ? `${{ save: "ECO", normal: "STD", boost: "BOOST" }[settings.aiMode]} MODE` : { save: "節約モード", normal: "通常モード", boost: "強化モード" }[settings.aiMode]}
+            {stoic
+              ? `${{ save: "ECO", normal: "STD", boost: "BOOST", max: "MAX" }[settings.aiMode]} MODE`
+              : { save: "節約モード", normal: "通常モード", boost: "強化モード", max: "最大モード" }[settings.aiMode]}
           </button>
           <UsageMeter usage={usage} compact />
         </div>

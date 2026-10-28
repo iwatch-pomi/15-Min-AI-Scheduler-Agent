@@ -35,8 +35,8 @@ const body = z.object({
   tz: z.string().optional(),
   /** 画面のデザイン。ストイックならコーチの口調で出す */
   tone: z.enum(["soft", "stoic"]).optional(),
-  /** AI の使い方。強化なら Opus、それ以外は Sonnet で作る */
-  aiMode: z.enum(["save", "normal", "boost"]).optional(),
+  /** AI の使い方。節約・通常は Haiku、強化は Sonnet、最大は Opus で作る */
+  aiMode: z.enum(["save", "normal", "boost", "max"]).optional(),
 });
 
 // POST /api/suggestions { date, tz, tone? } → その日の「AIのおすすめ」を Claude で作り、保存する（AI の使用量を消費する）

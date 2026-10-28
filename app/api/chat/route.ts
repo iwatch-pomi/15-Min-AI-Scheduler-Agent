@@ -25,8 +25,8 @@ const body = z.object({
   interrupt: interruptSettings.optional(),
   /** 割り込みの開始・後ろの予定の選び方（「割り込み30分」などで使う。割り込みモードがオフでも送られる） */
   interruptPrefs: interruptSettings.optional(),
-  /** 節約（save：アプリで処理できる依頼は AI を使わない）／通常（normal：すべて Sonnet）／強化（boost：すべて Opus） */
-  aiMode: z.enum(["save", "normal", "boost"]).default("save"),
+  /** 節約（save：アプリで処理できる依頼は AI を使わない）／通常（normal：すべて AI）／強化（boost：Sonnet）／最大（max：Opus） */
+  aiMode: z.enum(["save", "normal", "boost", "max"]).default("save"),
 });
 
 // POST /api/chat { message, tz, interrupt?, interruptPrefs?, aiMode? } → 予定を操作し、返答と Undo 用の opId を返す
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     // 直近5件はそのまま、その前の5件は短い要約にして渡す（費用を下げる）
     const history = compactHistory(await store.recentMessages(userId, HISTORY_LIMIT));
     const prompt = interrupt ? `${interruptInstruction(interrupt)}\n${message}` : message;
-    // 節約は Haiku（難しい依頼は Sonnet）、通常は Sonnet、強化は Opus
+    // 節約・通常は Haiku（難しい依頼は Sonnet）、強化は Sonnet、最大は Opus
     const model = modelFor(aiMode, message);
     // Claude を使うので、必ず予算の確認と費用の記録をする（使い切っていたら 429 で AI は呼ばない）
     const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now }, async (meter) => {

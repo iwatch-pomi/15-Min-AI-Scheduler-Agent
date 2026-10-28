@@ -10,6 +10,8 @@ describe("節約モードで Sonnet に回す難しい依頼", () => {
     "14時から要件定義1時間、そのあと返信15分",
     "会議30分と資料作成2時間を入れて",
     "要件定義を分解して入れて",
+    "直近2週間の時間の使い方を分析して",
+    "最近の無駄な時間を教えて",
   ])("%s → 難しい", (m) => {
     expect(isHardRequest(m)).toBe(true);
   });
@@ -26,8 +28,10 @@ describe("節約モードで Sonnet に回す難しい依頼", () => {
     expect(modelFor("save", "夜にレポート")).toBe("claude-haiku-5-5");
     expect(modelFor("save", "今日の残りを組み直して")).toBe("claude-sonnet-5-5");
     expect(modelFor("save")).toBe("claude-haiku-5-5");
-    expect(modelFor("normal", "夜にレポート")).toBe("claude-sonnet-5-5");
-    expect(modelFor("boost", "夜にレポート")).toBe("claude-opus-5-5");
+    expect(modelFor("normal", "夜にレポート")).toBe("claude-haiku-5-5");
+    expect(modelFor("normal", "今日の残りを組み直して")).toBe("claude-sonnet-5-5");
+    expect(modelFor("boost", "夜にレポート")).toBe("claude-sonnet-5-5");
+    expect(modelFor("max", "夜にレポート")).toBe("claude-opus-5-5");
     expect(modelFor(undefined)).toBe("claude-sonnet-5-5");
     expect(["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"].map(modelLabel)).toEqual(["Haiku", "Sonnet", "Opus"]);
   });

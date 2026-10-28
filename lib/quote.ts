@@ -6,7 +6,7 @@ import type { TimeSlot } from "./theme";
 // 費用を抑えるため、いちばん安いモデルで短く作る（1回あたり今日の予算の 0.1% 未満）。
 // 作るのは時間帯ごとに1回だけ（画面側でこの端末に保存する）
 
-export const QUOTE_MODEL = MODELS.save;
+export const QUOTE_MODEL = MODELS.light;
 const MAX_LENGTH = 40;
 
 const SLOT_LABEL: Record<TimeSlot, string> = {
