@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { login } from "@/app/actions";
 import type { Block } from "@/lib/types";
+import { noteText } from "@/lib/history";
 import { suggestions, type Suggestion } from "@/lib/suggest";
 import { DEFAULT_TZ, addDays, localDateString } from "@/lib/time";
 import type { Usage } from "@/lib/limits";
@@ -283,12 +284,17 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     return { res, data };
   };
 
+  // 画面での操作の記録（サーバーでチャット履歴にも保存され、AI に伝わる）を、その場でも表示する
+  const addNote = (note: string | null | undefined) => {
+    if (note) setEntries((prev) => [...prev, { id: crypto.randomUUID(), role: "note", text: noteText(note), at: new Date().toISOString() }]);
+  };
+
   // AI の変更と、そのあとの手動編集をまとめて取り消す
   // ［元に戻す］。AI は呼ばないので、AI の利用回数は使わない
   const undo = async (entryId: string): Promise<boolean> => {
     const result = resultOf(entryId);
     if (!result) return false;
-    const { res, data } = await postJson("/api/undo", { opIds: result.opIds });
+    const { res, data } = await postJson("/api/undo", { opIds: result.opIds, tz });
     if (res.status === 401) return false;
     // 404 は取り消し済み（二重タップなど）
     const failed = !res.ok && res.status !== 404 ? (data.error ?? "元に戻せませんでした") : null;
@@ -296,6 +302,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       setEntries((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", text: failed, error: true, at: new Date().toISOString() }]);
     } else {
       updateResult(entryId, (r) => ({ ...r, undone: true }));
+      addNote(data.note);
     }
     await loadAll();
     return !failed;
@@ -304,13 +311,14 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   // 結果カードでの手動編集を保存する。失敗したらエラーメッセージを返す
   const saveEdits = async (entryId: string, changes: ManualChange[]): Promise<string | null> => {
     // そのチャットの操作グループに続けて記録する（履歴の結果カードと［元に戻す］をそろえるため）
-    const { res, data } = await postJson("/api/blocks", { changes, opId: resultOf(entryId)?.opIds[0] });
+    const { res, data } = await postJson("/api/blocks", { changes, opId: resultOf(entryId)?.opIds[0], tz });
     if (res.status === 401) return null;
     if (data.opId) updateResult(entryId, (r) => ({ ...r, opIds: r.opIds.includes(data.opId) ? r.opIds : [...r.opIds, data.opId] }));
     if (!res.ok) {
       await loadAll();
       return data.error ?? "保存できませんでした";
     }
+    addNote(data.note);
     const saved: ChangeItem[] = data.items ?? [];
     const deleted = new Set(changes.flatMap((c) => (c.op === "delete" ? [c.id] : [])));
     updateResult(entryId, (r) => {

@@ -2,7 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getUserContext } from "@/lib/context";
 import { errorResponse } from "@/lib/http";
 import { ManualEditError, applyManualChanges, manualChangesSchema } from "@/lib/manual";
+import { editNote, recordActivity } from "@/lib/activity";
 import { RecordingCalendar } from "@/lib/ops";
+import { safeTimeZone } from "@/lib/time";
 
 // POST /api/blocks { changes } → 結果カードでの手動編集を反映し、Undo 用の opId を返す
 export async function POST(req: NextRequest) {
@@ -14,7 +16,7 @@ export async function POST(req: NextRequest) {
     const { userId, calendar, store } = await getUserContext();
     const recording = new RecordingCalendar(calendar);
 
-    let items;
+    let items: Awaited<ReturnType<typeof applyManualChanges>> = [];
     let failure: unknown = null;
     try {
       items = await applyManualChanges(recording, parsed.data.changes);
@@ -29,7 +31,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: failure.message, opId }, { status: 400 });
     }
     if (failure) throw failure;
-    return NextResponse.json({ opId, items });
+    // AI が手で直した内容を知れるように、チャット履歴に残す
+    const removed = parsed.data.changes.filter((c) => c.op === "delete").length;
+    const note = items.length || removed ? editNote(items, removed, safeTimeZone(parsed.data.tz)) : null;
+    if (note) await recordActivity(store, userId, note);
+    return NextResponse.json({ opId, items, note });
   } catch (err) {
     return errorResponse(err);
   }

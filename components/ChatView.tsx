@@ -85,7 +85,11 @@ export default function ChatView(props: {
                 <span className="h-px flex-1 bg-line" />
               </p>
             )}
-            {entry.role === "user" ? (
+            {entry.role === "note" ? (
+              <p className="mx-auto w-fit max-w-[90%] rounded-full bg-surface-2 px-3 py-1 text-center text-[11px] text-muted" data-testid="activity-note">
+                {entry.text}
+              </p>
+            ) : entry.role === "user" ? (
             <div key={entry.id} className="flex justify-end">
               <p className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-blk-main-bg px-4 py-2.5 text-[15px] text-heading">{entry.text}</p>
             </div>

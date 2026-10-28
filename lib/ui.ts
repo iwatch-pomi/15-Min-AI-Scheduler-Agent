@@ -14,6 +14,8 @@ export type ChangeItem = {
 
 export type ChatEntry =
   | { id: string; role: "user"; text: string; at?: string }
+  /** 画面での操作の記録（［元に戻す］・手動編集）。AI にも伝わる */
+  | { id: string; role: "note"; text: string; at?: string }
   | {
       id: string;
       role: "assistant";

@@ -1,3 +1,4 @@
+import { ACTIVITY_PREFIX, isActivity } from "./activity";
 import type { OpGroup, StoredMessage } from "./store/types";
 import type { Operation } from "./types";
 import type { ChangeItem, ChatEntry } from "./ui";
@@ -29,6 +30,7 @@ function toItem(b: NonNullable<Operation["before"]>, kind: ChangeItem["kind"]): 
 /** 保存されたメッセージを、画面のチャット表示の形にする */
 export function toChatEntries(messages: StoredMessage[], groups: Map<string, OpGroup>): ChatEntry[] {
   return messages.map((m): ChatEntry => {
+    if (m.role === "user" && isActivity(m.content)) return { id: m.id, role: "note", text: noteText(m.content), at: m.createdAt };
     if (m.role === "user") return { id: m.id, role: "user", text: m.content, at: m.createdAt };
     const group = m.opGroupId ? groups.get(m.opGroupId) : undefined;
     const items = group ? itemsFromOps(group.ops) : [];
@@ -40,4 +42,9 @@ export function toChatEntries(messages: StoredMessage[], groups: Map<string, OpG
       result: group && m.opGroupId && items.length ? { opIds: [m.opGroupId], items, undone: group.undone } : undefined,
     };
   });
+}
+
+/** 画面に出すときは、AI 向けの注意書きを省いて短くする */
+export function noteText(content: string): string {
+  return content.replace(ACTIVITY_PREFIX, "").replace(/。[^。]*こと。$/, "。").replace("ユーザーが画面の", "").replace("ユーザーが", "");
 }
