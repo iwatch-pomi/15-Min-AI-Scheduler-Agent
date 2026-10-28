@@ -26,6 +26,8 @@ export type ChatEntry =
       costPercent?: number;
       /** AI を使わずにアプリで処理した（使用量は減っていない） */
       local?: boolean;
+      /** 使った AI（Haiku・Sonnet・Opus）。その場の表示だけ */
+      model?: string;
       /** opIds は AI の変更と、そのあとの手動編集の操作グループ（古い順）。元に戻すときは全部を逆順に取り消す */
       result?: { opIds: string[]; items: ChangeItem[]; undone?: boolean };
       error?: boolean;

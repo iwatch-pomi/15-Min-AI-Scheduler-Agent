@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 // 偽の Claude：割り込みツールを1回使ってから返事をする（1回 = $0.03）
 const create = vi.fn();
-const requests: { model: string; messages: { content: unknown }[] }[] = [];
+const requests: { model: string; fallbacks?: unknown; betas?: string[]; messages: { content: unknown }[] }[] = [];
 vi.mock("@anthropic-ai/sdk", () => ({
   default: class {
     beta = {
@@ -127,14 +127,16 @@ describe("AI の使い方ごとのモデル", () => {
   const reply = { model: "x", stop_reason: "end_turn", usage, content: [{ type: "text", text: "了解" }] };
 
   it.each([
-    ["save", "claude-sonnet-5-5"],
-    ["normal", "claude-sonnet-5-5"],
-    ["boost", "claude-opus-5-5"],
-  ])("%s → %s", async (aiMode, model) => {
+    ["save", "ちょっとコンビニ", "claude-haiku-5-5", "Haiku"],
+    ["save", "今日の残りを組み直して", "claude-sonnet-5-5", "Sonnet"],
+    ["normal", "ちょっとコンビニ", "claude-sonnet-5-5", "Sonnet"],
+    ["boost", "ちょっとコンビニ", "claude-opus-5-5", "Opus"],
+  ])("%s「%s」→ %s", async (aiMode, message, model, label) => {
     create.mockReset();
     create.mockResolvedValue(reply);
-    await send({ message: "今日の残りを組み直して", aiMode });
+    const { data } = await send({ message, aiMode });
     expect(requests[0].model).toBe(model);
+    expect(data.model).toBe(label);
   });
 
   it("通常モードでは、決まった形の依頼でも AI（Sonnet）が考える", async () => {
@@ -144,5 +146,18 @@ describe("AI の使い方ごとのモデル", () => {
     expect(create).toHaveBeenCalledTimes(1);
     expect(requests[0].model).toBe("claude-sonnet-5-5");
     expect(data.local).toBeUndefined();
+  });
+});
+
+describe("Haiku へのリクエスト", () => {
+  it("Haiku には断られたときの代わりのモデル（fallbacks）を付けない。Sonnet・Opus には付ける", async () => {
+    const reply = { model: "x", stop_reason: "end_turn", usage, content: [{ type: "text", text: "了解" }] };
+    create.mockReset();
+    create.mockResolvedValue(reply);
+    await send({ message: "ちょっとコンビニ", aiMode: "save" });
+    await send({ message: "ちょっとコンビニ", aiMode: "normal" });
+    expect(requests[0]).not.toHaveProperty("fallbacks");
+    expect(requests[0]).not.toHaveProperty("betas");
+    expect(requests[1]).toMatchObject({ fallbacks: "default", betas: ["server-side-fallback-2026-07-01"] });
   });
 });

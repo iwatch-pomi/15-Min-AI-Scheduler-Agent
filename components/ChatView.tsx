@@ -149,8 +149,8 @@ export default function ChatView(props: {
                 {entry.costPercent !== undefined && (
                   <p className="t-code pl-1 text-[10px] text-muted" data-testid="cost">
                     {stoic
-                      ? `AI · 今日の ${entry.costPercent < 0.1 ? "0.1% 未満" : `${entry.costPercent}%`} を使用`
-                      : `この依頼で今日のAIを ${entry.costPercent < 0.1 ? "0.1% 未満" : `${entry.costPercent}%`} 使いました`}
+                      ? `AI${entry.model ? `（${entry.model.toUpperCase()}）` : ""} · 今日の ${entry.costPercent < 0.1 ? "0.1% 未満" : `${entry.costPercent}%`} を使用`
+                      : `この依頼で今日のAIを ${entry.costPercent < 0.1 ? "0.1% 未満" : `${entry.costPercent}%`} 使いました${entry.model ? `（${entry.model}）` : ""}`}
                   </p>
                 )}
                 {entry.result && entry.result.items.length > 0 && (

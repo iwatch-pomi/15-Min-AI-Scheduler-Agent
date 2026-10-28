@@ -21,7 +21,7 @@ export type ChatSettings = InterruptSettings & { interrupt: boolean; aiMode: AiM
 export const DEFAULT_CHAT_SETTINGS: ChatSettings = { interrupt: false, start: "now", mode: "slide", aiMode: "save" };
 
 export const AI_MODE_HELP: Record<AiMode, string> = {
-  save: "「14時から会議1時間」「明日 資料作成2時間」「15分延長」「今のをスキップ」「割り込み30分」のような決まった形の依頼は、AIを使わずにアプリで処理します（使用量は減りません）。それ以外の依頼だけAIが考えます",
+  save: "「14時から会議1時間」「明日 資料作成2時間」「15分延長」「今のをスキップ」「割り込み30分」のような決まった形の依頼は、AIを使わずにアプリで処理します（使用量は減りません）。それ以外は安いAI（Haiku）が考え、「組み直して」のような難しい依頼だけ Sonnet に回します",
   normal: "すべての依頼をAI（Sonnet）が考えます。予定の分け方や空き時間の選び方まで任せられ、そのたびに使用量を消費します",
   boost: "すべての依頼を、いちばん賢いAI（Opus）が考えます。複雑な組み直しに強い分、使用量は通常のおよそ2倍です",
 };

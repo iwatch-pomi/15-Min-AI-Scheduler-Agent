@@ -1,4 +1,4 @@
-import { createMessage } from "./claude";
+import { MODELS, createMessage } from "./claude";
 import type { CostMeter } from "./pricing";
 import type { TimeSlot } from "./theme";
 
@@ -6,7 +6,7 @@ import type { TimeSlot } from "./theme";
 // 費用を抑えるため、いちばん安いモデルで短く作る（1回あたり今日の予算の 0.1% 未満）。
 // 作るのは時間帯ごとに1回だけ（画面側でこの端末に保存する）
 
-export const QUOTE_MODEL = "claude-haiku-5-5";
+export const QUOTE_MODEL = MODELS.save;
 const MAX_LENGTH = 40;
 
 const SLOT_LABEL: Record<TimeSlot, string> = {
@@ -35,7 +35,9 @@ export async function generateQuote(
   if (opts.recent?.length) lines.push(`最近のひと言（同じ・似たものは避ける）：\n${opts.recent.map((r) => `- ${r}`).join("\n")}`);
   const response = await createMessage(meter, {
     model: QUOTE_MODEL,
-    max_tokens: 200,
+    // Haiku は考える分も max_tokens に入るので、短い答えでも余裕を持たせ、考える量は少なめにする
+    max_tokens: 2000,
+    output_config: { effort: "low" },
     system: SYSTEM,
     messages: [{ role: "user", content: lines.join("\n") }],
   });

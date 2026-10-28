@@ -438,7 +438,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
         return;
       }
       const items: ChangeItem[] = data.changes?.items ?? [];
-      reply(data.reply, { costPercent: data.costPercent, local: data.local, ...(data.opId ? { result: { opIds: [data.opId], items } } : {}) });
+      reply(data.reply, { costPercent: data.costPercent, local: data.local, model: data.model, ...(data.opId ? { result: { opIds: [data.opId], items } } : {}) });
       await loadAll();
     } catch {
       reply("通信に失敗しました。電波の良いところでもう一度お試しください。", { error: true });
