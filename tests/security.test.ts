@@ -34,6 +34,23 @@ describe("CSRF 対策（proxy）", () => {
   });
 });
 
+describe("ストイックの入り口（/arc）", () => {
+  it("/arc を開くと、デザインをストイックにしてトップへ移す", () => {
+    for (const path of ["/arc", "/arc/"]) {
+      const res = proxy(req("GET", path));
+      expect(res.status).toBe(307);
+      expect(new URL(res.headers.get("location")!).pathname).toBe("/");
+      expect(res.cookies.get("ai15-theme")).toMatchObject({ value: "stoic", path: "/", sameSite: "lax" });
+    }
+  });
+
+  it("トップは cookie を書き換えない（前回のデザインのまま）", () => {
+    const res = proxy(req("GET", "/"));
+    expect(res.cookies.get("ai15-theme")).toBeUndefined();
+    expect(proxy(req("GET", "/archive")).status).toBe(200);
+  });
+});
+
 describe("デモモード", () => {
   afterEach(() => vi.unstubAllEnvs());
 

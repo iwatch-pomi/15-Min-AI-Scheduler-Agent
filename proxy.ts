@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { THEME_COOKIE } from "@/lib/theme";
 
 // すべてのリクエストの手前で動く（Next.js の Proxy）。
 // 1. API への書き込み（POST など）は、このアプリの画面から来たものだけ通す（CSRF 対策）
 // 2. 画面には、リクエストごとの nonce を使った Content-Security-Policy を付ける（XSS 対策）
+// 3. /arc を開いたら、デザインをストイックにして（cookie）トップへ移す
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -40,8 +42,17 @@ export function contentSecurityPolicy(nonce: string, dev = false): string {
   ].join("; ");
 }
 
+/** ストイックの入り口。開くと、デザインをストイックにしてトップへ移る */
+export const STOIC_ENTRY = "/arc";
+
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  if (pathname === STOIC_ENTRY || pathname === `${STOIC_ENTRY}/`) {
+    const res = NextResponse.redirect(new URL("/", req.url));
+    // 画面側の切り替えでも書き換えるので httpOnly にはしない（中身はデザインの名前だけ）
+    res.cookies.set(THEME_COOKIE, "stoic", { path: "/", maxAge: 60 * 60 * 24 * 400, sameSite: "lax" });
+    return res;
+  }
   if (pathname.startsWith("/api/")) {
     // Auth.js（/api/auth）は自分の CSRF トークンで守っている
     if (!SAFE_METHODS.has(req.method) && !pathname.startsWith("/api/auth/") && !isSameOrigin(req)) {

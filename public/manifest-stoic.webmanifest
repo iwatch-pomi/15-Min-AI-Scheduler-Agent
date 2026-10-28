@@ -2,7 +2,7 @@
   "name": "AIスケジュールアシスタント",
   "short_name": "AIスケジュールアシスタント",
   "description": "15分単位のタイムラインと、予定を組んでくれるAIコーチ",
-  "start_url": "/",
+  "start_url": "/arc",
   "display": "standalone",
   "background_color": "#0a0a0b",
   "theme_color": "#0a0a0b",
