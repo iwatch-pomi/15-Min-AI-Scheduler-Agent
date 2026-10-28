@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { logout } from "@/app/actions";
-import { AI_MODE_HELP, type AiMode } from "@/lib/interrupt";
+import { AI_MODE_HELP, SAVE_TIP, type AiMode } from "@/lib/interrupt";
 import type { Usage } from "@/lib/limits";
 import type { Routine, RoutineInput } from "@/lib/routines";
 import RoutineList from "./RoutineList";
@@ -83,6 +83,11 @@ export default function SettingsView(props: {
             <p className="text-xs text-muted">
               {AI_MODE_HELP[aiMode]}。［元に戻す］と「元に戻して」は、どちらのモードでもAIを使いません。
             </p>
+            {aiMode === "save" && (
+              <p className="rounded-xl bg-accent-soft px-3 py-2 text-xs leading-relaxed text-accent-ink" data-testid="save-tip">
+                {SAVE_TIP}
+              </p>
+            )}
           </div>
         </Section>
 

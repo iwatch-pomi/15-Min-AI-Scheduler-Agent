@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef } from "react";
-import type { ChatSettings } from "@/lib/interrupt";
+import { SAVE_TIP, type ChatSettings } from "@/lib/interrupt";
 import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
 import { localDateString } from "@/lib/time";
@@ -73,6 +73,11 @@ export default function ChatView(props: {
             <Mascot className="mx-auto size-20" />
             <p className="font-bold">ひと言で、今日の予定が整う。</p>
             <p className="text-sm text-muted">やりたいことを送ると、空き時間に15分単位で組み込みます。</p>
+            {save && (
+              <p className="mx-auto max-w-xs rounded-xl bg-accent-soft px-3 py-2 text-left text-xs leading-relaxed text-accent-ink" data-testid="save-tip">
+                {SAVE_TIP}
+              </p>
+            )}
             <div className="space-y-2 pt-2">
               {EXAMPLES.map((ex) => (
                 <button
@@ -171,7 +176,7 @@ export default function ChatView(props: {
         {usage.exhausted && (
           <p className="rounded-xl bg-now/10 px-3 py-2 text-xs text-now">
             今日のAIの利用上限に達しました。明日の0時にもとに戻ります。
-            {save && "「14時から会議1時間」「15分延長」のような決まった形の依頼は、AIを使わずに処理できます。"}
+            {save && "「14時から会議1時間」「15分延長」のような決まった形の依頼は、AIを使わずに処理できます。時刻と長さをはっきり書いて1件ずつ送ってください。"}
           </p>
         )}
         <InterruptPanel settings={settings} onChange={onSettingsChange} />

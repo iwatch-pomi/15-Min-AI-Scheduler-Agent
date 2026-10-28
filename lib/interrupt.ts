@@ -21,6 +21,9 @@ export const AI_MODE_HELP: Record<AiMode, string> = {
   boost: "すべての依頼をAIが考えます。予定の分け方や空き時間の選び方まで任せられますが、そのたびに使用量を消費します",
 };
 
+/** 節約モードで、AI を使わずに処理されやすい書き方のコツ（マイページ・AI 画面に出す） */
+export const SAVE_TIP = "使用量を節約したいときは、「14時から〇〇1時間」のように時刻と長さをはっきり書いて1件ずつ送ると、AIを使わずに処理されやすくなります。";
+
 /** 履歴に残すユーザーの発言（AI にも割り込みだったことが伝わる） */
 export const interruptLabel = (message: string) => `⚡割り込み：${message}`;
 
