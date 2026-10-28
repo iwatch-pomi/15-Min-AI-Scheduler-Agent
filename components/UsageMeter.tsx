@@ -1,6 +1,7 @@
 "use client";
 
 import type { Usage } from "@/lib/limits";
+import { useTheme } from "./ThemeContext";
 
 /** 今日の AI の残り（1日の予算に対する％）。依頼の内容が重いほど多く減る */
 export default function UsageMeter({ usage, compact }: { usage: Usage; compact?: boolean }) {
@@ -8,6 +9,41 @@ export default function UsageMeter({ usage, compact }: { usage: Usage; compact?:
   const tone = usage.exhausted ? "bg-now" : p <= 20 ? "bg-amber-500" : "bg-accent";
   const text = usage.exhausted ? "text-now" : p <= 20 ? "text-amber-600 dark:text-amber-400" : "text-accent-ink";
 
+  const stoic = useTheme().theme === "stoic";
+
+  if (stoic && compact) {
+    return (
+      <span className="flex items-center gap-2.5" data-testid="usage">
+        <span className="t-label text-[10px] tracking-[0.12em] text-muted">AI LEFT</span>
+        <span className="h-1 w-20 overflow-hidden rounded-sm bg-line-soft">
+          <span className={`block h-full ${tone}`} style={{ width: `${p}%` }} />
+        </span>
+        <span className={`t-num text-sm font-bold ${text}`}>{p}%</span>
+      </span>
+    );
+  }
+  if (stoic) {
+    // 10区切りのバー
+    return (
+      <div className="space-y-2.5" data-testid="usage">
+        <p className="flex items-baseline justify-between text-sm">
+          <span>今日のAIの残り</span>
+          <span className={`t-num text-[28px] font-bold tracking-[-0.02em] ${text}`}>
+            {p}
+            <span className="text-sm">%</span>
+          </span>
+        </p>
+        <div className="grid grid-cols-10 gap-[3px]">
+          {Array.from({ length: 10 }, (_, i) => (
+            <span key={i} className={`h-1.5 rounded-[1px] ${p >= (i + 1) * 10 - 5 ? tone : "bg-line"}`} />
+          ))}
+        </div>
+        <p className="text-[11px] text-muted">
+          AIに頼んだ内容の量に応じて減ります（簡単な追加は少し、たくさんの組み直しは多め）。毎日 <span className="t-code">00:00</span> にリセット。
+        </p>
+      </div>
+    );
+  }
   if (compact) {
     return (
       <span className="inline-flex items-center gap-1.5 text-[11px] text-muted" data-testid="usage">

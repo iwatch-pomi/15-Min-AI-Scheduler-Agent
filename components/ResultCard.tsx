@@ -4,9 +4,11 @@ import { useState } from "react";
 import type { ManualChange } from "@/lib/manual";
 import { localDateString, localTime, minutesBetween, zonedToUtc } from "@/lib/time";
 import type { ChangeItem } from "@/lib/ui";
-import { CheckCircleIcon, PencilIcon, PlusIcon, TrashIcon, UndoIcon } from "./icons";
+import { CheckCircleIcon, CheckIcon, PencilIcon, PlusIcon, TrashIcon, UndoIcon } from "./icons";
+import { useTheme } from "./ThemeContext";
 
 const KIND_LABEL: Record<ChangeItem["kind"], string> = { create: "追加", update: "変更", delete: "削除" };
+const KIND_CODE: Record<ChangeItem["kind"], string> = { create: "ADD", update: "EDIT", delete: "DEL" };
 const KIND_STYLE: Record<ChangeItem["kind"], string> = {
   create: "border-l-blk-ai",
   update: "border-l-blk-ai",
@@ -19,7 +21,11 @@ const MINUTE_OPTIONS = [15, 30, 45, 60, 75, 90, 105, 120, 150, 180, 210, 240];
 
 type Row = { key: string; id?: string; date: string; time: string; minutes: number; title: string };
 
-function heading(items: ChangeItem[], local?: boolean): string {
+function heading(items: ChangeItem[], local?: boolean, stoic?: boolean): string {
+  if (stoic) {
+    if (items.every((i) => i.kind === "delete")) return "予定を削除";
+    return items.every((i) => i.kind === "create") ? "スケジュールを作成" : "スケジュールを調整";
+  }
   // AI を使わずにアプリで処理したときは「AIが」と書かない
   const who = local ? "" : "AIが";
   if (items.every((i) => i.kind === "delete")) return "予定を削除しました";
@@ -84,6 +90,7 @@ export default function ResultCard(props: {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const stoic = useTheme().theme === "stoic";
 
   const startEdit = () => {
     setRows(editable.map((i) => toRow(i, tz)));
@@ -187,10 +194,55 @@ export default function ResultCard(props: {
           >
             キャンセル
           </button>
-          <button onClick={save} disabled={saving} className="rounded-full bg-accent py-2.5 text-sm font-bold text-white disabled:opacity-60">
+          <button onClick={save} disabled={saving} className="rounded-full bg-accent py-2.5 text-sm font-bold text-on-accent disabled:opacity-60">
             {saving ? "保存中…" : "保存"}
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (stoic) {
+    return (
+      <div className="space-y-3 rounded-2xl border border-line bg-surface p-3.5" data-testid="result-card">
+        <div className="flex items-center gap-2">
+          <span className={`grid size-[22px] shrink-0 place-items-center rounded-md ${undone ? "bg-surface-2 text-muted" : "bg-accent text-on-accent"}`}>
+            <CheckIcon className="size-3.5" strokeWidth={2.6} />
+          </span>
+          <p className="flex-1 text-sm font-bold">{undone ? "変更を元に戻しました" : heading(items, local, true)}</p>
+          {!undone && editable.length > 0 && (
+            <button onClick={startEdit} className="flex h-8 shrink-0 items-center gap-1 px-2 text-xs font-bold text-accent-ink">
+              <PencilIcon className="size-3.5" />
+              編集
+            </button>
+          )}
+        </div>
+        <ul className={`space-y-1.5 ${undone ? "opacity-50" : ""}`}>
+          {sorted.map((item) => {
+            const start = new Date(item.start);
+            const minutes = minutesBetween(start, new Date(item.end));
+            return (
+              <li key={item.id} className="flex items-center gap-3 rounded-[10px] bg-surface-2 px-3 py-2.5">
+                <span className="t-code text-xs text-accent-ink">{localTime(start, tz)}</span>
+                <span className={`min-w-0 flex-1 truncate text-sm font-bold ${item.kind === "delete" ? "text-muted line-through" : ""}`}>{item.title}</span>
+                <span className="t-code shrink-0 text-[11px] text-muted">
+                  {minutes}m · {KIND_CODE[item.kind]}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        {!undone && (
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={onUndo} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-line text-[13px] font-medium">
+              <UndoIcon className="size-4" />
+              元に戻す
+            </button>
+            <button onClick={onConfirm} className="h-11 rounded-xl bg-accent text-[13px] font-bold text-on-accent">
+              確認する
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -226,7 +278,7 @@ export default function ResultCard(props: {
 
       {!undone && (
         <div className="mt-4 space-y-2">
-          <button onClick={onConfirm} className="w-full rounded-full bg-accent py-2.5 text-sm font-bold text-white transition active:scale-[0.99]">
+          <button onClick={onConfirm} className="w-full rounded-full bg-accent py-2.5 text-sm font-bold text-on-accent transition active:scale-[0.99]">
             スケジュールを確認
           </button>
           <button

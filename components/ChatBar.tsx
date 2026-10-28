@@ -69,7 +69,7 @@ export default function ChatBar(props: {
         submit(text);
       }}
     >
-      <div className={`flex min-w-0 flex-1 items-end rounded-3xl bg-surface pr-1 shadow-card ${highlight ? "ring-2 ring-accent" : "ring-1 ring-line"} focus-within:ring-accent`}>
+      <div className={`flex min-w-0 flex-1 items-end rounded-3xl bg-surface pr-1 shadow-card stoic:min-h-12 stoic:items-center stoic:rounded-[14px] stoic:shadow-none ${highlight ? "ring-2 ring-accent" : "ring-1 ring-line"} focus-within:ring-accent`}>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -101,7 +101,7 @@ export default function ChatBar(props: {
         type="submit"
         disabled={sending || disabled || !text.trim()}
         aria-label="送信"
-        className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-white shadow-card transition active:scale-95 disabled:opacity-40"
+        className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-on-accent shadow-card transition active:scale-95 disabled:opacity-40 stoic:size-12 stoic:rounded-[14px] stoic:shadow-none"
       >
         {sending ? (
           <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />

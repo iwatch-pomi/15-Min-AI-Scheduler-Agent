@@ -151,7 +151,7 @@ export default function RoutineEditor(props: {
                   key={d}
                   onClick={() => toggle(d)}
                   aria-pressed={on}
-                  className={`aspect-square rounded-full text-sm font-bold transition ${on ? "bg-accent text-white" : "bg-surface text-muted ring-1 ring-line"}`}
+                  className={`aspect-square rounded-full text-sm font-bold transition ${on ? "bg-accent text-on-accent" : "bg-surface text-muted ring-1 ring-line"}`}
                 >
                   {label}
                 </button>
@@ -182,7 +182,7 @@ export default function RoutineEditor(props: {
               削除
             </button>
           )}
-          <button onClick={save} disabled={busy} className="flex-1 rounded-full bg-accent py-2.5 text-sm font-bold text-white disabled:opacity-60">
+          <button onClick={save} disabled={busy} className="flex-1 rounded-full bg-accent py-2.5 text-sm font-bold text-on-accent disabled:opacity-60">
             {busy ? "保存中…" : "保存"}
           </button>
         </div>

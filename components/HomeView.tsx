@@ -4,13 +4,34 @@ import type { Suggestion } from "@/lib/suggest";
 import type { Block } from "@/lib/types";
 import { dayRange, localTime, minutesBetween } from "@/lib/time";
 import { durationLabel } from "@/lib/routines";
+import { arcProgress, shortDuration, stoicLine, type Arc } from "@/lib/theme";
 import { greeting, iconFor } from "@/lib/ui";
 import BlockIcon from "./BlockIcon";
-import { BulbIcon, CalendarIcon, ChevronRightIcon, LeafIcon, Mascot, MoonIcon, PinIcon, PlusIcon, RefreshIcon, RepeatIcon, SparkleIcon, SunIcon } from "./icons";
+import {
+  BulbIcon,
+  CalendarIcon,
+  CalendarPlusIcon,
+  ChevronRightIcon,
+  GaugeIcon,
+  LeafIcon,
+  Mascot,
+  MoonIcon,
+  PauseIcon,
+  PinIcon,
+  PlusIcon,
+  RefreshIcon,
+  RepeatIcon,
+  SparkleIcon,
+  SunIcon,
+} from "./icons";
+import { useTheme } from "./ThemeContext";
 import WeekStrip from "./WeekStrip";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 const SUGGESTION_ICONS = { calendar: CalendarIcon, bulb: BulbIcon, leaf: LeafIcon };
+const STOIC_SUGGESTION_ICONS = { calendar: CalendarPlusIcon, bulb: BulbIcon, leaf: PauseIcon };
+const EN_WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const EN_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 export default function HomeView(props: {
   date: string;
@@ -39,10 +60,16 @@ export default function HomeView(props: {
   const hello = greeting(Number(localTime(now, tz).slice(0, 2)));
   const current = isToday ? timed.find((e) => new Date(e.start) <= now && new Date(e.end) > now) : undefined;
   const next = isToday && !current ? timed.find((e) => new Date(e.start) > now) : undefined;
+  const { theme, arc } = useTheme();
+  const stoic = theme === "stoic";
+  const Icons = stoic ? STOIC_SUGGESTION_ICONS : SUGGESTION_ICONS;
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-28">
+        {stoic ? (
+          <StoicHeader date={date} today={today} now={now} tz={tz} suggestionCount={suggestions.length} onOpenAi={() => onOpenAi()} arc={arc} />
+        ) : (
         <header className="pt-5">
           <div className="flex items-center justify-between gap-3">
             <h1 className="flex min-w-0 items-baseline gap-0.5 text-heading">
@@ -72,6 +99,7 @@ export default function HomeView(props: {
             {hello.icon === "sun" ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
           </p>
         </header>
+        )}
 
         <div className="mt-5">
           <WeekStrip date={date} today={today} onChange={onDateChange} />
@@ -84,9 +112,14 @@ export default function HomeView(props: {
         )}
         {error && <p className="mt-3 text-sm text-now">{error}</p>}
 
-        <section className="mt-5 rounded-3xl bg-surface/70 p-3 shadow-card" data-testid="agenda">
+        {stoic && (
+          <p className="t-label mt-5 mb-2.5 text-muted">
+            {isToday ? "TODAY" : `${m}.${d}`} / {timed.length} BLOCKS
+          </p>
+        )}
+        <section className={stoic ? "rounded-2xl bg-surface shadow-card" : "mt-5 rounded-3xl bg-surface/70 p-3 shadow-card"} data-testid="agenda">
           {next && (
-            <p className="mb-2 flex items-center gap-1.5 px-1 text-xs text-muted" data-testid="nowbar">
+            <p className="mb-2 flex items-center gap-1.5 px-1 text-xs text-muted stoic:t-code stoic:mb-0 stoic:border-b stoic:border-line-soft stoic:px-4 stoic:py-3 stoic:text-[11px]" data-testid="nowbar">
               <span className="size-1.5 shrink-0 rounded-full bg-accent" />
               次は <span className="tabular-nums">{localTime(new Date(next.start), tz)}</span>
               <span className="truncate font-medium text-text">{next.title}</span>
@@ -108,7 +141,7 @@ export default function HomeView(props: {
               <p className="mt-1 text-sm text-muted">右下の ＋ から、AI にひと言で頼んでみましょう</p>
             </div>
           ) : (
-            <ul className="space-y-2">
+            <ul className={stoic ? "divide-y divide-line-soft [&>li]:mx-4" : "space-y-2"}>
               {timed.map((e) => (
                 <AgendaRow
                   key={e.id}
@@ -118,6 +151,7 @@ export default function HomeView(props: {
                   day={dayRange(date, tz)}
                   current={e.id === current?.id}
                   past={isToday && new Date(e.end) <= now}
+                  stoic={stoic}
                 />
               ))}
             </ul>
@@ -127,15 +161,22 @@ export default function HomeView(props: {
         {date >= today && (
           <section className="mt-6" data-testid="suggestions">
             <div className="mb-2 flex items-center gap-1.5 px-1">
-              <h2 className="flex flex-1 items-center gap-1.5 text-sm font-bold text-accent-ink">
-                <Mascot className="size-7" />
-                AIのおすすめ
-                <SparkleIcon className="size-4" />
-              </h2>
+              {stoic ? (
+                <h2 className="t-num flex flex-1 items-center gap-2 text-[15px] font-bold tracking-[0.1em] text-heading">
+                  <GaugeIcon className="size-[18px] text-accent-ink" strokeWidth={2} />
+                  AI BRIEF
+                </h2>
+              ) : (
+                <h2 className="flex flex-1 items-center gap-1.5 text-sm font-bold text-accent-ink">
+                  <Mascot className="size-7" />
+                  AIのおすすめ
+                  <SparkleIcon className="size-4" />
+                </h2>
+              )}
               <button
                 onClick={onRefreshSuggestions}
                 disabled={suggestLoading || usageExhausted}
-                className="flex items-center gap-1 rounded-full bg-surface px-3 py-1.5 text-xs font-bold text-accent-ink shadow-card disabled:opacity-50"
+                className="flex items-center gap-1 rounded-full bg-surface px-3 py-1.5 text-xs font-bold text-accent-ink shadow-card disabled:opacity-50 stoic:h-[34px] stoic:gap-1.5 stoic:rounded-[10px] stoic:border stoic:border-line stoic:bg-transparent stoic:font-medium stoic:text-heading stoic:shadow-none"
                 data-testid="refresh-suggestions"
               >
                 <RefreshIcon className={`size-3.5 ${suggestLoading ? "animate-spin" : ""}`} />
@@ -155,11 +196,11 @@ export default function HomeView(props: {
             )}
             <ul className="divide-y divide-line-soft overflow-hidden rounded-2xl bg-surface shadow-card">
               {suggestions.map((s) => {
-                const Icon = SUGGESTION_ICONS[s.icon];
+                const Icon = Icons[s.icon];
                 return (
                   <li key={s.id}>
                     <button onClick={() => onOpenAi(s.prompt)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-surface-2">
-                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink stoic:size-[38px] stoic:rounded-[10px] stoic:bg-surface-2">
                         <Icon className="size-5" />
                       </span>
                       <span className="flex-1 text-[13px] leading-relaxed">{s.text}</span>
@@ -176,16 +217,77 @@ export default function HomeView(props: {
       <button
         onClick={() => onOpenAi()}
         aria-label="AIに予定を依頼"
-        className="absolute right-5 bottom-5 grid size-14 place-items-center rounded-full bg-accent text-white shadow-[0_10px_24px_-8px_var(--accent)] transition active:scale-95"
+        className="absolute right-5 bottom-5 grid size-14 place-items-center rounded-full bg-accent text-on-accent shadow-[0_10px_24px_-8px_var(--accent)] transition active:scale-95 stoic:rounded-[18px] stoic:shadow-none"
       >
-        <PlusIcon className="size-7" strokeWidth={2.4} />
+        <PlusIcon className="size-7" strokeWidth={stoic ? 2 : 2.4} />
       </button>
     </div>
   );
 }
 
-function AgendaRow(props: { block: Block; tz: string; now: Date; day: { start: Date; end: Date }; current: boolean; past: boolean }) {
-  const { block, tz, now, day, current, past } = props;
+function StoicHeader(props: {
+  date: string;
+  today: string;
+  now: Date;
+  tz: string;
+  suggestionCount: number;
+  onOpenAi: () => void;
+  arc: Arc | null;
+}) {
+  const { date, today, now, tz, suggestionCount, onOpenAi, arc } = props;
+  const [y, m, d] = date.split("-").map(Number);
+  const dow = new Date(`${date}T12:00:00Z`).getUTCDay();
+  const progress = arc ? arcProgress(arc, today) : null;
+  return (
+    <header className="pt-6" data-testid="stoic-header">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="t-label text-muted">
+            {EN_WEEKDAYS[dow]} · {String(d).padStart(2, "0")} {EN_MONTHS[m - 1]} {y}
+          </p>
+          <h1 className="t-num mt-1 text-[60px] font-bold leading-none tracking-[-0.03em] text-heading">
+            {m}.{String(d).padStart(2, "0")}
+          </h1>
+        </div>
+        <button
+          onClick={onOpenAi}
+          className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-[14px] border border-line bg-surface px-3 py-2.5 text-left active:scale-[0.98]"
+          data-testid="assistant-card"
+        >
+          <GaugeIcon className="size-[22px] text-accent-ink" strokeWidth={2} />
+          <span>
+            <span className="t-num block text-[13px] font-bold tracking-[0.08em] text-heading">COACH</span>
+            <span className="block text-[11px] text-muted">{suggestionCount ? `提案 ${suggestionCount}件` : "依頼する"}</span>
+          </span>
+          {suggestionCount > 0 && (
+            <span className="t-num grid size-5 place-items-center rounded-md bg-accent text-xs font-bold text-on-accent">{suggestionCount}</span>
+          )}
+        </button>
+      </div>
+      <p className="mt-2 text-[13px] text-muted">{stoicLine(Number(localTime(now, tz).slice(0, 2)), today)}</p>
+      {arc && progress && (
+        <div className="mt-5" data-testid="arc">
+          <div className="t-label flex items-center justify-between gap-3 tracking-[0.12em]">
+            <span className="truncate text-accent-ink">{arc.name}</span>
+            <span className="shrink-0 text-muted">
+              {progress.status === "active"
+                ? `DAY ${progress.day} / ${progress.total}`
+                : progress.status === "before"
+                  ? `あと${progress.daysLeft}日で開始`
+                  : `COMPLETE / ${progress.total}`}
+            </span>
+          </div>
+          <div className="mt-2 h-1 overflow-hidden rounded-sm bg-line-soft">
+            <div className="h-full bg-accent" style={{ width: `${progress.ratio * 100}%` }} />
+          </div>
+        </div>
+      )}
+    </header>
+  );
+}
+
+function AgendaRow(props: { block: Block; tz: string; now: Date; day: { start: Date; end: Date }; current: boolean; past: boolean; stoic: boolean }) {
+  const { block, tz, now, day, current, past, stoic } = props;
   const start = new Date(block.start);
   const end = new Date(block.end);
   // 睡眠のように日付をまたぐ予定（前の日から続いている／次の日まで続く）
@@ -193,6 +295,38 @@ function AgendaRow(props: { block: Block; tz: string; now: Date; day: { start: D
   const toNextDay = end > day.end;
   const minutes = minutesBetween(start, end);
   const remainingSec = Math.max(0, Math.round((end.getTime() - now.getTime()) / 1000));
+
+  if (stoic) {
+    const dur = shortDuration(minutes);
+    const range = fromPrevDay ? `— ${localTime(end, tz)}` : `${localTime(start, tz)} — ${localTime(end, tz)}`;
+    return (
+      <li className={`flex items-center gap-3.5 py-3.5 ${past ? "opacity-40" : ""}`}>
+        <span className={`t-code w-10 shrink-0 text-[11px] ${current ? "text-accent-ink" : fromPrevDay ? "text-muted" : "text-heading"}`}>
+          {fromPrevDay ? "前日" : localTime(start, tz)}
+        </span>
+        <span className={`grid size-[38px] shrink-0 place-items-center rounded-[10px] bg-surface-2 ${block.ai ? "text-accent-ink" : "text-muted"} ${current ? "ring-1 ring-accent" : ""}`}>
+          <BlockIcon kind={iconFor(block)} className="size-[18px]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-bold text-heading">{block.title}</p>
+          <p className="t-code mt-0.5 truncate text-[11px] text-muted">
+            {range}
+            {block.routine && " · ROUTINE"}
+            {!block.ai && " · MAIN"}
+          </p>
+          {current && (
+            <p className="t-code mt-1 text-[11px] font-bold text-accent-ink" data-testid="nowbar">
+              NOW · 残り {Math.floor(remainingSec / 60)}:{String(remainingSec % 60).padStart(2, "0")}
+            </p>
+          )}
+        </div>
+        <span className="t-num shrink-0 text-xl font-bold text-heading">
+          {dur.value}
+          <span className="ml-0.5 text-xs text-muted">{dur.unit}</span>
+        </span>
+      </li>
+    );
+  }
 
   return (
     <li className={`flex gap-3 ${past ? "opacity-50" : ""}`}>
@@ -223,7 +357,7 @@ function AgendaRow(props: { block: Block; tz: string; now: Date; day: { start: D
             </p>
           )}
           {current && (
-            <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-white tabular-nums" data-testid="nowbar">
+            <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-on-accent tabular-nums" data-testid="nowbar">
               進行中・残り {Math.floor(remainingSec / 60)}:{String(remainingSec % 60).padStart(2, "0")}
             </p>
           )}

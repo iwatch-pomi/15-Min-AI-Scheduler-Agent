@@ -273,3 +273,24 @@ export const BoltIcon = (p: IconProps) => (
     <path d="M13 2.5 4.5 13.5H11l-1 8 8.5-11H12z" />
   </Svg>
 );
+
+// ストイック（コーチ）：メーターの形
+export const GaugeIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 19a9 9 0 0 1 18 0" />
+    <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
+  </Svg>
+);
+
+export const PauseIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M9.5 7v10M14.5 7v10" />
+  </Svg>
+);
+
+export const CalendarPlusIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3.5" y="5" width="17" height="15" rx="3" />
+    <path d="M3.5 10h17M8 3v4M16 3v4M12 12.5v5M9.5 15h5" />
+  </Svg>
+);

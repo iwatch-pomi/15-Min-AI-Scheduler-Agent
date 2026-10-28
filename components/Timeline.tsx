@@ -4,8 +4,11 @@ import { useEffect, useMemo, useRef } from "react";
 import { assignLanes } from "@/lib/slots";
 import type { Block } from "@/lib/types";
 import { dayRange, localTime, minutesBetween } from "@/lib/time";
-import { blockTone } from "@/lib/ui";
+import { shortDuration } from "@/lib/theme";
+import { blockTone, iconFor } from "@/lib/ui";
+import BlockIcon from "./BlockIcon";
 import { RepeatIcon } from "./icons";
+import { useTheme } from "./ThemeContext";
 
 /** 15分 = 1行の高さ(px) */
 const ROW = 18;
@@ -20,6 +23,7 @@ export default function Timeline(props: { date: string; tz: string; events: Bloc
   const allDay = events.filter((e) => e.allDay);
   const lanes = useMemo(() => assignLanes(timed), [timed]);
   const nowMin = minutesBetween(dayStart, now);
+  const stoic = useTheme().theme === "stoic";
 
   // 日付が変わったら「今」(他の日は朝7時) のあたりまでスクロール
   useEffect(() => {
@@ -42,7 +46,7 @@ export default function Timeline(props: { date: string; tz: string; events: Bloc
       )}
       <div
         ref={scrollRef}
-        className="relative mx-3 mb-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl bg-surface shadow-card"
+        className="relative mx-3 mb-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl bg-surface shadow-card stoic:mx-5 stoic:bg-[#0f0f11]"
         data-testid="timeline"
       >
         <div className="relative my-3" style={{ height: DAY_MIN * PX_PER_MIN }}>
@@ -54,7 +58,7 @@ export default function Timeline(props: { date: string; tz: string; events: Bloc
               style={{ top: i * ROW }}
             >
               {i % 4 === 0 && (
-                <span className="absolute -top-2 -left-12 w-10 text-right text-[11px] tabular-nums text-muted">
+                <span className="t-code absolute -top-2 -left-12 w-10 text-right text-[11px] tabular-nums text-muted">
                   {String(i / 4).padStart(2, "0")}:00
                 </span>
               )}
@@ -73,6 +77,47 @@ export default function Timeline(props: { date: string; tz: string; events: Bloc
               const tone = blockTone(e);
               const compact = height < 40;
               const time = `${localTime(new Date(e.start), tz)}–${localTime(new Date(e.end), tz)}`;
+              if (stoic) {
+                const dur = shortDuration(minutesBetween(new Date(e.start), new Date(e.end)));
+                return (
+                  <div
+                    key={e.id}
+                    className={`absolute overflow-hidden rounded-xl border px-3.5 ${e.ai ? "border-accent/35 bg-blk-ai-bg" : "border-line bg-blk-main-bg"} ${past ? "opacity-40" : ""}`}
+                    style={{
+                      top: start * PX_PER_MIN + 1,
+                      height: height - 2,
+                      left: `${(lane.lane / lane.lanes) * 100}%`,
+                      width: `calc(${100 / lane.lanes}% - 3px)`,
+                    }}
+                    title={`${time} ${e.title}`}
+                  >
+                    <div className={`flex gap-2 leading-tight ${compact ? "h-full items-center text-[11px]" : "flex-col pt-2.5 text-xs"}`}>
+                      <span className="flex min-w-0 items-center gap-2 font-bold text-heading">
+                        {!compact && <BlockIcon kind={iconFor(e)} className={`size-4 shrink-0 ${e.ai ? "text-accent-ink" : "text-muted"}`} />}
+                        <span className={`truncate ${compact ? "" : "text-[15px]"}`}>{e.title}</span>
+                      </span>
+                      <span className="t-code shrink-0 text-muted">{time.replace("–", " — ")}</span>
+                      {!e.ai && !compact && <span className="t-label text-[9px] text-muted">MAIN · 変更しない</span>}
+                    </div>
+                    {height > 110 && (
+                      <div className="absolute inset-x-3 bottom-2 flex items-end justify-between">
+                        <span className="t-label flex items-center gap-1.5 text-[10px] text-accent-ink">
+                          {e.routine && (
+                            <>
+                              <RepeatIcon className="size-3.5" />
+                              ROUTINE
+                            </>
+                          )}
+                        </span>
+                        <span className="t-num text-[28px] font-bold tracking-[-0.02em] text-heading">
+                          {dur.value}
+                          <span className="ml-0.5 text-sm text-muted">{dur.unit}</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
               return (
                 <div
                   key={e.id}

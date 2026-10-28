@@ -7,6 +7,7 @@ import { noteText } from "@/lib/history";
 import { suggestions, type Suggestion } from "@/lib/suggest";
 import { DEFAULT_TZ, addDays, localDateString } from "@/lib/time";
 import { DEFAULT_CHAT_SETTINGS, interruptLabel, type ChatSettings } from "@/lib/interrupt";
+import { THEME_COOKIE, defaultArc, isValidArc, parseTheme, type Arc, type Theme } from "@/lib/theme";
 import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
 import type { Routine, RoutineInput } from "@/lib/routines";
@@ -17,6 +18,7 @@ import HomeView from "./HomeView";
 import { AppLogo } from "./icons";
 import SettingsView from "./SettingsView";
 import TabBar from "./TabBar";
+import { ThemeContext } from "./ThemeContext";
 
 const TABS: Tab[] = ["home", "calendar", "ai", "settings"];
 const noopSubscribe = () => () => {};
@@ -146,6 +148,38 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       }
       return next;
     });
+
+  // デザイン（やさしい／ストイック）。サーバーが cookie から <html data-theme> に付けたものを使う
+  const [theme, setThemeState] = useState<Theme>(() =>
+    typeof document === "undefined" ? "soft" : parseTheme(document.documentElement.dataset.theme),
+  );
+  const changeTheme = (t: Theme) => {
+    setThemeState(t);
+    document.documentElement.dataset.theme = t;
+    document.cookie = `${THEME_COOKIE}=${t}; path=/; max-age=${60 * 60 * 24 * 400}; samesite=lax`;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", t === "stoic" ? "#0a0a0b" : "#faf9f6");
+  };
+  // 挑戦（Winter Arc など）の名前と期間。この端末に保存する
+  const [savedArc, setSavedArc] = useState<Arc | null>(null);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("ai15:arc") ?? "null");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (isValidArc(saved)) setSavedArc(saved);
+    } catch {
+      // 保存できない環境では初期値のまま
+    }
+  }, []);
+  const arc = savedArc ?? defaultArc(today);
+  const changeArc = (next: Arc | null) => {
+    setSavedArc(next);
+    try {
+      if (next) localStorage.setItem("ai15:arc", JSON.stringify(next));
+      else localStorage.removeItem("ai15:arc");
+    } catch {
+      // 保存できなくても、この画面では使える
+    }
+  };
 
   // AI で作ったおすすめ（日付ごと）。再読み込みでもう一度費用がかからないよう、この端末に保存する
   type AiSuggest = { items: Suggestion[]; costPercent: number; at: string };
@@ -378,6 +412,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   if (authExpired) return <Reconnect />;
 
   return (
+    <ThemeContext value={{ theme, arc }}>
     <div className="mx-auto flex h-dvh max-w-xl flex-col pt-[env(safe-area-inset-top)]">
       {tab === "home" && (
         <HomeView
@@ -450,12 +485,16 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       {tab === "settings" && <SettingsView tz={tz} email={email} demo={demo} usage={usage} onClearHistory={clearHistory}
           aiMode={chatSettings.aiMode}
           onAiModeChange={(aiMode) => changeChatSettings({ aiMode })}
+          today={today}
+          onThemeChange={changeTheme}
+          onArcChange={changeArc}
           routines={routines}
           onSaveRoutine={saveRoutine}
           onDeleteRoutine={deleteRoutine}
         />}
       <TabBar tab={tab} onChange={setTab} />
     </div>
+    </ThemeContext>
   );
 }
 
@@ -470,7 +509,7 @@ function Reconnect() {
         </p>
       </div>
       <form action={login}>
-        <button type="submit" className="w-full rounded-full bg-accent px-5 py-3.5 font-bold text-white shadow-card transition active:scale-[0.99]">
+        <button type="submit" className="w-full rounded-full bg-accent px-5 py-3.5 font-bold text-on-accent shadow-card transition active:scale-[0.99]">
           Google でログインし直す
         </button>
       </form>

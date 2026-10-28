@@ -33,12 +33,12 @@ export default function WeekStrip({ date, today, onChange }: { date: string; tod
             onClick={() => onChange(d.date)}
             aria-pressed={selected}
             aria-label={`${Number(d.date.slice(5, 7))}月${Number(d.date.slice(8))}日`}
-            className={`flex flex-col items-center gap-1 rounded-full py-2 transition ${
-              selected ? "bg-accent text-white shadow-[0_6px_16px_-6px_var(--accent)]" : "text-text active:bg-surface"
+            className={`flex flex-col items-center gap-1 rounded-full py-2 transition stoic:rounded-xl ${
+              selected ? "bg-accent text-on-accent shadow-[0_6px_16px_-6px_var(--accent)] stoic:shadow-none" : "text-text active:bg-surface stoic:text-heading"
             }`}
           >
-            <span className={`text-[11px] ${selected ? "text-white/90" : "text-muted"}`}>{d.label}</span>
-            <span className="text-lg font-medium leading-none tabular-nums">{Number(d.date.slice(8))}</span>
+            <span className={`text-[11px] ${selected ? "text-on-accent/70 stoic:font-bold stoic:text-on-accent" : "text-muted"}`}>{d.label}</span>
+            <span className={`t-num text-lg font-medium leading-none tabular-nums ${selected ? "stoic:font-bold" : ""}`}>{Number(d.date.slice(8))}</span>
             <span className={`size-1 rounded-full ${isToday && !selected ? "bg-accent" : "bg-transparent"}`} />
           </button>
         );

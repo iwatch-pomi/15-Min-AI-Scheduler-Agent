@@ -7,9 +7,10 @@ import type { ManualChange } from "@/lib/manual";
 import { localDateString } from "@/lib/time";
 import { formatDateJa, type ChangeItem, type ChatEntry } from "@/lib/ui";
 import ChatBar from "./ChatBar";
-import { BoltIcon, ChevronLeftIcon, Mascot } from "./icons";
+import { BoltIcon, ChevronLeftIcon, GaugeIcon, Mascot } from "./icons";
 import ResultCard from "./ResultCard";
 import Segmented from "./Segmented";
+import { useTheme } from "./ThemeContext";
 import UsageMeter from "./UsageMeter";
 
 const QUICK_ACTIONS = ["15分延長", "割り込み30分", "今のをスキップ", "今日の残りを組み直して"];
@@ -42,6 +43,7 @@ export default function ChatView(props: {
   // 節約モードなら、アプリで読める依頼は AI を使わずに処理できるので、上限に達していても送れる
   const save = settings.aiMode === "save";
   const bottomRef = useRef<HTMLDivElement>(null);
+  const stoic = useTheme().theme === "stoic";
   const lastId = entries.at(-1)?.id;
 
   // 新しいメッセージが来たら一番下までスクロール（古い履歴を読み込んだときは動かさない）
@@ -51,12 +53,25 @@ export default function ChatView(props: {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="grid grid-cols-[40px_1fr_40px] items-center px-3 pt-3 pb-2">
-        <button onClick={onBack} aria-label="ホームに戻る" className="grid size-10 place-items-center rounded-full text-muted active:bg-surface">
-          <ChevronLeftIcon className="size-5" />
-        </button>
-        <h1 className="text-center font-bold">AIに予定を依頼</h1>
-      </header>
+      {stoic ? (
+        <header className="flex items-center gap-3 border-b border-line-soft px-5 pt-4 pb-3">
+          <button onClick={onBack} aria-label="ホームに戻る" className="grid size-11 place-items-center rounded-xl border border-line text-heading">
+            <ChevronLeftIcon className="size-5" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h1 className="t-num text-[17px] font-bold tracking-[0.1em] text-heading">AI COACH</h1>
+            <p className="text-[11px] text-muted">予定を投げれば、組み込む。</p>
+          </div>
+          <GaugeIcon className="size-[22px] text-accent-ink" strokeWidth={2} />
+        </header>
+      ) : (
+        <header className="grid grid-cols-[40px_1fr_40px] items-center px-3 pt-3 pb-2">
+          <button onClick={onBack} aria-label="ホームに戻る" className="grid size-10 place-items-center rounded-full text-muted active:bg-surface">
+            <ChevronLeftIcon className="size-5" />
+          </button>
+          <h1 className="text-center font-bold">AIに予定を依頼</h1>
+        </header>
+      )}
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3" data-testid="chat-log">
         {hasOlder && (
@@ -70,8 +85,8 @@ export default function ChatView(props: {
         )}
         {entries.length === 0 && !sending && (
           <div className="space-y-3 pt-6 text-center">
-            <Mascot className="mx-auto size-20" />
-            <p className="font-bold">ひと言で、今日の予定が整う。</p>
+            {stoic ? <GaugeIcon className="mx-auto size-14 text-accent-ink" /> : <Mascot className="mx-auto size-20" />}
+            <p className="font-bold">{stoic ? "予定を投げろ。15分単位で組み込む。" : "ひと言で、今日の予定が整う。"}</p>
             <p className="text-sm text-muted">やりたいことを送ると、空き時間に15分単位で組み込みます。</p>
             {save && (
               <p className="mx-auto max-w-xs rounded-xl bg-accent-soft px-3 py-2 text-left text-xs leading-relaxed text-accent-ink" data-testid="save-tip">
@@ -107,25 +122,34 @@ export default function ChatView(props: {
               </p>
             ) : entry.role === "user" ? (
             <div key={entry.id} className="flex justify-end">
-              <p className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-blk-main-bg px-4 py-2.5 text-[15px] text-heading">{entry.text}</p>
+              <p className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-blk-main-bg px-4 py-2.5 text-[15px] text-heading stoic:rounded-[14px] stoic:rounded-br-[4px] stoic:bg-heading stoic:px-3.5 stoic:text-sm stoic:font-medium stoic:text-bg">
+                {entry.text}
+              </p>
             </div>
           ) : (
             <div key={entry.id} className="flex items-start gap-2">
-              <Mascot className="size-9 shrink-0" />
+              {!stoic && <Mascot className="size-9 shrink-0" />}
               <div className="min-w-0 flex-1 space-y-2">
                 <p
-                  className={`w-fit max-w-full whitespace-pre-wrap rounded-2xl rounded-tl-md bg-surface px-4 py-2.5 text-[15px] shadow-card ${entry.error ? "text-now" : ""}`}
+                  className={`w-fit max-w-full whitespace-pre-wrap rounded-2xl rounded-tl-md bg-surface px-4 py-2.5 text-[15px] shadow-card stoic:rounded-[14px] stoic:rounded-bl-[4px] stoic:px-3.5 stoic:py-3 stoic:text-sm stoic:leading-relaxed ${entry.error ? "text-now" : ""}`}
                 >
-                  {entry.text}
+                  {entry.text.split("\n").map((line, i) => (
+                    // 「⚠ 〜と重なっています」などの注意はオレンジで
+                    <span key={i} className={`block ${line.startsWith("⚠") ? "mt-1 text-sm text-warn stoic:mt-2 stoic:text-xs" : ""}`}>
+                      {stoic ? withCodeTimes(line) : line}
+                    </span>
+                  ))}
                 </p>
                 {entry.local && (
-                  <p className="pl-1 text-[10px] text-muted" data-testid="cost">
-                    AIを使わずに処理しました（今日のAIは減っていません）
+                  <p className="t-code pl-1 text-[10px] text-muted" data-testid="cost">
+                    {stoic ? "LOCAL · AI未使用（残量は減っていません）" : "AIを使わずに処理しました（今日のAIは減っていません）"}
                   </p>
                 )}
                 {entry.costPercent !== undefined && (
-                  <p className="pl-1 text-[10px] text-muted" data-testid="cost">
-                    この依頼で今日のAIを {entry.costPercent < 0.1 ? "0.1% 未満" : `${entry.costPercent}%`} 使いました
+                  <p className="t-code pl-1 text-[10px] text-muted" data-testid="cost">
+                    {stoic
+                      ? `AI · 今日の ${entry.costPercent < 0.1 ? "0.1% 未満" : `${entry.costPercent}%`} を使用`
+                      : `この依頼で今日のAIを ${entry.costPercent < 0.1 ? "0.1% 未満" : `${entry.costPercent}%`} 使いました`}
                   </p>
                 )}
                 {entry.result && entry.result.items.length > 0 && (
@@ -147,9 +171,9 @@ export default function ChatView(props: {
 
         {sending && (
           <div className="flex items-start gap-2" data-testid="thinking">
-            <Mascot className="size-9 shrink-0" />
+            {!stoic && <Mascot className="size-9 shrink-0" />}
             <div className="flex items-center gap-3 rounded-2xl rounded-tl-md bg-surface px-4 py-3 text-sm text-muted shadow-card">
-              AIが予定を作成しています…
+              {stoic ? "組み込み中…" : "AIが予定を作成しています…"}
               <span className="flex h-4 items-center gap-0.5" aria-hidden="true">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <span key={i} className="h-full w-0.5 animate-wave rounded-full bg-accent" style={{ animationDelay: `${i * 0.12}s` }} />
@@ -161,15 +185,15 @@ export default function ChatView(props: {
         <div ref={bottomRef} />
       </div>
 
-      <div className="space-y-2 px-4 pt-1 pb-3">
+      <div className="space-y-2 px-4 pt-1 pb-3 stoic:space-y-2.5 stoic:border-t stoic:border-line-soft stoic:px-5 stoic:pt-2.5">
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={onOpenSettings}
-            className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-muted"
+            className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-muted stoic:t-label stoic:rounded-md stoic:border stoic:border-line stoic:bg-transparent stoic:px-2 stoic:py-[5px] stoic:text-[10px] stoic:font-normal stoic:tracking-[0.12em] stoic:text-[#a8a8ae]"
             data-testid="ai-mode-chip"
           >
-            {save ? "節約モード" : "強化モード"}
+            {stoic ? (save ? "ECO MODE" : "BOOST MODE") : save ? "節約モード" : "強化モード"}
           </button>
           <UsageMeter usage={usage} compact />
         </div>
@@ -187,11 +211,13 @@ export default function ChatView(props: {
               type="button"
               disabled={sending || (usage.exhausted && !(save && LOCAL_ACTIONS.has(a)))}
               onClick={() => onSend(a, { plain: true })}
-              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-50 ${
-                i === 0 ? "bg-accent text-white" : "border border-accent/40 bg-surface text-accent-ink"
+              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-50 stoic:h-9 stoic:rounded-[10px] stoic:py-0 ${
+                i === 0
+                  ? "bg-accent text-on-accent stoic:border stoic:border-accent"
+                  : "border border-accent/40 bg-surface text-accent-ink stoic:border-line stoic:bg-transparent stoic:font-medium stoic:text-heading"
               }`}
             >
-              {a}
+              {stoic && i === 0 ? `+${a}` : a}
             </button>
           ))}
         </div>
@@ -201,11 +227,24 @@ export default function ChatView(props: {
           sending={sending}
           disabled={usage.exhausted && !save}
           onSend={(text) => onSend(text)}
-          placeholder={settings.interrupt ? "例：45分 買い物" : undefined}
+          placeholder={settings.interrupt ? "例：45分 買い物" : stoic ? "予定を入力…" : undefined}
           highlight={settings.interrupt}
         />
       </div>
     </div>
+  );
+}
+
+/** ストイック：返事の中の時刻（22:00–23:00 など）を等幅で */
+function withCodeTimes(line: string) {
+  return line.split(/(\d{1,2}:\d{2}(?:[-–]\d{1,2}:\d{2})?)/).map((part, i) =>
+    i % 2 ? (
+      <span key={i} className="t-code text-[13px]">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
   );
 }
 
@@ -226,8 +265,16 @@ function InterruptPanel({ settings, onChange }: { settings: ChatSettings; onChan
         <span className={`flex-1 text-xs font-bold ${on ? "text-accent-ink" : "text-muted"}`}>
           割り込みモード{on && <span className="ml-1.5 font-normal text-muted">送った予定を、すぐに割り込ませます</span>}
         </span>
-        <span className={`relative h-5 w-9 shrink-0 rounded-full transition ${on ? "bg-accent" : "bg-line"}`}>
-          <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-[left] ${on ? "left-4.5" : "left-0.5"}`} />
+        <span
+          className={`relative h-5 w-9 shrink-0 rounded-full transition stoic:h-7 stoic:w-[46px] stoic:border stoic:border-line ${
+            on ? "bg-accent stoic:border-accent" : "bg-line stoic:bg-surface-2"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-[left] stoic:top-[3px] stoic:size-5 stoic:shadow-none ${
+              on ? "left-4.5 stoic:left-[21px] stoic:bg-on-accent" : "left-0.5 stoic:left-[3px] stoic:bg-muted"
+            }`}
+          />
         </span>
       </button>
       {on && (

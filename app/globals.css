@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* stoic:◯◯ は、ストイックのデザインのときだけ効く */
+@custom-variant stoic (&:where([data-theme="stoic"] *));
+
 /* Minimal Organic：温かいオフホワイト × チャコールグレー × エメラルド（AI） */
 :root {
   --bg: #faf9f6;
@@ -23,6 +26,12 @@
   --blk-main-bg: #eef1f4;
 
   --shadow: 0 1px 2px rgb(71 85 105 / 0.04), 0 6px 20px rgb(71 85 105 / 0.06);
+  /* 強調色の上の文字・ボタンの角丸・数字や時刻の書体（ストイックで変わる） */
+  --on-accent: #ffffff;
+  --warn: #d97706;
+  --pill: 9999px;
+  --font-num: inherit;
+  --font-code: inherit;
   color-scheme: light;
 }
 
@@ -48,8 +57,41 @@
     --blk-main-bg: #252a31;
 
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
+    --warn: #fbbf24;
     color-scheme: dark;
   }
+}
+
+/* ストイック（Winter Arc）：黒 × 水色。枠線で区切り、数字は幅広の太字、時刻と見出しは等幅。常に暗い色 */
+html[data-theme="stoic"] {
+  --bg: #0a0a0b;
+  --surface: #131315;
+  --surface-2: #1c1c1f;
+  --text: #f2f2f0;
+  --heading: #f2f2f0;
+  --muted: #8b8b92;
+  --line: #2a2a2e;
+  --line-soft: #1f1f22;
+  --accent: #8bd3ff;
+  --accent-ink: #8bd3ff;
+  --accent-soft: #15232d;
+  --now: #ff8a7a;
+  --ok: #8bd3ff;
+  --warn: #ffb86b;
+
+  /* AI の予定は水色の薄い面と枠、メインの予定は灰色 */
+  --blk-ai: #8bd3ff;
+  --blk-ai-bg: rgb(139 211 255 / 0.08);
+  --blk-main: #5a5a62;
+  --blk-main-bg: #18181b;
+
+  /* 影の代わりに 1px の枠線 */
+  --shadow: 0 0 0 1px #1f1f22;
+  --on-accent: #0a0a0b;
+  --pill: 12px;
+  --font-num: "Space Grotesk", "Noto Sans JP", sans-serif;
+  --font-code: "JetBrains Mono", "Noto Sans JP", monospace;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -70,6 +112,9 @@
   --color-blk-ai-bg: var(--blk-ai-bg);
   --color-blk-main: var(--blk-main);
   --color-blk-main-bg: var(--blk-main-bg);
+  --color-on-accent: var(--on-accent);
+  --color-warn: var(--warn);
+  --radius-pill: var(--pill);
   --shadow-card: var(--shadow);
   --font-sans: "Noto Sans JP", ui-sans-serif, system-ui, -apple-system, "Hiragino Sans", sans-serif;
 
@@ -92,4 +137,21 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
+}
+
+/* 数字（日付・長さ）と、時刻・小見出し。やさしいでは普段の書体のまま */
+@utility t-num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+@utility t-code {
+  font-family: var(--font-code);
+  font-variant-numeric: tabular-nums;
+}
+/* ストイックの小見出し（WINTER ARC・TODAY / 2 BLOCKS など） */
+@utility t-label {
+  font-family: var(--font-code);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
