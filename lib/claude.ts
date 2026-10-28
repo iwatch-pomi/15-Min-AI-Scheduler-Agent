@@ -6,7 +6,13 @@ import type { CostMeter } from "./pricing";
 // （tests/claude-gateway.test.ts で確認している）。費用は meter に足され、
 // lib/budget.ts の withAiBudget が1日の予算に記録する。
 
-export const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5";
+/** AI の使い方ごとのモデル。節約・通常は Sonnet、強化は Opus（環境変数ではなく、ここで決める） */
+export const MODELS = { standard: "claude-sonnet-5-5", boost: "claude-opus-5-5" } as const;
+export const MODEL = MODELS.standard;
+
+export function modelFor(aiMode: "save" | "normal" | "boost" | undefined): string {
+  return aiMode === "boost" ? MODELS.boost : MODELS.standard;
+}
 
 let client: Anthropic | null = null;
 
@@ -16,11 +22,12 @@ export type MessageParams = Omit<Anthropic.Beta.MessageCreateParamsNonStreaming,
 export async function createMessage(meter: CostMeter, params: MessageParams): Promise<Anthropic.Beta.BetaMessage> {
   client ??= new Anthropic();
   const response = await client.beta.messages.create({
-    model: MODEL,
     // 断られたとき、Anthropic 推奨の別モデルでやり直す
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
     ...params,
+    // model: undefined が渡されても、決まったモデルを使う
+    model: params.model ?? MODEL,
   });
   meter.add(response.model ?? params.model ?? MODEL, response.usage);
   return response;

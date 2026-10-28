@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { runAgent } from "@/lib/agent";
+import { modelFor } from "@/lib/claude";
 import { getUserContext } from "@/lib/context";
 import { UnauthorizedError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http";
@@ -24,8 +25,8 @@ const body = z.object({
   interrupt: interruptSettings.optional(),
   /** 割り込みの開始・後ろの予定の選び方（「割り込み30分」などで使う。割り込みモードがオフでも送られる） */
   interruptPrefs: interruptSettings.optional(),
-  /** 強化モード（boost：すべて AI）／節約モード（save：アプリで処理できる依頼は AI を使わない） */
-  aiMode: z.enum(["boost", "save"]).default("save"),
+  /** 節約（save：アプリで処理できる依頼は AI を使わない）／通常（normal：すべて Sonnet）／強化（boost：すべて Opus） */
+  aiMode: z.enum(["save", "normal", "boost"]).default("save"),
 });
 
 // POST /api/chat { message, tz, interrupt?, interruptPrefs?, aiMode? } → 予定を操作し、返答と Undo 用の opId を返す
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
     // Claude を使うので、必ず予算の確認と費用の記録をする（使い切っていたら 429 で AI は呼ばない）
     const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now }, async (meter) => {
       try {
-        const { reply } = await runAgent({ message: prompt, history, calendar: recording, tz, now, meter });
+        const { reply } = await runAgent({ message: prompt, history, calendar: recording, tz, now, meter, model: modelFor(aiMode) });
         return { reply, authError: null };
       } catch (err) {
         if (err instanceof UnauthorizedError) return { reply: "", authError: err };

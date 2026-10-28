@@ -45,6 +45,8 @@ export async function runAgent(opts: {
   now: Date;
   /** 費用の記録先（必須）。途中でエラーになっても、それまでにかかった分が残る */
   meter: CostMeter;
+  /** 使うモデル（AI の使い方で決まる）。省略すると Sonnet */
+  model?: string;
 }): Promise<AgentResult> {
   const context = `[現在時刻: ${toLocalIso(opts.now, opts.tz)} / タイムゾーン: ${opts.tz}]`;
   const messages: Anthropic.Beta.BetaMessageParam[] = [
@@ -54,6 +56,7 @@ export async function runAgent(opts: {
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     const response = await createMessage(opts.meter, {
+      model: opts.model,
       max_tokens: 16000,
       output_config: { effort: "medium" },
       system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],

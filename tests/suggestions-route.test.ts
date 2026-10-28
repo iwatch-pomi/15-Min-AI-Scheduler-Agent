@@ -66,6 +66,14 @@ describe("AI のおすすめ（AIブリーフ）の保存", () => {
     expect((await get("date=2026-10-29&tone=stoic")).brief).toBeNull();
   });
 
+  it("強化モードは Opus、それ以外は Sonnet で作る", async () => {
+    create.mockResolvedValue(answer("x"));
+    await post({ date: "2026-10-28", aiMode: "boost" });
+    await post({ date: "2026-10-28", aiMode: "normal" });
+    await post({ date: "2026-10-28" });
+    expect(create.mock.calls.map((c) => c[0].model)).toEqual(["claude-opus-5-5", "claude-sonnet-5-5", "claude-sonnet-5-5"]);
+  });
+
   it("7日より前の日付のものは消す", async () => {
     const store = new MemoryStore();
     await store.saveBrief(userId, { date: "2026-10-01", tone: "soft", items: [], costPercent: 0, createdAt: "" }, "2026-09-01");

@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 // 偽の Claude：割り込みツールを1回使ってから返事をする（1回 = $0.03）
 const create = vi.fn();
-const requests: { messages: { content: unknown }[] }[] = [];
+const requests: { model: string; messages: { content: unknown }[] }[] = [];
 vi.mock("@anthropic-ai/sdk", () => ({
   default: class {
     beta = {
@@ -120,5 +120,29 @@ describe("POST /api/chat の節約モード／強化モード（すべてのチ�
     await send({ message: "14時から要件定義1時間", aiMode: "boost" });
     expect(create).toHaveBeenCalledTimes(1);
     expect(await cost()).toBeCloseTo(0.03, 10);
+  });
+});
+
+describe("AI の使い方ごとのモデル", () => {
+  const reply = { model: "x", stop_reason: "end_turn", usage, content: [{ type: "text", text: "了解" }] };
+
+  it.each([
+    ["save", "claude-sonnet-5-5"],
+    ["normal", "claude-sonnet-5-5"],
+    ["boost", "claude-opus-5-5"],
+  ])("%s → %s", async (aiMode, model) => {
+    create.mockReset();
+    create.mockResolvedValue(reply);
+    await send({ message: "今日の残りを組み直して", aiMode });
+    expect(requests[0].model).toBe(model);
+  });
+
+  it("通常モードでは、決まった形の依頼でも AI（Sonnet）が考える", async () => {
+    create.mockReset();
+    create.mockResolvedValue(reply);
+    const { data } = await send({ message: "14時から要件定義1時間", aiMode: "normal" });
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(requests[0].model).toBe("claude-sonnet-5-5");
+    expect(data.local).toBeUndefined();
   });
 });

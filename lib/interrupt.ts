@@ -9,8 +9,12 @@ import { SLOT_MINUTES, addMinutes, dayRange, localDateString, localTime, minutes
 export type InterruptStart = "now" | "after_current";
 export type InterruptMode = "slide" | "trim";
 export type InterruptSettings = { start: InterruptStart; mode: InterruptMode };
-/** AI の使い方。boost＝強化モード（常に AI）、save＝節約モード（アプリで処理し、読めないときだけ AI） */
-export type AiMode = "boost" | "save";
+/**
+ * AI の使い方。
+ * save＝節約（アプリで処理し、読めないときだけ AI。Sonnet）／normal＝通常（いつも AI。Sonnet）／boost＝強化（いつも AI。Opus）
+ */
+export type AiMode = "save" | "normal" | "boost";
+export const AI_MODES: AiMode[] = ["save", "normal", "boost"];
 
 /** AI 画面の設定（この端末に保存する） */
 export type ChatSettings = InterruptSettings & { interrupt: boolean; aiMode: AiMode };
@@ -18,7 +22,8 @@ export const DEFAULT_CHAT_SETTINGS: ChatSettings = { interrupt: false, start: "n
 
 export const AI_MODE_HELP: Record<AiMode, string> = {
   save: "「14時から会議1時間」「明日 資料作成2時間」「15分延長」「今のをスキップ」「割り込み30分」のような決まった形の依頼は、AIを使わずにアプリで処理します（使用量は減りません）。それ以外の依頼だけAIが考えます",
-  boost: "すべての依頼をAIが考えます。予定の分け方や空き時間の選び方まで任せられますが、そのたびに使用量を消費します",
+  normal: "すべての依頼をAI（Sonnet）が考えます。予定の分け方や空き時間の選び方まで任せられ、そのたびに使用量を消費します",
+  boost: "すべての依頼を、いちばん賢いAI（Opus）が考えます。複雑な組み直しに強い分、使用量は通常のおよそ2倍です",
 };
 
 /** 節約モードで、AI を使わずに処理されやすい書き方のコツ（マイページ・AI 画面に出す） */

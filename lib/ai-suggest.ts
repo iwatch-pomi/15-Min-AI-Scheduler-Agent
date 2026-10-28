@@ -90,9 +90,10 @@ export function describeDay(opts: { date: string; tz: string; now: Date; today: 
 
 export async function generateSuggestions(
   meter: CostMeter,
-  opts: { date: string; tz: string; now: Date; today: string; events: Block[]; tone?: Theme },
+  opts: { date: string; tz: string; now: Date; today: string; events: Block[]; tone?: Theme; model?: string },
 ): Promise<Suggestion[]> {
   const response = await createMessage(meter, {
+    model: opts.model,
     max_tokens: 2000,
     output_config: { effort: "low", format: { type: "json_schema", schema: jsonSchema } },
     system: opts.tone === "stoic" ? SYSTEM + STOIC_TONE : SYSTEM,

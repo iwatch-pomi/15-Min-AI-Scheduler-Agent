@@ -52,7 +52,8 @@ describe("runAgent", () => {
     expect(calendar.ops).toHaveLength(1);
 
     const first = requests[0];
-    expect(first.model).toBe("claude-opus-5-5");
+    // モデルを指定しなければ Sonnet（節約・通常）
+    expect(first.model).toBe("claude-sonnet-5-5");
     expect(first.tool_choice).toBeUndefined();
     expect(first.messages.at(-1)!.content).toContain("[現在時刻: 2026-10-26T13:00+09:00");
 

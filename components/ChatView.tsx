@@ -194,7 +194,7 @@ export default function ChatView(props: {
             className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-muted stoic:t-label stoic:rounded-md stoic:border stoic:border-line stoic:bg-transparent stoic:px-2 stoic:py-[5px] stoic:text-[10px] stoic:font-normal stoic:tracking-[0.12em] stoic:text-[#a8a8ae]"
             data-testid="ai-mode-chip"
           >
-            {stoic ? (save ? "ECO MODE" : "BOOST MODE") : save ? "節約モード" : "強化モード"}
+            {stoic ? `${{ save: "ECO", normal: "STD", boost: "BOOST" }[settings.aiMode]} MODE` : { save: "節約モード", normal: "通常モード", boost: "強化モード" }[settings.aiMode]}
           </button>
           <UsageMeter usage={usage} compact />
         </div>

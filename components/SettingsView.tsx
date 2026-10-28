@@ -169,14 +169,15 @@ export default function SettingsView(props: {
               large={stoic}
               value={aiMode}
               options={[
-                { value: "save", label: stoic ? "節約 ECO" : "節約モード" },
-                { value: "boost", label: stoic ? "強化 BOOST" : "強化モード" },
+                { value: "save", label: stoic ? "節約 ECO" : "節約" },
+                { value: "normal", label: stoic ? "通常 STD" : "通常" },
+                { value: "boost", label: stoic ? "強化 BOOST" : "強化" },
               ]}
               onChange={onAiModeChange}
               testId="settings-ai-mode"
             />
             <p className="text-xs text-muted">
-              {AI_MODE_HELP[aiMode]}。［元に戻す］と「元に戻して」は、どちらのモードでもAIを使いません。
+              {AI_MODE_HELP[aiMode]}。［元に戻す］と「元に戻して」は、どのモードでもAIを使いません。
             </p>
             {aiMode === "save" && (
               <p className="rounded-xl bg-accent-soft px-3 py-2 text-xs leading-relaxed text-accent-ink" data-testid="save-tip">
