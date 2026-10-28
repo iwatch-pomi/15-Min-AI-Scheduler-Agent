@@ -1,5 +1,6 @@
 import type { ChatMessage, Operation } from "../types";
-import type { OpGroup, Store, StoredMessage } from "./types";
+import type { Theme } from "../theme";
+import type { OpGroup, SavedBrief, Store, StoredMessage } from "./types";
 
 type MemoryData = {
   ops: Map<string, { userId: string } & OpGroup>;
@@ -7,6 +8,7 @@ type MemoryData = {
   nextMessageId: number;
   usage: Map<string, number>;
   cost: Map<string, number>;
+  briefs: Map<string, SavedBrief[]>;
 };
 
 const g = globalThis as Record<string, unknown>;
@@ -18,6 +20,7 @@ const data: MemoryData = (g.__ai15MemoryStore as MemoryData) ?? {
   nextMessageId: 1,
 };
 data.cost ??= new Map();
+data.briefs ??= new Map();
 g.__ai15MemoryStore = data;
 
 export class MemoryStore implements Store {
@@ -82,5 +85,14 @@ export class MemoryStore implements Store {
 
   async getCost(userId: string, date: string) {
     return data.cost.get(`${userId}:${date}`) ?? 0;
+  }
+
+  async saveBrief(userId: string, brief: SavedBrief, keepFrom: string) {
+    const list = (data.briefs.get(userId) ?? []).filter((b) => b.date >= keepFrom && !(b.date === brief.date && b.tone === brief.tone));
+    data.briefs.set(userId, [...list, brief]);
+  }
+
+  async getBrief(userId: string, date: string, tone: Theme) {
+    return data.briefs.get(userId)?.find((b) => b.date === date && b.tone === tone) ?? null;
   }
 }

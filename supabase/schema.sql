@@ -66,10 +66,22 @@ returns bigint language sql as $$
   returning cost_microusd;
 $$;
 
+-- AI で作った「AIのおすすめ／AIブリーフ」。日付とデザイン（口調）ごとに1つ。更新したら置き換える
+create table if not exists briefs (
+  user_id uuid not null references users(id) on delete cascade,
+  date date not null,
+  tone text not null default 'soft' check (tone in ('soft', 'stoic')),
+  items jsonb not null,
+  cost_percent real not null default 0,
+  created_at timestamptz not null default now(),
+  primary key (user_id, date, tone)
+);
+
 alter table users enable row level security;
 alter table operations enable row level security;
 alter table messages enable row level security;
 alter table usage enable row level security;
+alter table briefs enable row level security;
 
 -- 関数はサーバー（service_role）からだけ呼べるようにする。
 -- anon / authenticated キーが漏れても、ほかの人の使用量を書き換えられないように

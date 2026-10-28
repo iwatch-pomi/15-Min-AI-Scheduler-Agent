@@ -1,3 +1,5 @@
+import type { Suggestion } from "../suggest";
+import type { Theme } from "../theme";
 import type { ChatMessage, Operation } from "../types";
 
 /** 保存されたチャットの1件（画面の履歴表示用） */
@@ -5,6 +7,9 @@ export type StoredMessage = { id: string; role: "user" | "assistant"; content: s
 
 /** 操作グループ（AI の変更と、そのあとの手動編集）。undone は全部取り消し済みか */
 export type OpGroup = { ops: Operation[]; undone: boolean };
+
+/** AI で作った「AIのおすすめ／AIブリーフ」。日付とデザイン（口調）ごとに1つ、更新したら新しいものに置き換える */
+export type SavedBrief = { date: string; tone: Theme; items: Suggestion[]; costPercent: number; createdAt: string };
 
 /** 操作ログ（Undo）・チャット履歴・利用回数の保存先 */
 export interface Store {
@@ -27,4 +32,7 @@ export interface Store {
   deleteMessages(userId: string): Promise<void>;
   /** 今日の AI の費用の合計（米ドル） */
   getCost(userId: string, date: string): Promise<number>;
+  /** AI のおすすめを保存する（同じ日付・口調のものは置き換える）。keepFrom より前の日付のものは消す */
+  saveBrief(userId: string, brief: SavedBrief, keepFrom: string): Promise<void>;
+  getBrief(userId: string, date: string, tone: Theme): Promise<SavedBrief | null>;
 }

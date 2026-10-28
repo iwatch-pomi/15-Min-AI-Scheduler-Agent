@@ -4,7 +4,28 @@ import { SuggestError, generateSuggestions } from "@/lib/ai-suggest";
 import { withAiBudget } from "@/lib/budget";
 import { getUserContext } from "@/lib/context";
 import { errorResponse } from "@/lib/http";
-import { dayRange, localDateString, safeTimeZone } from "@/lib/time";
+import { addDays, dayRange, localDateString, safeTimeZone } from "@/lib/time";
+
+/** 保存しておく AI のおすすめは、今日の7日前の分まで */
+const KEEP_DAYS = 7;
+
+// GET /api/suggestions?date=YYYY-MM-DD&tone=soft|stoic → 保存してある AI のおすすめ（AI は使わない）
+export async function GET(req: NextRequest) {
+  try {
+    const date = req.nextUrl.searchParams.get("date") ?? "";
+    const tone = req.nextUrl.searchParams.get("tone") === "stoic" ? "stoic" : "soft";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: "日付が不正です" }, { status: 400 });
+    const { userId, store } = await getUserContext();
+    const brief = await store.getBrief(userId, date, tone).catch((err) => {
+      // schema.sql が古い（briefs テーブルがない）ときも、画面はふつうに動くようにする
+      console.error("AI のおすすめを読めませんでした", err);
+      return null;
+    });
+    return NextResponse.json({ brief: brief && { items: brief.items, costPercent: brief.costPercent, at: brief.createdAt } });
+  } catch (err) {
+    return errorResponse(err);
+  }
+}
 
 export const maxDuration = 60;
 
@@ -15,7 +36,7 @@ const body = z.object({
   tone: z.enum(["soft", "stoic"]).optional(),
 });
 
-// POST /api/suggestions { date, tz, tone? } → その日の「AIのおすすめ」を Claude で作る（AI の使用量を消費する）
+// POST /api/suggestions { date, tz, tone? } → その日の「AIのおすすめ」を Claude で作り、保存する（AI の使用量を消費する）
 export async function POST(req: NextRequest) {
   try {
     const parsed = body.safeParse(await req.json().catch(() => null));
@@ -34,7 +55,13 @@ export async function POST(req: NextRequest) {
       }),
     );
     if (result instanceof SuggestError) return NextResponse.json({ error: result.message, usage, costPercent }, { status: 502 });
-    return NextResponse.json({ suggestions: result, usage, costPercent });
+    // Web を閉じても・ほかの端末でも見られるように保存する（同じ日付・口調のものは新しいものに置き換える）
+    const at = now.toISOString();
+    const today = localDateString(now, tz);
+    await store
+      .saveBrief(userId, { date, tone: parsed.data.tone ?? "soft", items: result, costPercent, createdAt: at }, addDays(today, -KEEP_DAYS))
+      .catch((err) => console.error("AI のおすすめを保存できませんでした（schema.sql の更新が必要かもしれません）", err));
+    return NextResponse.json({ suggestions: result, usage, costPercent, at });
   } catch (err) {
     return errorResponse(err);
   }

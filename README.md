@@ -50,7 +50,7 @@
 | `lib/calendar/` | カレンダーの読み書き（`google.ts` 本番、`memory.ts` デモ・テスト） |
 | `lib/ops.ts` | 変更の記録と Undo |
 | `lib/store/` | 操作ログ・履歴・利用回数の保存（Supabase / メモリ） |
-| `supabase/schema.sql` | DB スキーマ |
+| `supabase/schema.sql` | DB スキーマ（AI のおすすめ／AIブリーフは `briefs` に、日付と口調ごとに保存） |
 
 AI ブロックは、アプリが自動で作る専用カレンダー（id は `users.ai_calendar_id`）に入れて見分けています。メインのカレンダーは `calendar.events.readonly` で読むだけです。
 

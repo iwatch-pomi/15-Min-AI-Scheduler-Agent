@@ -254,43 +254,49 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   // 画面に出すひと言。null は出さない、"" は作っている途中
   const stoicQuote = !quoteOn ? null : quote?.key === quoteKey ? (quote.text ?? stoicLine(hour, today)) : "";
 
-  // AI で作ったおすすめ（日付ごと）。再読み込みでもう一度費用がかからないよう、この端末に保存する
-  // tone は作ったときのデザイン。今のデザインと違えば使わない（ストイックとやさしいで口調が違うため）
-  type AiSuggest = { items: Suggestion[]; costPercent: number; at: string; tone?: Theme };
-  const [aiSuggest, setAiSuggest] = useState<Record<string, AiSuggest>>({});
+  // AI で作ったおすすめ（AIブリーフ）。サーバー（Supabase）に日付とデザイン（口調）ごとに保存してあり、
+  // Web を閉じても・ほかの端末でも同じものが出る。キーは「日付:口調」、null は保存なし
+  type AiSuggest = { items: Suggestion[]; costPercent: number; at: string };
+  const [aiSuggest, setAiSuggest] = useState<Record<string, AiSuggest | null>>({});
   const [suggestState, setSuggestState] = useState<{ loading: boolean; error: string | null }>({ loading: false, error: null });
+  const briefKey = `${date}:${theme}`;
   useEffect(() => {
+    // 以前この端末に保存していた分は使わない
     try {
-      const saved = JSON.parse(localStorage.getItem("ai15:suggest") ?? "{}") as Record<string, AiSuggest>;
-      // 過去の日のものは捨てる
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAiSuggest(Object.fromEntries(Object.entries(saved).filter(([d]) => d >= today)));
+      localStorage.removeItem("ai15:suggest");
     } catch {
-      // 保存できない環境（プライベートブラウズなど）では毎回作り直す
+      // 何もしない
     }
-  }, [today]);
+  }, []);
+  useEffect(() => {
+    if (date < today || briefKey in aiSuggest) return;
+    let cancelled = false;
+    fetch(`/api/suggestions?date=${date}&tone=${theme}`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { brief: AiSuggest | null } | null) => {
+        if (!cancelled && data) setAiSuggest((prev) => (briefKey in prev ? prev : { ...prev, [briefKey]: data.brief }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [briefKey, date, theme, today, aiSuggest]);
 
   const refreshSuggestions = async (d: string) => {
     setSuggestState({ loading: true, error: null });
+    const tone = theme;
     try {
       const res = await fetch("/api/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: d, tz, tone: theme }),
+        body: JSON.stringify({ date: d, tz, tone }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) return setAuthExpired(true);
       if (data.usage) setUsage(data.usage);
       if (!res.ok) return setSuggestState({ loading: false, error: data.error ?? "おすすめを更新できませんでした" });
-      setAiSuggest((prev) => {
-        const next = { ...prev, [d]: { items: data.suggestions, costPercent: data.costPercent, at: new Date().toISOString(), tone: theme } };
-        try {
-          localStorage.setItem("ai15:suggest", JSON.stringify(next));
-        } catch {
-          // 保存できなくても表示はする
-        }
-        return next;
-      });
+      // サーバーに保存されたものと同じものを、この画面にも出す
+      setAiSuggest((prev) => ({ ...prev, [`${d}:${tone}`]: { items: data.suggestions, costPercent: data.costPercent, at: data.at ?? new Date().toISOString() } }));
       setSuggestState({ loading: false, error: null });
     } catch {
       setSuggestState({ loading: false, error: "通信に失敗しました" });
@@ -480,8 +486,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     return null;
   };
 
-  // AI で作ったおすすめは、今のデザインの口調で作ったものだけ使う
-  const cachedSuggest = aiSuggest[date] && (aiSuggest[date].tone ?? "soft") === theme ? aiSuggest[date] : undefined;
+  // AI で作ったおすすめは、今の日付・デザインの口調で作ったものだけ使う
+  const cachedSuggest = aiSuggest[briefKey] ?? undefined;
 
   // 時刻とタイムゾーンはブラウザでしか正しく決まらないので、サーバー描画では中身を出さない
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);

@@ -1,6 +1,7 @@
 import { db } from "../db";
 import type { ChatMessage, Operation } from "../types";
-import type { OpGroup, Store, StoredMessage } from "./types";
+import type { Theme } from "../theme";
+import type { OpGroup, SavedBrief, Store, StoredMessage } from "./types";
 
 export class SupabaseStore implements Store {
   async recordOps(userId: string, groupId: string, ops: Operation[]) {
@@ -132,5 +133,35 @@ export class SupabaseStore implements Store {
   async deleteMessages(userId: string) {
     const { error } = await db().from("messages").delete().eq("user_id", userId);
     if (error) throw error;
+  }
+
+  async saveBrief(userId: string, brief: SavedBrief, keepFrom: string) {
+    const { error } = await db().from("briefs").upsert(
+      {
+        user_id: userId,
+        date: brief.date,
+        tone: brief.tone,
+        items: brief.items,
+        cost_percent: brief.costPercent,
+        created_at: brief.createdAt,
+      },
+      { onConflict: "user_id,date,tone" },
+    );
+    if (error) throw error;
+    // 古い日付のものは残しておいても使わないので消す
+    const { error: deleteError } = await db().from("briefs").delete().eq("user_id", userId).lt("date", keepFrom);
+    if (deleteError) throw deleteError;
+  }
+
+  async getBrief(userId: string, date: string, tone: Theme) {
+    const { data, error } = await db()
+      .from("briefs")
+      .select("date, tone, items, cost_percent, created_at")
+      .eq("user_id", userId)
+      .eq("date", date)
+      .eq("tone", tone)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? { date: data.date, tone: data.tone, items: data.items, costPercent: Number(data.cost_percent), createdAt: data.created_at } : null;
   }
 }
