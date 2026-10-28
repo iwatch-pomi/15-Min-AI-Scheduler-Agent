@@ -4,11 +4,11 @@ import { useState } from "react";
 import { logout } from "@/app/actions";
 import { AI_MODE_HELP, type AiMode } from "@/lib/interrupt";
 import type { Usage } from "@/lib/limits";
-import { daysLabel, rangeLabel, type Routine, type RoutineInput } from "@/lib/routines";
-import RoutineEditor from "./RoutineEditor";
+import type { Routine, RoutineInput } from "@/lib/routines";
+import RoutineList from "./RoutineList";
 import Segmented from "./Segmented";
 import UsageMeter from "./UsageMeter";
-import { AppLogo, CalendarIcon, ChevronRightIcon, ClockIcon, PlusIcon, RepeatIcon, ShareIcon, UserIcon } from "./icons";
+import { AppLogo, CalendarIcon, ChevronRightIcon, ClockIcon, RepeatIcon, ShareIcon, UserIcon } from "./icons";
 
 export default function SettingsView(props: {
   tz: string;
@@ -23,9 +23,13 @@ export default function SettingsView(props: {
   onAiModeChange: (m: AiMode) => void;
 }) {
   const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange } = props;
-  // 編集中のルーティン（"new" は追加）
-  const [editing, setEditing] = useState<Routine | "new" | null>(null);
+  // マイページの中で開いている画面（ルーティンの一覧は別の画面にまとめる）
+  const [page, setPage] = useState<"main" | "routines">("main");
   const [cleared, setCleared] = useState(false);
+
+  if (page === "routines") {
+    return <RoutineList routines={routines} onSave={onSaveRoutine} onDelete={onDeleteRoutine} onBack={() => setPage("main")} />;
+  }
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
@@ -45,42 +49,26 @@ export default function SettingsView(props: {
           )}
         </Section>
 
-        <Section title="毎日のルーティン">
-          {routines === null ? (
-            <p className="px-4 py-3 text-sm text-muted">読み込み中…</p>
-          ) : routines.length === 0 ? (
-            <p className="px-4 py-3 text-xs text-muted">朝の準備・ジム・日記など、毎日（決まった曜日に）くり返す予定を登録すると、カレンダーに自動で入ります。</p>
-          ) : (
-            routines.map((r) => (
-              <button key={r.id} onClick={() => setEditing(r)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2" data-testid="routine-row">
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink">
-                  <RepeatIcon className="size-4.5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-heading">{r.title}</span>
-                  <span className="block text-xs text-muted tabular-nums">
-                    {rangeLabel(r)}・{daysLabel(r.days)}
-                  </span>
-                </span>
-                <ChevronRightIcon className="size-4 shrink-0 text-muted" />
-              </button>
-            ))
-          )}
-          <button onClick={() => setEditing("new")} className="flex w-full items-center justify-center gap-1 px-4 py-3 text-sm font-bold text-accent-ink active:bg-surface-2">
-            <PlusIcon className="size-4" />
-            ルーティンを追加
+        <Section title="スケジュール">
+          <button onClick={() => setPage("routines")} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2" data-testid="routines-link">
+            <span className="text-accent-ink">
+              <RepeatIcon className="size-5" />
+            </span>
+            <span className="flex-1 text-sm">毎日のルーティン</span>
+            <span className="text-sm text-muted tabular-nums">{routines === null ? "" : routines.length ? `${routines.length}件` : "未登録"}</span>
+            <ChevronRightIcon className="size-4 shrink-0 text-muted" />
           </button>
+          <Row icon={<ClockIcon className="size-5" />} label="タイムゾーン" value={tz} />
+          <Row icon={<CalendarIcon className="size-5" />} label="AIの予定の保存先" value="AIスケジューラー" />
+          <p className="px-4 py-3 text-xs text-muted">
+            AI の予定は、Google カレンダーに自動で作られる専用カレンダー「AIスケジューラー」に入ります。メインのカレンダーは読むだけで、変更しません。色や表示の切り替えは Google カレンダーの設定から変えられます。
+          </p>
         </Section>
-        {editing && (
-          <RoutineEditor
-            routine={editing === "new" ? null : editing}
-            onSave={(input) => onSaveRoutine(editing === "new" ? null : editing.id, input)}
-            onDelete={editing === "new" ? undefined : () => onDeleteRoutine(editing.id)}
-            onClose={() => setEditing(null)}
-          />
-        )}
 
         <Section title="AIの使い方">
+          <div className="px-4 py-3">
+            <UsageMeter usage={usage} />
+          </div>
           <div className="space-y-1.5 px-4 py-3">
             <Segmented
               label="モード"
@@ -96,17 +84,6 @@ export default function SettingsView(props: {
               {AI_MODE_HELP[aiMode]}。［元に戻す］と「元に戻して」は、どちらのモードでもAIを使いません。
             </p>
           </div>
-        </Section>
-
-        <Section title="スケジュール">
-          <Row icon={<ClockIcon className="size-5" />} label="タイムゾーン" value={tz} />
-          <div className="px-4 py-3">
-            <UsageMeter usage={usage} />
-          </div>
-          <Row icon={<CalendarIcon className="size-5" />} label="AIの予定の保存先" value="AIスケジューラー" />
-          <p className="px-4 py-3 text-xs text-muted">
-            AI の予定は、Google カレンダーに自動で作られる専用カレンダー「AIスケジューラー」に入ります。メインのカレンダーは読むだけで、変更しません。色や表示の切り替えは Google カレンダーの設定から変えられます。
-          </p>
         </Section>
 
         <Section title="AIとのチャット">
