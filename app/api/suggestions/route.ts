@@ -50,8 +50,9 @@ export async function POST(req: NextRequest) {
     const { start, end } = dayRange(date, tz);
     const events = (await calendar.list(start, end)).filter((b) => !b.allDay || b.start.slice(0, 10) === date);
 
+    const instructions = await store.getCustomInstructions(userId).catch(() => null);
     const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now }, (meter) =>
-      generateSuggestions(meter, { date, tz, now, today: localDateString(now, tz), events, tone: parsed.data.tone, model: MODELS.standard }).catch((err) => {
+      generateSuggestions(meter, { date, tz, now, today: localDateString(now, tz), events, tone: parsed.data.tone, model: MODELS.standard, instructions }).catch((err) => {
         if (err instanceof SuggestError) return err;
         throw err;
       }),

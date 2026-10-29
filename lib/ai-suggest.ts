@@ -3,6 +3,7 @@ import { createMessage } from "./claude";
 import type { CostMeter } from "./pricing";
 import { freeSlots } from "./slots";
 import type { Suggestion } from "./suggest";
+import { instructionsBlock } from "./custom-instructions";
 import type { Theme } from "./theme";
 import type { Block } from "./types";
 import { localTime, minutesBetween, zonedToUtc } from "./time";
@@ -90,13 +91,13 @@ export function describeDay(opts: { date: string; tz: string; now: Date; today: 
 
 export async function generateSuggestions(
   meter: CostMeter,
-  opts: { date: string; tz: string; now: Date; today: string; events: Block[]; tone?: Theme; model?: string },
+  opts: { date: string; tz: string; now: Date; today: string; events: Block[]; tone?: Theme; model?: string; instructions?: string | null },
 ): Promise<Suggestion[]> {
   const response = await createMessage(meter, {
     model: opts.model,
     max_tokens: 2000,
     output_config: { effort: "low", format: { type: "json_schema", schema: jsonSchema } },
-    system: opts.tone === "stoic" ? SYSTEM + STOIC_TONE : SYSTEM,
+    system: (opts.tone === "stoic" ? SYSTEM + STOIC_TONE : SYSTEM) + (opts.instructions ? `\n\n${instructionsBlock(opts.instructions)}` : ""),
     messages: [{ role: "user", content: describeDay(opts) }],
   });
   if (response.stop_reason === "refusal") throw new SuggestError("おすすめを作れませんでした。時間をおいてもう一度お試しください");

@@ -74,13 +74,15 @@ export async function POST(req: NextRequest) {
 
     // 直近5件はそのまま、その前の5件は短い要約にして渡す（費用を下げる）
     const history = compactHistory(await store.recentMessages(userId, HISTORY_LIMIT));
+    // カスタム指示（AI を使うときだけ読む。表がまだ無い環境でもチャットは動くように）
+    const instructions = await store.getCustomInstructions(userId).catch(() => null);
     const prompt = interrupt ? `${interruptInstruction(interrupt)}\n${message}` : message;
     // 節約・通常は Haiku（難しい依頼は Sonnet）、強化は Sonnet、最大は Opus
     const model = modelFor(aiMode, message);
     // Claude を使うので、必ず予算の確認と費用の記録をする（使い切っていたら 429 で AI は呼ばない）
     const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now }, async (meter) => {
       try {
-        const { reply } = await runAgent({ message: prompt, history, calendar: recording, tz, now, meter, model, tone });
+        const { reply } = await runAgent({ message: prompt, history, calendar: recording, tz, now, meter, model, tone, instructions });
         return { reply, authError: null };
       } catch (err) {
         if (err instanceof UnauthorizedError) return { reply: "", authError: err };

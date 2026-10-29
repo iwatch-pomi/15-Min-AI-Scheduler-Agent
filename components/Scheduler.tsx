@@ -264,6 +264,31 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     writeLocal("ai15:tutorial-done", "1");
   };
 
+  // AI へのカスタム指示（毎回 AI に渡す）。サーバーに保存し、端末間で共有する
+  const [instructions, setInstructions] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/instructions", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { text: string | null } | null) => data && setInstructions(data.text))
+      .catch(() => {});
+  }, []);
+  const saveInstructions = async (text: string | null): Promise<string | null> => {
+    const res = await fetch("/api/instructions", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    }).catch(() => null);
+    if (!res) return "通信に失敗しました";
+    if (res.status === 401) {
+      setAuthExpired(true);
+      return null;
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return data.error ?? "保存できませんでした";
+    setInstructions(data.text);
+    return null;
+  };
+
   // クイックボタン（AI 画面のワンタップのボタン）。サーバーに保存し、端末間で共有する
   const [quickActions, setQuickActions] = useState<string[]>(DEFAULT_QUICK_ACTIONS);
   const [editingQuick, setEditingQuick] = useState(false);
@@ -615,6 +640,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           onArcChange={changeArc}
           quickActionCount={quickActions.length}
           onShowTutorial={() => setShowTutorial(true)}
+          instructions={instructions}
+          onSaveInstructions={saveInstructions}
           onEditQuickActions={() => setEditingQuick(true)}
           quoteOn={quoteOn}
           onQuoteOnChange={changeQuoteOn}

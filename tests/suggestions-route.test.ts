@@ -73,6 +73,13 @@ describe("AI のおすすめ（AIブリーフ）の保存", () => {
     expect(create.mock.calls.map((c) => c[0].model)).toEqual(Array(5).fill("claude-sonnet-5-5"));
   });
 
+  it("カスタム指示があれば、おすすめを作るときにも渡す", async () => {
+    await new MemoryStore().saveCustomInstructions(userId, "朝は勉強を優先して");
+    create.mockResolvedValueOnce(answer("x"));
+    await post({ date: "2026-10-28" });
+    expect(create.mock.calls[0][0].system).toContain("朝は勉強を優先して");
+  });
+
   it("7日より前の日付のものは消す", async () => {
     const store = new MemoryStore();
     await store.saveBrief(userId, { date: "2026-10-01", tone: "soft", items: [], costPercent: 0, createdAt: "" }, "2026-09-01");

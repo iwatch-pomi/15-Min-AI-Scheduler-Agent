@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { createMessage } from "./claude";
 import type { RecordingCalendar } from "./ops";
 import { UnauthorizedError } from "./errors";
+import { instructionsBlock } from "./custom-instructions";
 import type { CostMeter } from "./pricing";
 import type { Theme } from "./theme";
 import { toLocalIso } from "./time";
@@ -65,6 +66,8 @@ export async function runAgent(opts: {
   model?: string;
   /** 返事の口調。stoic はコーチのように厳しく（敬語なし） */
   tone?: Theme;
+  /** ユーザーのカスタム指示（毎回渡す）。null・空なら付けない */
+  instructions?: string | null;
 }): Promise<AgentResult> {
   // 口調は system（キャッシュする）ではなく、毎回のメッセージの文脈に付ける
   const toneNote = opts.tone === "stoic" ? " / 口調: ストイック（コーチ）" : "";
@@ -80,7 +83,11 @@ export async function runAgent(opts: {
       max_tokens: 16000,
       // 最大モード（Opus）は振り返りや分析をじっくり行うので、考える量を増やす
       output_config: { effort: opts.model?.includes("opus") ? "high" : "medium" },
-      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      // 共通の指示はキャッシュし、カスタム指示はその後ろに付ける（共通部分のキャッシュは効いたまま）
+      system: [
+        { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+        ...(opts.instructions ? [{ type: "text" as const, text: instructionsBlock(opts.instructions) }] : []),
+      ],
       tools: toolDefinitions,
       messages,
     });

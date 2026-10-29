@@ -7,11 +7,12 @@ import type { Usage } from "@/lib/limits";
 import type { Routine, RoutineInput } from "@/lib/routines";
 import { arcProgress, type Arc, type Theme } from "@/lib/theme";
 import ArcEditor from "./ArcEditor";
+import InstructionsEditor from "./InstructionsEditor";
 import NotifyGuide from "./NotifyGuide";
 import RoutineList from "./RoutineList";
 import Segmented from "./Segmented";
 import UsageMeter from "./UsageMeter";
-import { AppLogo, BellIcon, BookIcon, CalendarIcon, ChevronRightIcon, ClockIcon, GaugeIcon, PencilIcon, RepeatIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
+import { AppLogo, BellIcon, BookIcon, CalendarIcon, ChevronRightIcon, ClockIcon, GaugeIcon, PencilIcon, RepeatIcon, SendIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
 export default function SettingsView(props: {
@@ -35,8 +36,12 @@ export default function SettingsView(props: {
   quickActionCount: number;
   onEditQuickActions: () => void;
   onShowTutorial: () => void;
+  /** AI へのカスタム指示（null は指示なし） */
+  instructions: string | null;
+  onSaveInstructions: (text: string | null) => Promise<string | null>;
 }) {
-  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange, today, onThemeChange, onArcChange, quoteOn, onQuoteOnChange, quickActionCount, onEditQuickActions, onShowTutorial } = props;
+  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange, today, onThemeChange, onArcChange, quoteOn, onQuoteOnChange, quickActionCount, onEditQuickActions, onShowTutorial, instructions, onSaveInstructions } = props;
+  const [editingInstructions, setEditingInstructions] = useState(false);
   const [notifyGuide, setNotifyGuide] = useState(false);
   const { theme, arc } = useTheme();
   const stoic = theme === "stoic";
@@ -190,6 +195,16 @@ export default function SettingsView(props: {
               </p>
             )}
           </div>
+          <button onClick={() => setEditingInstructions(true)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2" data-testid="instructions-link">
+            <span className="text-accent-ink">
+              <SendIcon className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm">AIへのカスタム指示</span>
+              <span className="block truncate text-xs text-muted">{instructions ? instructions.replace(/\n/g, " ") : "なし（毎回AIに送るので、使うと使用量が増えます）"}</span>
+            </span>
+            <ChevronRightIcon className="size-4 shrink-0 text-muted" />
+          </button>
           <button onClick={onEditQuickActions} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2" data-testid="quick-actions-link">
             <span className="text-accent-ink">
               <PencilIcon className="size-5" />
@@ -241,6 +256,9 @@ export default function SettingsView(props: {
         </Section>
 
         {notifyGuide && <NotifyGuide onClose={() => setNotifyGuide(false)} />}
+        {editingInstructions && (
+          <InstructionsEditor text={instructions} onSave={onSaveInstructions} onClose={() => setEditingInstructions(false)} />
+        )}
         <Section title={t("使い方", "GUIDE")}>
           <LinkRow icon={<BookIcon className="size-5" />} label="使い方（チュートリアル）をもう一度見る" onClick={onShowTutorial} testId="tutorial-link" />
         </Section>

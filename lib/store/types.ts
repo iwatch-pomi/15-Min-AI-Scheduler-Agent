@@ -38,4 +38,7 @@ export interface Store {
   /** クイックボタン（端末間で共有）。null はまだ決めていない（初期値を使う） */
   getQuickActions(userId: string): Promise<string[] | null>;
   saveQuickActions(userId: string, actions: string[]): Promise<void>;
+  /** AI へのカスタム指示（端末間で共有）。null は指示なし */
+  getCustomInstructions(userId: string): Promise<string | null>;
+  saveCustomInstructions(userId: string, text: string | null): Promise<void>;
 }

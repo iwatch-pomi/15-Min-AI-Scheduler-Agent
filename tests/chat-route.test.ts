@@ -199,3 +199,33 @@ describe("ストイックの返事の口調", () => {
     expect(data.reply).toBe("14:00-15:00 に「要件定義」を入れた。始めたら、終わるまで離れるな。");
   });
 });
+
+describe("カスタム指示", () => {
+  it("AI を使うときは毎回 system の後ろに付ける（共通の指示のキャッシュはそのまま）。アプリで処理するときは使わない", async () => {
+    const reply = { model: "x", stop_reason: "end_turn", usage, content: [{ type: "text", text: "了解" }] };
+    create.mockReset();
+    create.mockResolvedValue(reply);
+    requests.length = 0;
+    await new MemoryStore().saveCustomInstructions(userId, "22時以降は予定を入れないで");
+    await send({ message: "ちょっとコンビニ", aiMode: "normal" });
+    const system = (requests[0] as unknown as { system: { text: string; cache_control?: unknown }[] }).system;
+    expect(system).toHaveLength(2);
+    expect(system[0].cache_control).toEqual({ type: "ephemeral" });
+    expect(system[1].text).toContain("22時以降は予定を入れないで");
+    expect(system[1]).not.toHaveProperty("cache_control");
+
+    // 節約モードでアプリが処理する依頼は AI を呼ばない
+    create.mockClear();
+    await send({ message: "14時から要件定義1時間", aiMode: "save" });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("指示がなければ system は1つのまま", async () => {
+    const reply = { model: "x", stop_reason: "end_turn", usage, content: [{ type: "text", text: "了解" }] };
+    create.mockReset();
+    create.mockResolvedValue(reply);
+    requests.length = 0;
+    await send({ message: "ちょっとコンビニ", aiMode: "normal" });
+    expect((requests[0] as unknown as { system: unknown[] }).system).toHaveLength(1);
+  });
+});

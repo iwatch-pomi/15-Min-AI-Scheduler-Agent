@@ -177,4 +177,17 @@ export class SupabaseStore implements Store {
       .upsert({ user_id: userId, quick_actions: actions, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
     if (error) throw error;
   }
+
+  async getCustomInstructions(userId: string) {
+    const { data, error } = await db().from("user_settings").select("custom_instructions").eq("user_id", userId).maybeSingle();
+    if (error) throw error;
+    return (data?.custom_instructions as string | null | undefined) ?? null;
+  }
+
+  async saveCustomInstructions(userId: string, text: string | null) {
+    const { error } = await db()
+      .from("user_settings")
+      .upsert({ user_id: userId, custom_instructions: text, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    if (error) throw error;
+  }
 }
