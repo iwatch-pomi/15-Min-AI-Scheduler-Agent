@@ -14,10 +14,10 @@ export function errorResponse(err: unknown) {
   return NextResponse.json({ error: "サーバーでエラーが発生しました" }, { status: 500 });
 }
 
-/** お支払いの API のエラー処理。Stripe のエラーの中身（内部の情報）は画面に出さない */
-export function billingError(err: unknown) {
+/** お支払いの API のエラー処理。開けなかった理由（設定の間違いなど）を、直せる言葉で返す */
+export function billingError(err: unknown, reason: (err: unknown) => string) {
   if (err instanceof BillingNotConfiguredError) return NextResponse.json({ error: err.message }, { status: 503 });
   if (err instanceof UnauthorizedError) return errorResponse(err);
   console.error("お支払いの処理に失敗しました", err);
-  return NextResponse.json({ error: "お支払いの画面を開けませんでした。少し待ってからもう一度お試しください" }, { status: 502 });
+  return NextResponse.json({ error: `お支払いの画面を開けませんでした：${reason(err)}` }, { status: 502 });
 }

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { checkoutUrl } from "@/lib/billing";
+import { billingFailureReason, checkoutUrl } from "@/lib/billing";
 import { getUserContext, isDemo } from "@/lib/context";
 import { billingError } from "@/lib/http";
 import { PAID_PLANS } from "@/lib/plans";
@@ -16,6 +16,6 @@ export async function POST(req: NextRequest) {
     const { userId } = await getUserContext();
     return NextResponse.json(await checkoutUrl({ userId, plan: parsed.data.plan, origin: req.nextUrl.origin }));
   } catch (err) {
-    return billingError(err);
+    return billingError(err, billingFailureReason);
   }
 }

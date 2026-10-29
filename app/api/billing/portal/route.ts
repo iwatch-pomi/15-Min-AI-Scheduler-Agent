@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { portalUrl } from "@/lib/billing";
+import { billingFailureReason, portalUrl } from "@/lib/billing";
 import { getUserContext, isDemo } from "@/lib/context";
 import { billingError } from "@/lib/http";
 
@@ -12,6 +12,6 @@ export async function POST(req: NextRequest) {
     if (!url) return NextResponse.json({ error: "まだ有料プランを申し込んでいません" }, { status: 400 });
     return NextResponse.json({ url });
   } catch (err) {
-    return billingError(err);
+    return billingError(err, billingFailureReason);
   }
 }

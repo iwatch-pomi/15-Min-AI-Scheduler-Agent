@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { BillingNotConfiguredError } from "./errors";
 import { PAID_PLANS, PLAN_IDS, type PaidPlan, type Plan } from "./plans";
-import { applySubscription, getBilling, saveStripeCustomerId } from "./users";
+import { applySubscription, clearStripeCustomerId, getBilling, saveStripeCustomerId } from "./users";
 
 export { BillingNotConfiguredError };
 
@@ -90,8 +90,18 @@ async function hasAliveSubscription(customerId: string): Promise<boolean> {
  */
 export async function checkoutUrl(opts: { userId: string; plan: PaidPlan; origin: string }): Promise<{ url: string; portal: boolean }> {
   const price = priceFor(opts.plan);
-  const customer = await customerFor(opts.userId);
-  if (await hasAliveSubscription(customer)) return { url: await portalUrlFor(customer, opts.origin), portal: true };
+  let customer = await customerFor(opts.userId);
+  let alive: boolean;
+  try {
+    alive = await hasAliveSubscription(customer);
+  } catch (err) {
+    // 保存していた顧客が Stripe に無い（テスト環境で作った顧客のまま本番のキーにしたときなど）。外して作り直す
+    if (!isMissingCustomer(err)) throw err;
+    await clearStripeCustomerId(opts.userId, customer);
+    customer = await customerFor(opts.userId);
+    alive = await hasAliveSubscription(customer);
+  }
+  if (alive) return { url: await portalUrlFor(customer, opts.origin), portal: true };
   const session = await stripe().checkout.sessions.create({
     mode: "subscription",
     customer,
@@ -115,7 +125,48 @@ async function portalUrlFor(customer: string, origin: string): Promise<string> {
 /** お支払い・解約・プランの変更の画面（Stripe のカスタマーポータル）の URL。まだ顧客でなければ null */
 export async function portalUrl(opts: { userId: string; origin: string }): Promise<string | null> {
   const { stripeCustomerId } = await getBilling(opts.userId);
-  return stripeCustomerId ? portalUrlFor(stripeCustomerId, opts.origin) : null;
+  if (!stripeCustomerId) return null;
+  try {
+    return await portalUrlFor(stripeCustomerId, opts.origin);
+  } catch (err) {
+    // Stripe に無い顧客は外す（まだ申し込んでいないのと同じ扱い）
+    if (!isMissingCustomer(err)) throw err;
+    await clearStripeCustomerId(opts.userId, stripeCustomerId);
+    return null;
+  }
+}
+
+/** Stripe のエラー（型を import せずに読む） */
+type StripeErrorLike = { type?: string; code?: string; param?: string; message?: string };
+
+/** 「その顧客は無い」というエラーか */
+function isMissingCustomer(err: unknown): boolean {
+  const e = err as StripeErrorLike | null;
+  return e?.code === "resource_missing" && (e.param === "customer" || /No such customer/i.test(e.message ?? ""));
+}
+
+/**
+ * お支払いの画面を開けなかった理由を、運営者が直せる言葉にする（設定の間違いがほとんどのため）。
+ * Stripe のキーや ID の値そのものは出さない
+ */
+export function billingFailureReason(err: unknown): string {
+  const e = (err ?? {}) as StripeErrorLike;
+  const msg = e.message ?? "";
+  if (e.type === "StripeAuthenticationError") return "Stripe のシークレットキー（STRIPE_SECRET_KEY）が正しくありません。sk_test_ か sk_live_ で始まるキーを入れてください";
+  if (e.type === "StripePermissionError") return "Stripe のキーに権限がありません。制限付きのキーなら、顧客・サブスク・Checkout・カスタマーポータルの書き込み権限を付けてください";
+  if (/No such price/i.test(msg)) {
+    return /prod_/.test(msg)
+      ? "価格 ID の欄に商品 ID（prod_…）が入っています。STRIPE_PRICE_… には price_ で始まる価格 ID を入れてください"
+      : "価格 ID が見つかりません。STRIPE_PRICE_… の値と、テスト環境・本番のどちらのキーかが合っているか確かめてください";
+  }
+  if (/recurring/i.test(msg)) return "価格が「継続（毎月）」になっていません。Stripe で、継続・毎月の価格を作り直してください";
+  if (/business name|account name/i.test(msg)) return "Stripe の設定で、公開用のビジネス名（アカウント名）を入れてください";
+  if (/configuration/i.test(msg) && /portal/i.test(msg)) return "カスタマーポータルの設定がまだです。Stripe の 設定 → Billing → カスタマーポータル で保存してください";
+  // Supabase：schema.sql を実行していない（列が無い）
+  const pg = err as { code?: string } | null;
+  if (pg?.code === "42703" || /stripe_customer_id|plan_status|plan_renews_at/.test(msg)) return "データベースの更新が必要です。Supabase で supabase/schema.sql をもう一度実行してください";
+  if (e.type?.startsWith("Stripe")) return `Stripe でエラーが起きました（${e.code ?? e.type}）`;
+  return "少し待ってからもう一度お試しください";
 }
 
 /** Stripe からの知らせ（webhook）を処理する。署名が正しくなければ投げる */

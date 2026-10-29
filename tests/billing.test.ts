@@ -30,6 +30,10 @@ vi.mock("@/lib/users", () => ({
     r.stripe_customer_id ??= customerId;
     return r.stripe_customer_id;
   },
+  clearStripeCustomerId: async (id: string, customerId: string) => {
+    const r = users.get(id)!;
+    if (r.stripe_customer_id === customerId) r.stripe_customer_id = null;
+  },
   applySubscription: async (customerId: string, sub: { plan: string; subscriptionId: string | null; status: string | null; renewsAt: string | null }) => {
     const r = [...users.values()].find((u) => u.stripe_customer_id === customerId);
     if (!r) return false;
@@ -177,5 +181,42 @@ describe("申し込みの画面（Checkout）", () => {
     } finally {
       process.env.STRIPE_PRICE_PRO = price;
     }
+  });
+});
+
+describe("お支払いの画面を開けなかったとき", () => {
+  const stripeError = (type: string, message: string, extra: Record<string, string> = {}) => Object.assign(new Error(message), { type, ...extra });
+
+  it("理由を、運営者が直せる言葉で返す（キーの値は出さない）", async () => {
+    stripe.subscriptions.list.mockRejectedValueOnce(stripeError("StripeAuthenticationError", "Invalid API Key provided: sk_test_****abcd"));
+    const auth = await post(checkout, "https://app.example/api/billing/checkout", JSON.stringify({ plan: "plus" }));
+    expect(auth.status).toBe(502);
+    expect(auth.data.error).toContain("シークレットキー（STRIPE_SECRET_KEY）が正しくありません");
+    expect(auth.data.error).not.toContain("abcd");
+
+    stripe.checkout.sessions.create.mockRejectedValueOnce(stripeError("StripeInvalidRequestError", "No such price: 'prod_ABC'", { code: "resource_missing", param: "line_items[0][price]" }));
+    const prod = await post(checkout, "https://app.example/api/billing/checkout", JSON.stringify({ plan: "plus" }));
+    expect(prod.data.error).toContain("商品 ID（prod_…）が入っています");
+
+    stripe.checkout.sessions.create.mockRejectedValueOnce(stripeError("StripeInvalidRequestError", "No such price: 'price_live_x'", { code: "resource_missing" }));
+    const price = await post(checkout, "https://app.example/api/billing/checkout", JSON.stringify({ plan: "plus" }));
+    expect(price.data.error).toContain("価格 ID が見つかりません");
+
+    stripe.checkout.sessions.create.mockRejectedValueOnce(Object.assign(new Error('column users.stripe_customer_id does not exist'), { code: "42703" }));
+    const db = await post(checkout, "https://app.example/api/billing/checkout", JSON.stringify({ plan: "plus" }));
+    expect(db.data.error).toContain("schema.sql をもう一度実行");
+  });
+
+  it("保存していた顧客が Stripe に無いとき（テストと本番の切り替え）は、作り直して申し込みの画面を開く", async () => {
+    stripe.subscriptions.list
+      .mockRejectedValueOnce(stripeError("StripeInvalidRequestError", "No such customer: 'cus_1'", { code: "resource_missing", param: "customer" }))
+      .mockResolvedValue({ data: [] });
+    stripe.customers.create.mockResolvedValue({ id: "cus_live" });
+    stripe.checkout.sessions.create.mockResolvedValue({ url: "https://checkout.stripe.com/c/pay/live" });
+    const { status, data } = await post(checkout, "https://app.example/api/billing/checkout", JSON.stringify({ plan: "pro" }));
+    expect(status).toBe(200);
+    expect(data.url).toBe("https://checkout.stripe.com/c/pay/live");
+    expect(users.get(userId)!.stripe_customer_id).toBe("cus_live");
+    expect(stripe.checkout.sessions.create.mock.calls[0][0].customer).toBe("cus_live");
   });
 });

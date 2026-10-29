@@ -97,6 +97,12 @@ export async function saveStripeCustomerId(userId: string, customerId: string): 
   return (row?.stripe_customer_id as string | null) ?? customerId;
 }
 
+/** Stripe に見つからなくなった顧客 ID を外す（テスト環境と本番を切り替えたときなど）。次の申し込みで作り直す */
+export async function clearStripeCustomerId(userId: string, customerId: string): Promise<void> {
+  const { error } = await db().from("users").update({ stripe_customer_id: null }).eq("id", userId).eq("stripe_customer_id", customerId);
+  if (error) throw error;
+}
+
 /** Stripe のサブスクの状態を、顧客 ID のユーザーに書く（webhook から呼ぶ）。書いたユーザーが無ければ false */
 export async function applySubscription(
   customerId: string,
