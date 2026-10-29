@@ -117,6 +117,61 @@ describe("全員の AI の費用の、1日の上限（最後の安全装置）",
   });
 });
 
+describe("AI が断り、別のモデルでやり直したときの費用", () => {
+  // Anthropic のドキュメントの例と同じ形：上の usage は答えたモデルの分だけ。断ったモデルの分は usage.iterations にだけある
+  const fallbackResponse = {
+    model: "claude-opus-5-5",
+    stop_reason: "end_turn",
+    content: [
+      { type: "fallback", from: { model: "claude-sonnet-5-5" }, to: { model: "claude-opus-5-5" }, trigger: { type: "refusal", category: "frontier_llm" } },
+      { type: "text", text: "ok" },
+    ],
+    usage: {
+      input_tokens: 4000,
+      output_tokens: 500,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 0,
+      iterations: [
+        { type: "message", model: "claude-sonnet-5-5", input_tokens: 5000, output_tokens: 300, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+        { type: "fallback_message", model: "claude-opus-5-5", input_tokens: 4000, output_tokens: 500, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+      ],
+    },
+  };
+
+  it("断ったモデルの分も、それぞれのモデルの料金で足す", async () => {
+    create.mockResolvedValue(fallbackResponse);
+    const meter = new CostMeter(1);
+    await call(meter, "claude-sonnet-5-5");
+    const declined = (5000 * 2 + 300 * 10) / 1e6; // Sonnet：$0.013
+    const served = (4000 * 4 + 500 * 20) / 1e6; // Opus：$0.026
+    expect(meter.usd).toBeCloseTo(declined + served, 10);
+  });
+
+  it("ふつうの返事（やり直しなし）は、これまでどおり", async () => {
+    create.mockResolvedValue({ ...reply, usage: { ...reply.usage, iterations: [{ type: "message", model: "claude-opus-5-5", ...reply.usage }] } });
+    const meter = new CostMeter(1);
+    await call(meter);
+    expect(meter.usd).toBeCloseTo(0.03, 10);
+  });
+
+  it("断ったまま返ってきた（代わりのモデルが無い）ときも、その分を数える", async () => {
+    create.mockResolvedValue({ model: "claude-sonnet-5-5", stop_reason: "refusal", content: [], usage: { input_tokens: 5000, output_tokens: 0 } });
+    const meter = new CostMeter(1);
+    await call(meter, "claude-sonnet-5-5");
+    expect(meter.usd).toBeCloseTo(0.01, 10);
+  });
+
+  it("やり直しのあるモデルは、断った1回と代わりの1回の両方が残りに入るよう、1回分を残りの半分までにする", async () => {
+    create.mockResolvedValue(reply);
+    await call(new CostMeter(0.1), "claude-sonnet-5-5");
+    expect((create.mock.calls[0][0].max_tokens * 10) / 1e6).toBeLessThanOrEqual(0.05);
+    // Haiku はやり直しが無いので、残りいっぱいまで
+    create.mockClear();
+    await createMessage(new CostMeter(0.002), { model: "claude-haiku-5-5", max_tokens: 1800, messages: [{ role: "user", content: "x" }] });
+    expect(create.mock.calls[0][0].max_tokens).toBe(1800);
+  });
+});
+
 describe("費用は AI を呼ぶたびに記録する（途中で打ち切られても残る）", () => {
   it("依頼が終わる前に、呼んだ分がもう記録されている", async () => {
     create.mockResolvedValue(reply); // $0.03

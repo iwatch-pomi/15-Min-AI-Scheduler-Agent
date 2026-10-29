@@ -39,6 +39,26 @@ export function costUsd(model: string, usage: TokenUsage | null | undefined): nu
   );
 }
 
+/** usage.iterations の1件（やり直しの1回分）。断ったモデルは message、代わりに答えたモデルは fallback_message */
+type IterationUsage = TokenUsage & { type?: string; model?: string | null };
+
+/**
+ * 1回の呼び出しの費用（米ドル）。
+ * AI が断り、Anthropic が別のモデルでやり直したとき（server-side fallback）は、上の usage の数字は「答えたモデルの分」だけで、
+ * 断ったモデルの分は usage.iterations にしか出ない。そのときは、やり直しの1回ずつを、それぞれのモデルの料金で足す。
+ * 断ったときの費用がかかるかどうかは断った理由で変わるが、分からないので、いつも数える（多めに数える）
+ */
+export function responseCostUsd(
+  requestedModel: string,
+  response: { model?: string | null; usage?: (TokenUsage & { iterations?: IterationUsage[] | null }) | null },
+): number {
+  const top = costUsd(response.model ?? requestedModel, response.usage);
+  const iterations = response.usage?.iterations;
+  if (!iterations?.length) return top;
+  const each = iterations.reduce((sum, it) => sum + costUsd(it.model ?? requestedModel, it), 0);
+  return Math.max(top, each);
+}
+
 /** 1回の依頼（AI とのやり取り数回分）の費用を足し合わせる */
 export class CostMeter {
   usd = 0;

@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { MIN_CALL_MS, TimeUpError, costUsd, estimateInputTokens, fitMaxTokens, worstCaseUsd, type CostMeter } from "./pricing";
+import { MIN_CALL_MS, TimeUpError, estimateInputTokens, fitMaxTokens, responseCostUsd, worstCaseUsd, type CostMeter } from "./pricing";
 
 // Claude API を呼ぶ唯一の入り口。
 // ルール：Claude を使ったら必ず使用量を記録する。そのため、ここ以外から SDK を呼ばない
@@ -55,10 +55,12 @@ export async function createMessage(meter: CostMeter, params: MessageParams): Pr
   // model: undefined が渡されても、決まったモデルを使う
   const model = params.model ?? MODEL;
   const inputTokens = estimateInputTokens({ system: params.system, tools: params.tools, messages: params.messages });
-  const maxTokens = fitMaxTokens(model, inputTokens, params.max_tokens, meter.leftUsd);
+  // 断られたとき、Anthropic 推奨の別モデルでやり直す（Haiku にはこの仕組みがないので付けない）
+  const fallback = !model.includes("haiku");
+  // やり直すと、断った1回と、代わりのモデルの1回の両方に費用がかかる。両方が残りに入るよう、1回分を残りの半分までにする
+  const maxTokens = fitMaxTokens(model, inputTokens, params.max_tokens, fallback ? meter.leftUsd / 2 : meter.leftUsd);
   const request = {
-    // 断られたとき、Anthropic 推奨の別モデルでやり直す（Haiku にはこの仕組みがないので付けない）
-    ...(model.includes("haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
+    ...(fallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
     ...params,
     max_tokens: maxTokens,
     model,
@@ -70,7 +72,8 @@ export async function createMessage(meter: CostMeter, params: MessageParams): Pr
     try {
       // SDK の自動のやり直しは使わない（待ち時間が上限を超え、やり直した分の費用も分からなくなる）
       const response = await client.beta.messages.create(request, { timeout: Number.isFinite(leftMs) ? leftMs - 2000 : undefined, maxRetries: 0 });
-      await meter.charge(costUsd(response.model ?? model, response.usage));
+      // 断って別のモデルでやり直した分も、それぞれのモデルの料金で数える
+      await meter.charge(responseCostUsd(model, response));
       return response;
     } catch (err) {
       const status = (err as { status?: unknown }).status;

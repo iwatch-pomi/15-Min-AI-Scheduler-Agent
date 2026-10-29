@@ -114,13 +114,14 @@ describe("1回の依頼は、予算の残りに入る分だけ AI を呼ぶ", ()
     await withAiBudget({ store, userId, tz, now, plan: "pro" }, async (meter) => call(meter, "claude-sonnet-5-5"));
     const max = create.mock.calls[0][0].max_tokens;
     expect(max).toBeLessThan(16000);
-    expect((max * 10) / 1_000_000).toBeLessThanOrEqual(0.08);
+    expect((max * 10) / 1_000_000).toBeLessThanOrEqual(0.04);
   });
 
   it("今月の残りのほうが少なければ、そちらに合わせる", async () => {
-    await store.addCost(userId, "2026-10-02", 4.48); // プロの1か月 $4.5 の残り $0.02
+    await store.addCost(userId, "2026-10-02", 4.47); // プロの1か月 $4.5 の残り $0.03
     await withAiBudget({ store, userId, tz, now, plan: "pro" }, async (meter) => call(meter, "claude-sonnet-5-5"));
-    expect((create.mock.calls[0][0].max_tokens * 10) / 1_000_000).toBeLessThanOrEqual(0.02);
+    // 断られて別のモデルでやり直す分も入るよう、1回分は残りの半分まで
+    expect((create.mock.calls[0][0].max_tokens * 10) / 1_000_000).toBeLessThanOrEqual(0.015);
   });
 
   it("残りが短い返事にも足りなければ、AI を呼ばない（押さえた分も戻す）", async () => {
