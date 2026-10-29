@@ -3,7 +3,7 @@ import { createMessage } from "./claude";
 import type { RecordingCalendar } from "./ops";
 import { UnauthorizedError } from "./errors";
 import { instructionsBlock } from "./custom-instructions";
-import { OverBudgetError, type CostMeter } from "./pricing";
+import { OverBudgetError, TimeUpError, type CostMeter } from "./pricing";
 import type { Theme } from "./theme";
 import { toLocalIso } from "./time";
 import { ToolError, executeTool, toolDefinitions } from "./tools";
@@ -93,11 +93,13 @@ export async function runAgent(opts: {
       tools: toolDefinitions,
       messages,
     }).catch((err) => {
-      // 予算の残りが足りなくなった。1回目なら依頼ごと断り（AI は呼んでいない）、途中ならここまでで止める
-      if (err instanceof OverBudgetError && turn > 0) return null;
+      // 予算の残り・時間が足りなくなった。1回目なら依頼ごと断り（AI は呼んでいない）、途中ならここまでで止める
+      if (turn > 0 && err instanceof OverBudgetError) return "budget" as const;
+      if (turn > 0 && err instanceof TimeUpError) return "time" as const;
       throw err;
     });
-    if (!response) return { reply: BUDGET_STOP };
+    if (response === "budget") return { reply: BUDGET_STOP };
+    if (response === "time") return { reply: LONG_STOP };
 
     if (response.stop_reason === "refusal") {
       return { reply: "すみません、この依頼にはお応えできませんでした。言い方を変えてもう一度送ってください。" };
@@ -127,9 +129,10 @@ export async function runAgent(opts: {
     messages.push({ role: "user", content: results });
   }
 
-  return { reply: "処理が長くなったので途中で止めました。ここまでの変更はカレンダーに反映されています。" };
+  return { reply: LONG_STOP };
 }
 
+const LONG_STOP = "処理が長くなったので途中で止めました。ここまでの変更はカレンダーに反映されています。";
 const BUDGET_STOP = "今日のAIの残りが少なくなったので、途中で止めました。ここまでの変更はカレンダーに反映されています。";
 
 function textOf(content: Anthropic.Beta.BetaContentBlock[]): string {

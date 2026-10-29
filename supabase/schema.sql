@@ -108,6 +108,39 @@ begin
 end;
 $$;
 
+-- 短い時間にたくさん送られるのを止めるための回数（1人・種類ごとに、今の区切りの始まりと回数）
+create table if not exists rate_limits (
+  user_id uuid not null references users(id) on delete cascade,
+  key text not null,
+  window_start timestamptz not null,
+  count int not null,
+  primary key (user_id, key)
+);
+
+create or replace function hit_rate_limit(p_user_id uuid, p_key text, p_window_seconds int)
+returns int language plpgsql as $$
+declare
+  n int;
+begin
+  insert into rate_limits (user_id, key, window_start, count) values (p_user_id, p_key, now(), 1)
+  on conflict (user_id, key) do update set
+    count = case when rate_limits.window_start < now() - make_interval(secs => p_window_seconds) then 1 else rate_limits.count + 1 end,
+    window_start = case when rate_limits.window_start < now() - make_interval(secs => p_window_seconds) then now() else rate_limits.window_start end
+  returning count into n;
+  return n;
+end;
+$$;
+
+-- その日の、全員の AI の費用の合計と、そのうち無料プランの人の分（異常な費用のときに AI を止めるため）
+create index if not exists usage_date_idx on usage (date);
+create or replace function total_usage_cost(p_date date)
+returns table (all_microusd bigint, free_microusd bigint) language sql stable as $$
+  select coalesce(sum(u.cost_microusd), 0)::bigint,
+         coalesce(sum(u.cost_microusd) filter (where s.plan = 'free'), 0)::bigint
+  from usage u join users s on s.id = u.user_id
+  where u.date = p_date;
+$$;
+
 -- AI で作った「AIのおすすめ／AIブリーフ」。日付とデザイン（口調）ごとに1つ。更新したら置き換える
 create table if not exists briefs (
   user_id uuid not null references users(id) on delete cascade,
@@ -135,6 +168,7 @@ alter table usage enable row level security;
 alter table briefs enable row level security;
 alter table user_settings enable row level security;
 alter table ai_locks enable row level security;
+alter table rate_limits enable row level security;
 
 -- 関数はサーバー（service_role）からだけ呼べるようにする。
 -- anon / authenticated キーが漏れても、ほかの人の使用量を書き換えられないように
@@ -142,11 +176,17 @@ alter function increment_usage(uuid, date) set search_path = public;
 alter function add_usage_cost(uuid, date, bigint) set search_path = public;
 alter function add_brief_calls(uuid, date, int) set search_path = public;
 alter function acquire_ai_lock(uuid, text, int) set search_path = public;
+alter function hit_rate_limit(uuid, text, int) set search_path = public;
+alter function total_usage_cost(date) set search_path = public;
 revoke execute on function increment_usage(uuid, date) from public, anon, authenticated;
 revoke execute on function add_usage_cost(uuid, date, bigint) from public, anon, authenticated;
 revoke execute on function add_brief_calls(uuid, date, int) from public, anon, authenticated;
 revoke execute on function acquire_ai_lock(uuid, text, int) from public, anon, authenticated;
+revoke execute on function hit_rate_limit(uuid, text, int) from public, anon, authenticated;
+revoke execute on function total_usage_cost(date) from public, anon, authenticated;
 grant execute on function increment_usage(uuid, date) to service_role;
 grant execute on function add_usage_cost(uuid, date, bigint) to service_role;
 grant execute on function add_brief_calls(uuid, date, int) to service_role;
 grant execute on function acquire_ai_lock(uuid, text, int) to service_role;
+grant execute on function hit_rate_limit(uuid, text, int) to service_role;
+grant execute on function total_usage_cost(date) to service_role;

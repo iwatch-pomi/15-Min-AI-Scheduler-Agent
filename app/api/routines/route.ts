@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { getUserContext } from "@/lib/context";
+import { getUserContext, type UserContext } from "@/lib/context";
+import { rateLimit } from "@/lib/guards";
 import { errorResponse } from "@/lib/http";
 import { routineInputSchema } from "@/lib/routines";
 import { safeTimeZone } from "@/lib/time";
@@ -21,6 +22,13 @@ const createBody = routineInputSchema.extend({ tz: z.string().optional() });
 const updateBody = createBody.extend({ id: z.string().min(1) });
 const deleteBody = z.object({ id: z.string().min(1), tz: z.string().optional() });
 
+/** 書き込むときの利用者（短い時間に送れる回数を数える） */
+async function writer(): Promise<UserContext> {
+  const ctx = await getUserContext();
+  await rateLimit(ctx.store, ctx.userId, "write");
+  return ctx;
+}
+
 function invalid(error: z.ZodError) {
   return NextResponse.json({ error: error.issues[0]?.message ?? "入力が不正です" }, { status: 400 });
 }
@@ -31,7 +39,7 @@ export async function POST(req: NextRequest) {
     const parsed = createBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return invalid(parsed.error);
     const { tz, ...input } = parsed.data;
-    const { calendar } = await getUserContext();
+    const { calendar } = await writer();
     return NextResponse.json({ routine: await calendar.createRoutine(input, safeTimeZone(tz)) });
   } catch (err) {
     return errorResponse(err);
@@ -44,7 +52,7 @@ export async function PATCH(req: NextRequest) {
     const parsed = updateBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return invalid(parsed.error);
     const { id, tz, ...input } = parsed.data;
-    const { calendar } = await getUserContext();
+    const { calendar } = await writer();
     return NextResponse.json({ routine: await calendar.updateRoutine(id, input, safeTimeZone(tz)) });
   } catch (err) {
     return errorResponse(err);
@@ -56,7 +64,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const parsed = deleteBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return invalid(parsed.error);
-    const { calendar } = await getUserContext();
+    const { calendar } = await writer();
     await calendar.deleteRoutine(parsed.data.id, safeTimeZone(parsed.data.tz));
     return NextResponse.json({ ok: true });
   } catch (err) {

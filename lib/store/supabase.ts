@@ -100,6 +100,19 @@ export class SupabaseStore implements Store {
     if (error) throw error;
   }
 
+  async hitRateLimit(userId: string, key: string, windowSeconds: number) {
+    const { data, error } = await db().rpc("hit_rate_limit", { p_user_id: userId, p_key: key, p_window_seconds: windowSeconds });
+    if (error) throw error;
+    return Number(data);
+  }
+
+  async getTotalCost(date: string) {
+    const { data, error } = await db().rpc("total_usage_cost", { p_date: date });
+    if (error) throw error;
+    const row = (Array.isArray(data) ? data[0] : data) as { all_microusd?: number | string; free_microusd?: number | string } | null;
+    return { all: Number(row?.all_microusd ?? 0) / 1_000_000, free: Number(row?.free_microusd ?? 0) / 1_000_000 };
+  }
+
   async addCost(userId: string, date: string, usd: number) {
     const { data, error } = await db().rpc("add_usage_cost", {
       p_user_id: userId,

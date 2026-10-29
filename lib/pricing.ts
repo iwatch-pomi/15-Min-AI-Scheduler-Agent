@@ -43,17 +43,52 @@ export function costUsd(model: string, usage: TokenUsage | null | undefined): nu
 export class CostMeter {
   usd = 0;
 
-  /** limitUsd：この依頼で使ってよい額（米ドル）。今日と今月の予算の残りの少ないほう（withAiBudget が決める） */
-  constructor(public limitUsd = Infinity) {}
+  /**
+   * limitUsd：この依頼で使ってよい額（米ドル）。今日と今月の予算の残りの少ないほう（withAiBudget が決める）
+   * persist：AI を1回呼ぶたびに、その費用をすぐ記録する先（処理が途中で打ち切られても、使った分が残るように）
+   * deadline：AI の返事を待ってよい時刻（ミリ秒）。サーバーの実行時間の上限より前にする
+   */
+  constructor(
+    public limitUsd = Infinity,
+    private persist?: (usd: number) => Promise<void>,
+    public deadline = Infinity,
+  ) {}
 
   add(model: string, usage: TokenUsage | null | undefined) {
     this.usd += costUsd(model, usage);
+  }
+
+  /** AI を1回呼んだ費用を足し、すぐに記録する */
+  async charge(usd: number): Promise<void> {
+    this.usd += usd;
+    await this.persist?.(usd);
   }
 
   /** この依頼で、あと使える額 */
   get leftUsd(): number {
     return this.limitUsd - this.usd;
   }
+
+  /** AI の返事を、あと何ミリ秒待てるか */
+  get leftMs(): number {
+    return this.deadline - Date.now();
+  }
+}
+
+/** AI を1回呼ぶのに最低限ほしい時間（ミリ秒）。これより短ければ呼ばない */
+export const MIN_CALL_MS = 8000;
+
+/** 時間が足りず、AI を呼ばなかった（サーバーの実行時間の上限に近い） */
+export class TimeUpError extends Error {
+  constructor() {
+    super("AIの処理に時間がかかりすぎたため、止めました。依頼を短くして、もう一度お試しください");
+  }
+}
+
+/** 1回の呼び出しの最悪の費用（入力はキャッシュの書き込み 1.25倍、返事は max_tokens まで書いた場合） */
+export function worstCaseUsd(model: string, inputTokens: number, maxTokens: number): number {
+  const p = priceOf(model);
+  return (inputTokens * p.input * 1.25 + maxTokens * p.output) / 1_000_000;
 }
 
 /** 予算の残りが足りず、AI を呼ばなかった（この依頼で使える額では、短い返事も作れない） */

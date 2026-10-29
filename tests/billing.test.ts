@@ -44,7 +44,7 @@ vi.mock("@/lib/users", () => ({
 
 let userId = "";
 vi.mock("@/lib/context", () => ({
-  getUserContext: async () => ({ userId, plan: users.get(userId)!.plan }),
+  getUserContext: async () => ({ userId, plan: users.get(userId)!.plan, store: new MemoryStore() }),
   isDemo: () => false,
 }));
 
@@ -54,6 +54,7 @@ process.env.STRIPE_PRICE_PLUS = "price_plus";
 process.env.STRIPE_PRICE_STANDARD = "price_standard";
 process.env.STRIPE_PRICE_PRO = "price_pro";
 
+const { MemoryStore } = await import("@/lib/store/memory");
 const webhook = (await import("@/app/api/billing/webhook/route")).POST;
 const checkout = (await import("@/app/api/billing/checkout/route")).POST;
 const billingStatus = (await import("@/app/api/billing/route")).GET;

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserContext } from "@/lib/context";
+import { rateLimit } from "@/lib/guards";
 import { errorResponse } from "@/lib/http";
 import { ManualEditError, applyManualChanges, manualChangesSchema } from "@/lib/manual";
 import { editNote, recordActivity } from "@/lib/activity";
@@ -14,6 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "入力が不正です" }, { status: 400 });
     }
     const { userId, calendar, store } = await getUserContext();
+    await rateLimit(store, userId, "write");
     const recording = new RecordingCalendar(calendar);
 
     let items: Awaited<ReturnType<typeof applyManualChanges>> = [];

@@ -22,7 +22,7 @@ const { MemoryStore } = await import("@/lib/store/memory");
 let userId = "";
 let plan: "free" | "plus" | "standard" | "pro" = "pro";
 vi.mock("@/lib/context", () => ({
-  getUserContext: async () => ({ userId, calendar: new MemoryCalendar(userId), store: new MemoryStore(), plan }),
+  getUserContext: async () => ({ userId, calendar: new MemoryCalendar(userId), store: new MemoryStore(), plan, accountTz: "Asia/Tokyo" }),
 }));
 const { POST } = await import("@/app/api/chat/route");
 

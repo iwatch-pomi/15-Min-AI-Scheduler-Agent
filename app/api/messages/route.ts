@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserContext } from "@/lib/context";
+import { rateLimit } from "@/lib/guards";
 import { toChatEntries } from "@/lib/history";
 import { errorResponse } from "@/lib/http";
 
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
 export async function DELETE() {
   try {
     const { userId, store } = await getUserContext();
+    await rateLimit(store, userId, "write");
     await store.deleteMessages(userId);
     return NextResponse.json({ ok: true });
   } catch (err) {

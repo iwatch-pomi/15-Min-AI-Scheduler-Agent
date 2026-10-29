@@ -12,6 +12,7 @@ type MemoryData = {
   quickActions: Map<string, string[]>;
   instructions: Map<string, string>;
   aiLocks: Map<string, { token: string; until: number }>;
+  rateLimits: Map<string, { start: number; count: number }>;
 };
 
 const g = globalThis as Record<string, unknown>;
@@ -27,6 +28,7 @@ data.briefs ??= new Map();
 data.quickActions ??= new Map();
 data.instructions ??= new Map();
 data.aiLocks ??= new Map();
+data.rateLimits ??= new Map();
 g.__ai15MemoryStore = data;
 
 export class MemoryStore implements Store {
@@ -102,6 +104,22 @@ export class MemoryStore implements Store {
 
   async releaseAiLock(userId: string, token: string) {
     if (data.aiLocks.get(userId)?.token === token) data.aiLocks.delete(userId);
+  }
+
+  async hitRateLimit(userId: string, key: string, windowSeconds: number) {
+    const k = `${userId}:${key}`;
+    const now = Date.now();
+    const cur = data.rateLimits.get(k);
+    const next = cur && now - cur.start < windowSeconds * 1000 ? { start: cur.start, count: cur.count + 1 } : { start: now, count: 1 };
+    data.rateLimits.set(k, next);
+    return next.count;
+  }
+
+  // メモリ上ではプランが分からないので、無料の人の分は 0 とする（デモ・テスト用）
+  async getTotalCost(date: string) {
+    let all = 0;
+    for (const [key, usd] of data.cost) if (key.endsWith(`:${date}`)) all += usd;
+    return { all, free: 0 };
   }
 
   async addCost(userId: string, date: string, usd: number) {

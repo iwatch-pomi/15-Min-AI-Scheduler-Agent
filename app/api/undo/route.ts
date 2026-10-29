@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getUserContext } from "@/lib/context";
+import { rateLimit } from "@/lib/guards";
 import { errorResponse } from "@/lib/http";
 import { recordActivity, undoNote } from "@/lib/activity";
 import { itemsFromOps } from "@/lib/history";
@@ -20,6 +21,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "opId が不正です" }, { status: 400 });
     const { opIds } = parsed.data;
     const { userId, calendar, store } = await getUserContext();
+    await rateLimit(store, userId, "write");
 
     // 全グループの操作を古い順に並べて一度に戻す。削除の取り消しで id が変わっても、
     // それより前のグループの操作が新しい id を追えるようにするため

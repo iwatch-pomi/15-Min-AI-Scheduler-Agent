@@ -33,6 +33,10 @@ export interface Store {
   acquireAiLock(userId: string, token: string, ttlSeconds: number): Promise<boolean>;
   /** 自分が取った鍵（token が同じもの）だけを外す */
   releaseAiLock(userId: string, token: string): Promise<void>;
+  /** 操作の回数を1つ数え、今の区切り（windowSeconds 秒）の中での回数を返す（短い時間にたくさん送られるのを止める） */
+  hitRateLimit(userId: string, key: string, windowSeconds: number): Promise<number>;
+  /** その日の、全員の AI の費用の合計と、そのうち無料プランの人の分（米ドル） */
+  getTotalCost(date: string): Promise<{ all: number; free: number }>;
   /** 今日の AI の費用（米ドル）を足し、足した後の合計を返す */
   addCost(userId: string, date: string, usd: number): Promise<number>;
   /** チャット履歴を古い順に。before（その id より前）から limit 件 */

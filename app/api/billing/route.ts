@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { pendingChange, pricesConfigured } from "@/lib/billing";
 import { getUserContext, isDemo } from "@/lib/context";
+import { rateLimit } from "@/lib/guards";
 import { errorResponse } from "@/lib/http";
 import { getBilling } from "@/lib/users";
 
@@ -10,7 +11,8 @@ const configured = () => Boolean(process.env.STRIPE_SECRET_KEY) && pricesConfigu
 // GET /api/billing → 今のプランと、契約の状態（次の更新日・期間の終わりに予定されているプランの変更など）。マイページのプランの節で使う
 export async function GET() {
   try {
-    const { userId, plan } = await getUserContext();
+    const { userId, plan, store } = await getUserContext();
+    await rateLimit(store, userId, "billing");
     if (isDemo()) return NextResponse.json({ plan, status: null, renewsAt: null, next: null, customer: false, available: false });
     const billing = await getBilling(userId);
     // 安いプランへの切り替えの予約（読めなくても、ほかの表示は出す）

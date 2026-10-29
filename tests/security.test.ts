@@ -63,12 +63,14 @@ describe("ストイックの入り口（/arc）", () => {
 describe("デモモード", () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it("本番（Vercel の Production）では DEMO_MODE を入れても有効にならない", async () => {
+  it("Vercel に公開したもの（Production・Preview）では DEMO_MODE を入れても有効にならない。手元だけで使える", async () => {
     const { isDemo } = await import("@/lib/demo");
     vi.stubEnv("DEMO_MODE", "1");
     vi.stubEnv("VERCEL_ENV", "production");
     expect(isDemo()).toBe(false);
     vi.stubEnv("VERCEL_ENV", "preview");
+    expect(isDemo()).toBe(false);
+    vi.stubEnv("VERCEL_ENV", "");
     expect(isDemo()).toBe(true);
   });
 });

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { billingFailureReason, checkoutUrl } from "@/lib/billing";
 import { getUserContext, isDemo } from "@/lib/context";
+import { rateLimit } from "@/lib/guards";
 import { billingError } from "@/lib/http";
 import { PAID_PLANS } from "@/lib/plans";
 
@@ -13,7 +14,8 @@ export async function POST(req: NextRequest) {
     const parsed = body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "プランを選んでください" }, { status: 400 });
     if (isDemo()) return NextResponse.json({ error: "デモではお支払いは使えません" }, { status: 400 });
-    const { userId } = await getUserContext();
+    const { userId, store } = await getUserContext();
+    await rateLimit(store, userId, "billing");
     return NextResponse.json(await checkoutUrl({ userId, plan: parsed.data.plan, origin: req.nextUrl.origin }));
   } catch (err) {
     return billingError(err, billingFailureReason);

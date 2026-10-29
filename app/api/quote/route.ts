@@ -4,7 +4,6 @@ import { withAiBudget } from "@/lib/budget";
 import { getUserContext } from "@/lib/context";
 import { errorResponse } from "@/lib/http";
 import { QuoteError, generateQuote } from "@/lib/quote";
-import { safeTimeZone } from "@/lib/time";
 
 const body = z.object({
   slot: z.enum(["morning", "day", "evening", "night"]),
@@ -13,14 +12,16 @@ const body = z.object({
   recent: z.array(z.string().max(60)).max(5).optional(),
 });
 
+export const maxDuration = 60;
+
 // POST /api/quote { slot, tz, arc?, recent? } → ストイックのホームに出す、時間帯のひと言（名言）を AI で作る（使用量を消費する）
 export async function POST(req: NextRequest) {
   try {
     const parsed = body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "入力が不正です" }, { status: 400 });
-    const tz = safeTimeZone(parsed.data.tz);
-    const { userId, store, plan } = await getUserContext();
-    const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, plan }, (meter) =>
+    // 使用量の日付は、アカウントのタイムゾーンで数える（画面から送られる tz は使わない）
+    const { userId, store, plan, accountTz } = await getUserContext();
+    const { result, usage, costPercent } = await withAiBudget({ store, userId, tz: accountTz, plan }, (meter) =>
       generateQuote(meter, parsed.data).catch((err) => {
         if (err instanceof QuoteError) return err;
         throw err;

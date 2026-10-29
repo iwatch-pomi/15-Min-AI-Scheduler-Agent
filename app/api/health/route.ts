@@ -28,7 +28,10 @@ export async function GET() {
       const { error: usageError } = await db().from("usage").select("cost_microusd").limit(1);
       const { error: briefsError } = await db().from("briefs").select("date").limit(1);
       const { error: settingsError } = await db().from("user_settings").select("quick_actions, custom_instructions").limit(1);
-      if (!error && !usageError && !briefsError && !settingsError) checks.supabase_schema = "ok";
+      // 悪用を止める仕組み（AI の依頼を同時に1つまで・短い時間に送れる回数）の表
+      const { error: locksError } = await db().from("ai_locks").select("user_id").limit(1);
+      const { error: rateError } = await db().from("rate_limits").select("user_id").limit(1);
+      if (!error && !usageError && !briefsError && !settingsError && !locksError && !rateError) checks.supabase_schema = "ok";
     } catch {
       // 接続できない場合は ng のまま
     }

@@ -26,9 +26,9 @@ export async function GET(req: NextRequest) {
     const date = req.nextUrl.searchParams.get("date") ?? "";
     const tone = req.nextUrl.searchParams.get("tone") === "stoic" ? "stoic" : "soft";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: "日付が不正です" }, { status: 400 });
-    const tz = safeTimeZone(req.nextUrl.searchParams.get("tz"));
-    const { userId, store, plan } = await getUserContext();
-    const left = await briefsLeft(store, userId, plan, localDateString(new Date(), tz));
+    // 回数は、アカウントのタイムゾーンの日付で数える（画面から送られる tz を変えても増えない）
+    const { userId, store, plan, accountTz } = await getUserContext();
+    const left = await briefsLeft(store, userId, plan, localDateString(new Date(), accountTz));
     const brief = await store.getBrief(userId, date, tone).catch((err) => {
       // schema.sql が古い（briefs テーブルがない）ときも、画面はふつうに動くようにする
       console.error("AI のおすすめを読めませんでした", err);
@@ -58,11 +58,13 @@ export async function POST(req: NextRequest) {
     const tz = safeTimeZone(parsed.data.tz);
     const now = new Date();
     const { date } = parsed.data;
-    const { userId, calendar, store, plan } = await getUserContext();
+    const { userId, calendar, store, plan, accountTz } = await getUserContext();
     const { start, end } = dayRange(date, tz);
     const events = (await calendar.list(start, end)).filter((b) => !b.allDay || b.start.slice(0, 10) === date);
 
     const today = localDateString(now, tz);
+    // 回数と使用量は、アカウントのタイムゾーンの日付で数える（画面から送られる tz を変えても増えない）
+    const countDay = localDateString(now, accountTz);
     // 回数の上限があるプラン（無料・ライト）は、AI を呼ぶ前に1回分を数える（1回の足し算なので、同時に押されても2回は通らない）
     const limit = PLANS[plan].briefsPerDay;
     // 使えないプラン（briefsPerDay が 0）は、数えずに断る
@@ -75,9 +77,9 @@ export async function POST(req: NextRequest) {
     }
     let used = 0;
     if (limit !== null) {
-      used = await store.addBriefCount(userId, today, 1);
+      used = await store.addBriefCount(userId, countDay, 1);
       if (used > limit) {
-        await store.addBriefCount(userId, today, -1).catch(() => {});
+        await store.addBriefCount(userId, countDay, -1).catch(() => {});
         return NextResponse.json(
           { error: `${PLANS[plan].label}プランの「AIで更新」は1日${limit}回までです。明日の0時にまた使えます（${PLANS[firstPlanWith((r) => r.briefsPerDay === null)].label}からは回数の制限がなく、より詳しい版になります）`, briefsLeft: 0 },
           { status: 429 },
@@ -85,12 +87,12 @@ export async function POST(req: NextRequest) {
       }
     }
     // AI のおすすめを作れなかったときは、数えた1回分を戻す（もう一度押せるように）
-    const refund = () => (limit !== null ? store.addBriefCount(userId, today, -1).catch(() => 0) : Promise.resolve(0));
+    const refund = () => (limit !== null ? store.addBriefCount(userId, countDay, -1).catch(() => 0) : Promise.resolve(0));
     const left = limit === null ? null : Math.max(0, limit - used);
 
     // カスタム指示は、使えるプランのときだけ渡す（前に保存した指示があっても）
     const instructions = PLANS[plan].customInstructions ? await store.getCustomInstructions(userId).catch(() => null) : null;
-    const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now, plan }, (meter) =>
+    const { result, usage, costPercent } = await withAiBudget({ store, userId, tz: accountTz, now, plan }, (meter) =>
       generateSuggestions(meter, { date, tz, now, today, events, tone: parsed.data.tone, model: MODELS[BRIEF_LEVELS[PLANS[plan].brief].model], instructions }).catch((err) => {
         if (err instanceof SuggestError) return err;
         throw err;

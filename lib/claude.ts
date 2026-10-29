@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { estimateInputTokens, fitMaxTokens, type CostMeter } from "./pricing";
+import { MIN_CALL_MS, TimeUpError, costUsd, estimateInputTokens, fitMaxTokens, worstCaseUsd, type CostMeter } from "./pricing";
 
 // Claude API を呼ぶ唯一の入り口。
 // ルール：Claude を使ったら必ず使用量を記録する。そのため、ここ以外から SDK を呼ばない
@@ -56,13 +56,35 @@ export async function createMessage(meter: CostMeter, params: MessageParams): Pr
   const model = params.model ?? MODEL;
   const inputTokens = estimateInputTokens({ system: params.system, tools: params.tools, messages: params.messages });
   const maxTokens = fitMaxTokens(model, inputTokens, params.max_tokens, meter.leftUsd);
-  const response = await client.beta.messages.create({
+  const request = {
     // 断られたとき、Anthropic 推奨の別モデルでやり直す（Haiku にはこの仕組みがないので付けない）
     ...(model.includes("haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
     ...params,
     max_tokens: maxTokens,
     model,
-  });
-  meter.add(response.model ?? model, response.usage);
-  return response;
+  };
+  for (let attempt = 0; ; attempt++) {
+    // サーバーの実行時間の上限の前に返事を待ち終える（打ち切られると、費用を記録できない）
+    const leftMs = meter.leftMs;
+    if (leftMs < MIN_CALL_MS) throw new TimeUpError();
+    try {
+      // SDK の自動のやり直しは使わない（待ち時間が上限を超え、やり直した分の費用も分からなくなる）
+      const response = await client.beta.messages.create(request, { timeout: Number.isFinite(leftMs) ? leftMs - 2000 : undefined, maxRetries: 0 });
+      await meter.charge(costUsd(response.model ?? model, response.usage));
+      return response;
+    } catch (err) {
+      const status = (err as { status?: unknown }).status;
+      if (typeof status !== "number") {
+        // 返事を待つ途中で打ち切った・通信が切れた。Anthropic の側では作り終えて費用がかかっていることがあるので、最悪の費用で数える
+        await meter.charge(worstCaseUsd(model, inputTokens, maxTokens));
+        throw err;
+      }
+      // 混み合っている（429・529）・一時的なエラーは、時間があれば1回だけやり直す（エラーの返事には費用がかからない）
+      if (attempt === 0 && [429, 500, 502, 503, 529].includes(status) && meter.leftMs > MIN_CALL_MS + 1000) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        continue;
+      }
+      throw err;
+    }
+  }
 }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { runAgent } from "@/lib/agent";
 import { modelFor, modelLabel } from "@/lib/claude";
 import { getUserContext } from "@/lib/context";
+import { rateLimit } from "@/lib/guards";
 import { UnauthorizedError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http";
 import { currentUsage, withAiBudget } from "@/lib/budget";
@@ -11,7 +12,7 @@ import { HISTORY_LIMIT, compactHistory } from "@/lib/context-window";
 import { interruptInstruction, interruptLabel, parseInterrupt } from "@/lib/interrupt";
 import { PLANS, allowedMode } from "@/lib/plans";
 import { RecordingCalendar } from "@/lib/ops";
-import { OverBudgetError } from "@/lib/pricing";
+import { OverBudgetError, TimeUpError } from "@/lib/pricing";
 import { safeTimeZone } from "@/lib/time";
 
 export const maxDuration = 60;
@@ -40,7 +41,9 @@ export async function POST(req: NextRequest) {
     const tz = safeTimeZone(parsed.data.tz);
     const now = new Date();
 
-    const { userId, calendar, store, plan } = await getUserContext();
+    const { userId, calendar, store, plan, accountTz } = await getUserContext();
+    // AI を使わずにアプリで処理する依頼も、カレンダーと履歴に書き込むので、短い時間に送れる回数を決める
+    await rateLimit(store, userId, "chat");
     const recording = new RecordingCalendar(calendar);
     const { message, interrupt, tone } = parsed.data;
     // プランに無いモード（無料で強化・最大など）は、使えるいちばん上のモードに下げる（画面だけに頼らない）
@@ -70,7 +73,7 @@ export async function POST(req: NextRequest) {
           ],
           opId ?? undefined,
         );
-        const usage = await currentUsage({ store, userId, tz, now, plan });
+        const usage = await currentUsage({ store, userId, tz: accountTz, now, plan });
         return NextResponse.json({ reply, opId, changes: summarize(recording.ops), usage, local: true, aiMode });
       }
     }
@@ -84,13 +87,13 @@ export async function POST(req: NextRequest) {
     // 節約・通常は Haiku（難しい依頼は Sonnet）、強化は Sonnet、最大は Opus
     const model = modelFor(aiMode, message);
     // Claude を使うので、必ず予算の確認と費用の記録をする（使い切っていたら 429 で AI は呼ばない）
-    const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now, plan }, async (meter) => {
+    const { result, usage, costPercent } = await withAiBudget({ store, userId, tz: accountTz, now, plan }, async (meter) => {
       try {
         const { reply } = await runAgent({ message: prompt, history, calendar: recording, tz, now, meter, model, tone, instructions });
         return { reply, fatal: null };
       } catch (err) {
-        // ログインし直し・予算の残りが足りない（AI を呼ぶ前に断った）は、そのまま画面に伝える
-        if (err instanceof UnauthorizedError || err instanceof OverBudgetError) return { reply: "", fatal: err };
+        // ログインし直し・予算の残りや時間が足りない（AI を呼ぶ前に断った）は、そのまま画面に伝える
+        if (err instanceof UnauthorizedError || err instanceof OverBudgetError || err instanceof TimeUpError) return { reply: "", fatal: err };
         console.error(err);
         let reply = "AIの処理中にエラーが発生しました。";
         if (recording.ops.length) reply += "途中までの変更は［元に戻す］で取り消せます。";

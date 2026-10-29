@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getUserContext } from "@/lib/context";
+import { rateLimit } from "@/lib/guards";
 import { errorResponse } from "@/lib/http";
 import { DEFAULT_QUICK_ACTIONS, MAX_QUICK_ACTIONS, MAX_QUICK_ACTION_LENGTH, normalizeQuickActions } from "@/lib/quick-actions";
 
@@ -32,6 +33,7 @@ export async function PUT(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "ボタンの内容が不正です" }, { status: 400 });
     const actions = normalizeQuickActions(parsed.data.actions);
     const { userId, store } = await getUserContext();
+    await rateLimit(store, userId, "write");
     await store.saveQuickActions(userId, actions);
     return NextResponse.json({ actions, saved: true });
   } catch (err) {

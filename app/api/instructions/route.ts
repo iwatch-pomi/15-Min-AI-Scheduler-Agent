@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getUserContext } from "@/lib/context";
+import { rateLimit } from "@/lib/guards";
 import { MAX_INSTRUCTIONS_LENGTH, normalizeInstructions } from "@/lib/custom-instructions";
 import { errorResponse } from "@/lib/http";
 import { PLANS, firstPlanWith } from "@/lib/plans";
@@ -34,6 +35,7 @@ export async function PUT(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "指示の内容が不正です" }, { status: 400 });
     const text = normalizeInstructions(parsed.data.text);
     const { userId, store, plan } = await getUserContext();
+    await rateLimit(store, userId, "write");
     // 消すことはいつでもできる。書くのは使えるプランだけ
     if (text !== null && !PLANS[plan].customInstructions) return NextResponse.json({ error: notAllowed() }, { status: 403 });
     await store.saveCustomInstructions(userId, text);
