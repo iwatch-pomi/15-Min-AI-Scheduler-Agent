@@ -27,13 +27,16 @@ export default function ChatBar(props: {
   sending: boolean;
   disabled?: boolean;
   onSend: (text: string) => void;
-  initialText?: string;
+  /** 入力中の文。タブを移っても消えないように、外（Scheduler）で持つ */
+  text: string;
+  onTextChange: (text: string) => void;
+  /** おすすめから開いたときなど、開いてすぐ入力できるようにする */
+  autoFocus?: boolean;
   placeholder?: string;
   /** 割り込みモードのときは枠をエメラルドにする */
   highlight?: boolean;
 }) {
-  const { sending, disabled, onSend, initialText = "", placeholder = "メッセージを入力…", highlight } = props;
-  const [text, setText] = useState(initialText);
+  const { sending, disabled, onSend, text, onTextChange: setText, autoFocus, placeholder = "メッセージを入力…", highlight } = props;
   const [listening, setListening] = useState(false);
   const [canListen, setCanListen] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -146,7 +149,7 @@ export default function ChatBar(props: {
             }
           }}
           rows={1}
-          autoFocus={!!initialText}
+          autoFocus={autoFocus}
           onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
           placeholder={placeholder}
           aria-label="AIへのメッセージ"

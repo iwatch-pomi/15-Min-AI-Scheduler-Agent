@@ -21,7 +21,10 @@ const EXAMPLES = ["14時から要件定義1時間、そのあと返信15分", "�
 export default function ChatView(props: {
   tz: string;
   usage: Usage;
-  draft: { text: string; key: number };
+  /** 入力中の文（タブを移っても残る）と、開いてすぐ入力できるようにするか */
+  draft: string;
+  onDraftChange: (text: string) => void;
+  focusInput: boolean;
   entries: ChatEntry[];
   /** もっと古い履歴があるか。loadingOlder は読み込み中 */
   hasOlder: boolean;
@@ -42,7 +45,7 @@ export default function ChatView(props: {
   onConfirm: (items: ChangeItem[]) => void;
   onBack: () => void;
 }) {
-  const { tz, usage, draft, entries, hasOlder, loadingOlder, onLoadOlder, sending, onSend, settings, onSettingsChange, onOpenSettings, quickActions, onEditQuickActions, onUndo, onSaveEdits, onConfirm, onBack } = props;
+  const { tz, usage, draft, onDraftChange, focusInput, entries, hasOlder, loadingOlder, onLoadOlder, sending, onSend, settings, onSettingsChange, onOpenSettings, quickActions, onEditQuickActions, onUndo, onSaveEdits, onConfirm, onBack } = props;
   // 節約モードなら、アプリで読める依頼は AI を使わずに処理できるので、上限に達していても送れる
   const save = settings.aiMode === "save";
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -239,8 +242,9 @@ export default function ChatView(props: {
           </button>
         </div>
         <ChatBar
-          key={draft.key}
-          initialText={draft.text}
+          text={draft}
+          onTextChange={onDraftChange}
+          autoFocus={focusInput}
           sending={sending}
           disabled={usage.exhausted && !save}
           onSend={(text) => onSend(text)}

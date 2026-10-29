@@ -43,6 +43,14 @@ function readLocal(key: string): string | null {
   }
 }
 
+function removeLocal(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // 何もしない
+  }
+}
+
 function writeLocal(key: string, value: string) {
   try {
     localStorage.setItem(key, value);
@@ -63,7 +71,15 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   const [today, setToday] = useState(() => localDateString(new Date(), tz));
   const [date, setDate] = useState(today);
   // おすすめから AI を開いたときに入力欄へ入れる文（key が変わると入力欄に反映される）
-  const [draft, setDraft] = useState<{ text: string; key: number }>({ text: "", key: 0 });
+  // 入力中のチャット。タブを移っても・アプリを閉じても消えないように、ここで持ち、この端末にも保存する
+  const [draft, setDraftState] = useState(() => readLocal("ai15:chat-draft") ?? "");
+  const setDraft = useCallback((text: string) => {
+    setDraftState(text);
+    if (text) writeLocal("ai15:chat-draft", text);
+    else removeLocal("ai15:chat-draft");
+  }, []);
+  // おすすめから AI を開いたときは、すぐ入力できるようにする
+  const [focusChat, setFocusChat] = useState(false);
   const [eventsByDate, setEventsByDate] = useState<Record<string, Block[]>>({});
   const [now, setNow] = useState(() => new Date());
   const [tab, setTabState] = useState<Tab>(tabFromHash);
@@ -78,6 +94,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   // 選択中のタブは URL の hash に残す（再読み込みしても同じタブで開く）
   const setTab = useCallback((t: Tab) => {
     setTabState(t);
+    if (t !== "ai") setFocusChat(false);
     history.replaceState(null, "", t === "home" ? window.location.pathname : `#${t}`);
   }, []);
 
@@ -589,7 +606,10 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           demo={demo}
           onDateChange={setDate}
           onOpenAi={(text) => {
-            if (text) setDraft((d) => ({ text, key: d.key + 1 }));
+            if (text) {
+              setDraft(text);
+              setFocusChat(true);
+            }
             setTab("ai");
           }}
         />
@@ -613,6 +633,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           onLoadOlder={() => loadHistory(entries[0]?.id)}
           usage={usage}
           draft={draft}
+          onDraftChange={setDraft}
+          focusInput={focusChat}
           entries={entries}
           sending={sending}
           onSend={send}
