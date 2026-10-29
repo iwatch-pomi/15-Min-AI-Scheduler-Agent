@@ -37,8 +37,6 @@ export type PlanRule = {
   customInstructions: boolean;
   /** 比べたときに、いちばんおすすめのプラン */
   recommended?: boolean;
-  /** このプランの中で「あと少しの差額で、こちらにできる」と案内する上のプラン */
-  upsell?: Plan;
 };
 
 /** AIブリーフ1回のおおよその費用（米ドル。いつも Sonnet で作る）。画面で「今日のAIの◯割」と出すのに使う */
@@ -89,7 +87,6 @@ export const PLANS: Record<Plan, PlanRule> = {
     ads: "none",
     briefsPerDay: null,
     customInstructions: true,
-    upsell: "pro",
   },
   pro: {
     label: "プロ",
@@ -153,21 +150,6 @@ export function yenPerChat(plan: Plan): number | null {
 /** 広告なしの有料プランの中で、1回あたりがいちばん安いプラン */
 export function bestValuePlan(): PaidPlan {
   return PAID_PLANS.filter((p) => PLANS[p].ads === "none").sort((a, b) => PLANS[a].priceYen / PLANS[a].monthlyChats - PLANS[b].priceYen / PLANS[b].monthlyChats)[0];
-}
-
-/** 上のプランへの案内（「あと200円で、AIが2倍以上」）に使う、差額と AI の量の倍率 */
-export function upsellOf(plan: Plan): { to: Plan; diffYen: number; aiTimes: number; newModes: AiMode[] } | null {
-  const to = PLANS[plan].upsell;
-  if (!to) return null;
-  const from = PLANS[plan];
-  const target = PLANS[to];
-  return {
-    to,
-    diffYen: target.priceYen - from.priceYen,
-    // 「2.25倍」は「2倍以上」と出したいので、小数は切り捨てる
-    aiTimes: Math.floor(target.monthlyUsd / from.monthlyUsd),
-    newModes: target.modes.filter((m) => !from.modes.includes(m)),
-  };
 }
 
 /** その機能が使える、いちばん安いプラン */

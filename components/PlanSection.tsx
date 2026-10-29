@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PLANS, PLAN_IDS, bestValuePlan, briefCostPercent, priceLabel, upsellOf, yenPerChat, type PaidPlan, type Plan } from "@/lib/plans";
+import { PLANS, PLAN_IDS, bestValuePlan, briefCostPercent, priceLabel, yenPerChat, type PaidPlan, type Plan } from "@/lib/plans";
 import { CheckIcon, LockIcon, SparkleIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
@@ -70,9 +70,6 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
           const current = p === plan;
           const higher = PLAN_IDS.indexOf(p) > PLAN_IDS.indexOf(plan);
           const perChat = yenPerChat(p);
-          const up = upsellOf(p);
-          // 上のプランへの案内は、そのプランより上をまだ使っていない人にだけ出す
-          const showUpsell = up && PLAN_IDS.indexOf(plan) < PLAN_IDS.indexOf(up.to);
           return (
             <li
               key={p}
@@ -120,29 +117,11 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
                 <Feature ok={rule.customInstructions}>{rule.customInstructions ? "AIへのカスタム指示：使える" : "AIへのカスタム指示：使えない"}</Feature>
                 <Feature ok={rule.ads === "none"}>{{ full: "広告：多め（全画面の広告あり）", light: "広告：少なめ（ホームだけ）", none: "広告なし" }[rule.ads]}</Feature>
               </ul>
-              {showUpsell && (
-                <div className="mt-2 rounded-lg bg-accent-soft px-2.5 py-2 text-xs stoic:rounded-[8px]" data-testid={`upsell-${p}`}>
-                  <p className="font-bold text-accent-ink">
-                    あと{up.diffYen.toLocaleString("ja-JP")}円で{PLANS[up.to].label}：AIが{up.aiTimes}倍以上
-                    {up.newModes.length ? `・${up.newModes.map((m) => MODE_NAMES[m]).join("・")}モードも使える` : ""}
-                  </p>
-                  <button
-                    onClick={() => upgrade(up.to as PaidPlan)}
-                    disabled={busy !== null || unavailable}
-                    className="mt-1.5 w-full rounded-full bg-accent py-1.5 text-xs font-bold text-on-accent disabled:opacity-50 stoic:rounded-[8px]"
-                    data-testid={`upsell-button-${p}`}
-                  >
-                    {busy === up.to ? "開いています…" : `${PLANS[up.to].label}にする（${priceLabel(up.to)}）`}
-                  </button>
-                </div>
-              )}
               {higher && (
                 <button
                   onClick={() => upgrade(p as PaidPlan)}
                   disabled={busy !== null || unavailable}
-                  className={`mt-2 w-full rounded-full py-2 text-sm font-bold disabled:opacity-50 stoic:h-10 stoic:rounded-[10px] stoic:py-0 ${
-                    showUpsell ? "border border-line text-muted" : "bg-accent text-on-accent"
-                  }`}
+                  className="mt-2 w-full rounded-full bg-accent py-2 text-sm font-bold text-on-accent disabled:opacity-50 stoic:h-10 stoic:rounded-[10px] stoic:py-0"
                   data-testid={`upgrade-${p}`}
                 >
                   {busy === p ? "開いています…" : `${rule.label}${plan === "free" ? "にする" : "に変更"}（${priceLabel(p)}）`}

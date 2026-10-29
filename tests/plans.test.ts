@@ -10,7 +10,6 @@ import {
   planFor,
   priceLabel,
   toPlan,
-  upsellOf,
   yenPerChat,
 } from "@/lib/plans";
 
@@ -80,11 +79,9 @@ describe("値段の並べ方（プロを選びたくなる形）", () => {
   });
 
   it("スタンダードはプロとの差額が200円なのに、AI は半分以下で最大モードも無い", () => {
-    const up = upsellOf("standard")!;
-    expect(up).toEqual({ to: "pro", diffYen: 200, aiTimes: 2, newModes: ["max"] });
+    expect(PLANS.pro.priceYen - PLANS.standard.priceYen).toBe(200);
     expect(PLANS.standard.monthlyUsd).toBeLessThanOrEqual(PLANS.pro.monthlyUsd / 2);
-    expect(upsellOf("plus")).toBeNull();
-    expect(upsellOf("pro")).toBeNull();
+    expect(canUse("standard", "max")).toBe(false);
   });
 
   it("AI 1回あたりの値段。広告なしのプランの中では、プロがいちばん安い", () => {
