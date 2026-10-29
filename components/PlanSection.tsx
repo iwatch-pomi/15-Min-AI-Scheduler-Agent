@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PLANS, PLAN_IDS, briefCostPercent, priceLabel, type PaidPlan, type Plan } from "@/lib/plans";
+import { BRIEF_LEVELS, PLANS, PLAN_IDS, briefCostPercent, priceLabel, type PaidPlan, type Plan } from "@/lib/plans";
 import { CheckIcon, LockIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
@@ -109,9 +109,9 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
                 <Feature ok={rule.briefsPerDay === null}>
                   {rule.briefsPerDay === 0
                     ? "AIで更新（AIブリーフ）：使えない"
-                    : rule.briefsPerDay !== null
-                      ? `AIで更新（AIブリーフ）：1日${rule.briefsPerDay}回まで（1回で今日のAIの約${briefCostPercent(p)}%）`
-                      : "AIで更新（AIブリーフ）：回数の制限なし"}
+                    : `AIで更新（AIブリーフ）：${BRIEF_LEVELS[rule.brief].name}（${BRIEF_LEVELS[rule.brief].ai}${rule.brief === "detailed" ? "が細かく考える" : ""}）・${
+                        rule.briefsPerDay !== null ? `1日${rule.briefsPerDay}回まで（1回で今日のAIの約${briefCostPercent(p)}%）` : "回数の制限なし"
+                      }`}
                 </Feature>
                 <Feature ok={rule.customInstructions}>{rule.customInstructions ? "AIへのカスタム指示：使える" : "AIへのカスタム指示：使えない"}</Feature>
                 <Feature ok={rule.ads === "none"}>{{ full: "広告：多め（全画面の広告あり）", light: "広告：少なめ（ホームだけ）", none: "広告なし" }[rule.ads]}</Feature>

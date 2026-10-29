@@ -24,7 +24,7 @@
 2. ~~規約などのページの運営者の情報を埋める~~ → 済み（`lib/legal.ts` の `OPERATOR`）
 3. 1回あたりの費用を下げる
    - `get_schedule` の返事から、要らない項目を削る（`lib/tools.ts` の `view`）
-   - ~~「AIで更新」（AIブリーフ）の回数~~ → 済み：無料は使えない、ライトは1日1回（`PLANS` の `briefsPerDay`）
+   - ~~「AIで更新」（AIブリーフ）の回数~~ → 済み：無料・ライトは簡易版（Haiku）で1日1回、スタンダードからは詳しい版（Sonnet）で制限なし（`PLANS` の `brief`・`briefsPerDay`）
 
 ## 済み（以前）
 - AI に渡す会話の履歴を減らした：直近5件はそのまま、その前の5件はアプリで要約（`lib/context-window.ts`）

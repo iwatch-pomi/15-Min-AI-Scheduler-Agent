@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  BRIEF_LEVELS,
   PAID_PLANS,
   PLANS,
   allowedMode,
@@ -38,12 +39,18 @@ describe("プランごとの決まり", () => {
     expect(PLANS[firstPlanWith((r) => r.ads === "none")].label).toBe("スタンダード");
   });
 
-  it("AIブリーフは、無料は使えない・ライトは1日1回・スタンダードとプロは制限なし", () => {
-    expect(PLANS.free.briefsPerDay).toBe(0);
-    expect(PLANS.plus.briefsPerDay).toBe(1);
-    expect(PLANS.standard.briefsPerDay).toBeNull();
-    expect(PLANS.pro.briefsPerDay).toBeNull();
-    expect(briefCostPercent("plus")).toBe(20);
+  it("AIブリーフは、無料・ライトが簡易版（Haiku）で1日1回、スタンダードとプロが詳しい版（Sonnet）で制限なし", () => {
+    expect(PLANS.free).toMatchObject({ briefsPerDay: 1, brief: "simple" });
+    expect(PLANS.plus).toMatchObject({ briefsPerDay: 1, brief: "simple" });
+    expect(PLANS.standard).toMatchObject({ briefsPerDay: null, brief: "detailed" });
+    expect(PLANS.pro).toMatchObject({ briefsPerDay: null, brief: "detailed" });
+    expect(BRIEF_LEVELS.simple.model).toBe("light");
+    expect(BRIEF_LEVELS.detailed.model).toBe("standard");
+    expect(PLANS[firstPlanWith((r) => r.brief === "detailed")].label).toBe("スタンダード");
+    // 1回で今日のAIの何%か（0%とは出さない）
+    expect(briefCostPercent("free")).toBe(3);
+    expect(briefCostPercent("plus")).toBe(1);
+    expect(briefCostPercent("standard")).toBe(10);
   });
 
   it("カスタム指示は有料だけ", () => {

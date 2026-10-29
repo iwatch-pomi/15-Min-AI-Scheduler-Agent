@@ -68,11 +68,24 @@ describe("AI のおすすめ（AIブリーフ）の保存", () => {
     expect((await get("date=2026-10-29&tone=stoic")).brief).toBeNull();
   });
 
-  it("AI の使い方（モード）に関係なく、いつも Sonnet で作る", async () => {
+  it("AI の使い方（モード）に関係なく、スタンダード以上は Sonnet（詳しい版）で作る", async () => {
     create.mockResolvedValue(answer("x"));
     for (const aiMode of ["save", "normal", "boost", "max"]) await post({ date: "2026-10-28", aiMode });
+    plan = "standard";
     await post({ date: "2026-10-28" });
     expect(create.mock.calls.map((c) => c[0].model)).toEqual(Array(5).fill("claude-sonnet-5-5"));
+  });
+
+  it("無料・ライトは Haiku（簡易版）で作る", async () => {
+    const cheap = { ...answer("x"), usage: { input_tokens: 100, output_tokens: 20 } };
+    create.mockResolvedValue(cheap);
+    for (const p of ["free", "plus"] as const) {
+      // 1日1回なので、プランごとに別の人にする
+      userId = crypto.randomUUID();
+      plan = p;
+      await post({ date: "2026-10-28", aiMode: "max" });
+    }
+    expect(create.mock.calls.map((c) => c[0].model)).toEqual(["claude-haiku-5-5", "claude-haiku-5-5"]);
   });
 
   it("カスタム指示があれば、おすすめを作るときにも渡す", async () => {
@@ -91,7 +104,7 @@ describe("AI のおすすめ（AIブリーフ）の保存", () => {
   });
 });
 
-describe("ライトの「AIで更新」は1日1回・無料は使えない", () => {
+describe("無料・ライトの「AIで更新」は1日1回", () => {
   // ライトの1日の予算（$0.10）に収まるよう、安い答えにする
   const cheap = { ...answer("x"), usage: { input_tokens: 100, output_tokens: 20 } };
 
@@ -134,13 +147,15 @@ describe("ライトの「AIで更新」は1日1回・無料は使えない", () 
     expect((await get("date=2026-10-28&tz=Asia/Tokyo")).briefsLeft).toBe(1);
   });
 
-  it("無料プランは1回目から、AI を呼ばずに 429", async () => {
+  it("無料も1日1回。2回目は、スタンダードからの詳しい版を案内して 429", async () => {
     plan = "free";
-    expect((await get("date=2026-10-28&tz=Asia/Tokyo")).briefsLeft).toBe(0);
+    create.mockResolvedValue(cheap);
+    expect((await get("date=2026-10-28&tz=Asia/Tokyo")).briefsLeft).toBe(1);
+    expect((await post({ date: "2026-10-28" })).status).toBe(200);
     const r = await post({ date: "2026-10-28" });
     expect(r.status).toBe(429);
-    expect(r.data.error).toBe("無料プランでは「AIで更新」は使えません（ライトから1日1回使えます）");
-    expect(create).not.toHaveBeenCalled();
+    expect(r.data.error).toBe("無料プランの「AIで更新」は1日1回までです。明日の0時にまた使えます（スタンダードからは回数の制限がなく、より詳しい版になります）");
+    expect(create).toHaveBeenCalledTimes(1);
   });
 
   it("スタンダード・プロは回数の制限なし", async () => {

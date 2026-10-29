@@ -1,7 +1,7 @@
 "use client";
 
 import type { Usage } from "@/lib/limits";
-import { PLANS, briefCostPercent, firstPlanWith } from "@/lib/plans";
+import { BRIEF_LEVELS, PLANS, briefCostPercent, firstPlanWith } from "@/lib/plans";
 import type { Suggestion } from "@/lib/suggest";
 import type { Block } from "@/lib/types";
 import { dayRange, localTime, minutesBetween } from "@/lib/time";
@@ -48,7 +48,7 @@ export default function HomeView(props: {
   suggestLoading: boolean;
   suggestError: string | null;
   usage: Usage;
-  /** 今日あと何回「AIで更新」を使えるか（無料プランは1日1回）。null は回数の上限なし */
+  /** 今日あと何回「AIで更新」を使えるか（無料・ライトは1日1回）。null は回数の上限なし */
   briefsLeft: number | null;
   /** マイページの「プラン」を開く（上限・広告の案内から） */
   onOpenPlans: () => void;
@@ -67,6 +67,8 @@ export default function HomeView(props: {
   const briefsNone = rule.briefsPerDay === 0;
   const briefsUsedUp = briefsLeft === 0;
   const briefFrom = PLANS[firstPlanWith((r) => r.briefsPerDay !== 0)];
+  // 詳しい版のブリーフが使える、いちばん安いプラン（スタンダード）
+  const detailedFrom = PLANS[firstPlanWith((r) => r.brief === "detailed")];
   const timed = events.filter((e) => !e.allDay);
   const allDay = events.filter((e) => e.allDay);
   const isToday = date === today;
@@ -223,7 +225,7 @@ export default function HomeView(props: {
                     ? `${rule.label}プランでは「AIで更新」は使えません。${briefFrom.label}から1日${briefFrom.briefsPerDay}回使えます。`
                     : briefsUsedUp
                       ? "今日の「AIで更新」は使いました。明日の0時にまた使えます。"
-                      : `${rule.label}プランでは「AIで更新」は1日${rule.briefsPerDay}回までです。1回で今日のAIの${briefCostPercent(usage.plan)}%ほどを使います。`}
+                      : `${rule.label}プランの「AIで更新」は${BRIEF_LEVELS[rule.brief].name}（${BRIEF_LEVELS[rule.brief].ai}）で、1日${rule.briefsPerDay}回までです。1回で今日のAIの${briefCostPercent(usage.plan)}%ほどを使います。${rule.brief === "simple" ? `${detailedFrom.label}からは、${BRIEF_LEVELS.detailed.ai} がより細かく考える${BRIEF_LEVELS.detailed.name}になります。` : ""}`}
                 </span>
                 <button onClick={onOpenPlans} className="shrink-0 font-bold text-accent-ink" data-testid="brief-limit-plans">
                   プランを見る

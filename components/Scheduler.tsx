@@ -356,7 +356,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   type AiSuggest = { items: Suggestion[]; costPercent: number; at: string };
   const [aiSuggest, setAiSuggest] = useState<Record<string, AiSuggest | null>>({});
   const [suggestState, setSuggestState] = useState<{ loading: boolean; error: string | null }>({ loading: false, error: null });
-  // 今日あと何回「AIで更新」を使えるか（無料プランは1日1回）。null は回数の上限なし
+  // 今日あと何回「AIで更新」を使えるか（無料・ライトは1日1回）。null は回数の上限なし
   const [briefsLeft, setBriefsLeft] = useState<number | null>(null);
   const briefKey = `${date}:${theme}`;
   useEffect(() => {

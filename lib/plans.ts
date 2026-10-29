@@ -31,12 +31,22 @@ export type PlanRule = {
   ads: AdLevel;
   /** 「AIで更新」（AIブリーフ）を1日に何回まで使えるか。0 は使えない、null は上限なし（AI の予算の範囲で） */
   briefsPerDay: number | null;
+  /** AIブリーフの中身。simple＝簡易版（Haiku）／detailed＝詳しい版（Sonnet） */
+  brief: BriefLevel;
   /** AI へのカスタム指示を使えるか（毎回 AI に送るので費用が増える） */
   customInstructions: boolean;
 };
 
-/** AIブリーフ1回のおおよその費用（米ドル。いつも Sonnet で作る）。画面で「今日のAIの◯割」と出すのに使う */
-export const BRIEF_COST_USD = 0.02;
+export type BriefLevel = "simple" | "detailed";
+
+/** AIブリーフの段階ごとの、画面に出す名前と、使う AI（lib/claude.ts の MODELS のキー） */
+export const BRIEF_LEVELS: Record<BriefLevel, { name: string; ai: string; model: "light" | "standard" }> = {
+  simple: { name: "簡易版", ai: "Haiku", model: "light" },
+  detailed: { name: "詳しい版", ai: "Sonnet", model: "standard" },
+};
+
+/** AIブリーフ1回のおおよその費用（米ドル）。画面で「今日のAIの◯%」と出すのに使う。Haiku は Sonnet のおよそ20分の1 */
+export const BRIEF_COST_USD: Record<BriefLevel, number> = { simple: 0.001, detailed: 0.02 };
 
 // 値段の並べ方：スタンダードは、プロと200円しか違わないのに AI は半分以下で、最大モードも無い。
 // 並べて比べると、プロがいちばんお得に見える（スタンダードが選ばれても、AI の費用に対して黒字になる）。
@@ -52,7 +62,8 @@ export const PLANS: Record<Plan, PlanRule> = {
     guide: "1日1〜2回・月15回ほど",
     modes: ["save"],
     ads: "full",
-    briefsPerDay: 0,
+    briefsPerDay: 1,
+    brief: "simple",
     customInstructions: false,
   },
   plus: {
@@ -66,6 +77,7 @@ export const PLANS: Record<Plan, PlanRule> = {
     modes: ["save", "normal", "boost"],
     ads: "light",
     briefsPerDay: 1,
+    brief: "simple",
     customInstructions: true,
   },
   standard: {
@@ -79,6 +91,7 @@ export const PLANS: Record<Plan, PlanRule> = {
     modes: ["save", "normal", "boost"],
     ads: "none",
     briefsPerDay: null,
+    brief: "detailed",
     customInstructions: true,
   },
   pro: {
@@ -92,6 +105,7 @@ export const PLANS: Record<Plan, PlanRule> = {
     modes: ["save", "normal", "boost", "max"],
     ads: "none",
     briefsPerDay: null,
+    brief: "detailed",
     customInstructions: true,
   },
 };
@@ -127,9 +141,10 @@ export function priceLabel(plan: Plan): string {
   return yen ? `${yen.toLocaleString("ja-JP")}円/月` : "0円";
 }
 
-/** AIブリーフ1回で、そのプランの今日のAIのおよそ何％を使うか（10％単位） */
+/** AIブリーフ1回で、そのプランの今日のAIのおよそ何％を使うか（1％単位。0％とは出さない） */
 export function briefCostPercent(plan: Plan): number {
-  return Math.round((BRIEF_COST_USD / PLANS[plan].dailyUsd) * 10) * 10;
+  const rule = PLANS[plan];
+  return Math.max(1, Math.round((BRIEF_COST_USD[rule.brief] / rule.dailyUsd) * 100));
 }
 
 /** その機能が使える、いちばん安いプラン */
