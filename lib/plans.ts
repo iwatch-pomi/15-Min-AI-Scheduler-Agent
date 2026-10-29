@@ -40,7 +40,7 @@ export const BRIEF_COST_USD = 0.02;
 
 // 値段の並べ方：スタンダードは、プロと200円しか違わないのに AI は半分以下で、最大モードも無い。
 // 並べて比べると、プロがいちばんお得に見える（スタンダードが選ばれても、AI の費用に対して黒字になる）。
-// どの有料プランも、為替（1ドル200円）・API の3割値上げ・決済手数料5%でも、AI を上限まで使われて黒字になる値段にする（tests/plans.test.ts）
+// どの有料プランも、為替（1ドル200円）・API の3割値上げ・決済手数料8%（Managed Payments を含む）でも、AI を上限まで使われて黒字になる値段にする（tests/plans.test.ts）
 export const PLANS: Record<Plan, PlanRule> = {
   free: {
     label: "無料",

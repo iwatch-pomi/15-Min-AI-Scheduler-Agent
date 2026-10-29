@@ -81,9 +81,9 @@ describe("値段の並べ方（プロを選びたくなる形）", () => {
     expect(canUse("standard", "max")).toBe(false);
   });
 
-  it("為替が1ドル200円・API が3割値上げ・決済手数料5%でも、AI を上限まで使われて赤字にならない", () => {
+  it("為替が1ドル200円・API が3割値上げ・決済手数料8%（Stripe 3.6% ＋ Managed Payments 3.5% に余裕）でも、AI を上限まで使われて赤字にならない", () => {
     for (const p of PAID_PLANS) {
-      const income = PLANS[p].priceYen * 0.95;
+      const income = PLANS[p].priceYen * 0.92;
       const aiCost = PLANS[p].monthlyUsd * 200 * 1.3;
       expect(income, p).toBeGreaterThan(aiCost);
     }
