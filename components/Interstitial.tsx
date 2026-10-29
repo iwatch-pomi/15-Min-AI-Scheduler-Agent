@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { PLANS, firstPlanWith } from "@/lib/plans";
 import { SparkleIcon } from "./icons";
-import { useTheme } from "./ThemeContext";
 
 /** 閉じるボタンが出るまでの秒数 */
 export const INTERSTITIAL_WAIT_SECONDS = 5;
@@ -14,7 +13,6 @@ export const INTERSTITIAL_WAIT_SECONDS = 5;
  * 全画面にするなら、Google Ad Manager の Web インタースティシャルなど、全画面を認めている形式を使い、proxy.ts の CSP にドメインを足す
  */
 export default function Interstitial(props: { onClose: () => void; onOpenPlans: () => void }) {
-  const stoic = useTheme().theme === "stoic";
   const [left, setLeft] = useState(INTERSTITIAL_WAIT_SECONDS);
   useEffect(() => {
     if (left <= 0) return;
@@ -32,7 +30,7 @@ export default function Interstitial(props: { onClose: () => void; onOpenPlans: 
       data-testid="interstitial"
     >
       <div className="flex items-center justify-between">
-        <span className="rounded bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-muted stoic:t-label">{stoic ? "AD" : "広告"}</span>
+        <span className="rounded bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-muted stoic:t-label">広告</span>
         {left > 0 ? (
           <span className="t-num text-xs text-muted" data-testid="interstitial-wait">
             {left}秒後に閉じられます
