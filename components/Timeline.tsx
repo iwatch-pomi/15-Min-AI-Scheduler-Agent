@@ -97,7 +97,8 @@ export default function Timeline(props: { date: string; tz: string; events: Bloc
                         <span className={`truncate ${compact ? "" : "text-[15px]"}`}>{e.title}</span>
                       </span>
                       <span className="t-code shrink-0 text-muted">{time.replace("–", " — ")}</span>
-                      {!e.ai && !compact && <span className="t-label text-[9px] text-muted">MAIN · 変更しない</span>}
+                      {/* 1時間ほどの予定では入りきらないので、背の高い予定だけに出す */}
+                      {!e.ai && height >= 80 && <span className="t-label text-[9px] text-muted">MAIN · 変更しない</span>}
                     </div>
                     {height > 110 && (
                       <div className="absolute inset-x-3 bottom-2 flex items-end justify-between">
