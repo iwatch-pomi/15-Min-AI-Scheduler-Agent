@@ -14,9 +14,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // 紹介ページ（Claude Design で作り、JS なしで表示できる HTML にしたもの）。public/lp/ に置いてある
+  // 紹介ページ（Claude Design で作り、JS なしで表示できる HTML にしたもの）。public/lp/（やさしい）と public/lp/arc/（ストイック）に置いてある
   async rewrites() {
-    return [{ source: "/lp", destination: "/lp/index.html" }];
+    return [
+      { source: "/lp", destination: "/lp/index.html" },
+      { source: "/lp/arc", destination: "/lp/arc/index.html" },
+    ];
   },
   async headers() {
     return [

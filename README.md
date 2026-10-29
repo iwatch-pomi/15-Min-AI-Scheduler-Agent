@@ -41,7 +41,7 @@
   - 「AIで更新」（AIブリーフ）：無料は使えない、ライトは1日1回（1回で今日のAIの約2割を使うことをホームに明記）
   - カスタム指示：有料だけ（無料では、前に保存した指示も AI に渡さない）
   - 規約などのページ：`/legal/terms`・`/legal/privacy`・`/legal/tokushoho`（中身は `lib/legal.ts`）
-- **紹介ページ**：やさしい向けを `/lp` に公開（`public/lp/`。Claude Design で作り、`scripts/lp-export.mjs` で JS なしの HTML にしたもの）。原稿は `docs/lp-soft.md`・`docs/lp-stoic.md`
+- **紹介ページ**：やさしい向けを `/lp`（`public/lp/`）、ストイック向けを `/lp/arc`（`public/lp/arc/`）に公開。Claude Design で作り、`scripts/lp-export.mjs` で JS なしの HTML にしたもの（Google・SNS が説明文と画像を読めるように）。原稿と公開のしかたは `docs/lp-soft.md`・`docs/lp-stoic.md`
 
 ## 構成
 

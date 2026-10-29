@@ -325,3 +325,15 @@ A. マイページの「お支払い・プランの変更・解約」から、�
 - **サービス名**：このページでは「15-MIN AI SCHEDULER」として紹介しています。アプリの中（ログイン画面の上のラベル）とそろっていますが、ブラウザのタブやホーム画面の名前は「AIスケジュールアシスタント」のままです。名前をそろえたい場合は、アプリ側も直します。
 - **料金・機能**：料金や機能を変えたら、この原稿とページも直してください。決まりは `lib/plans.ts` にあります。
 - **画像**：画像はデモの画面です。予定の内容（授業・研究室など）を、トレーニングや勉強の予定に変えたい場合は、撮り直しを頼んでください。
+
+## 公開（2026-10-29）
+- 公開しているアドレス：`https://15-min-ai-scheduler-agent.vercel.app/lp/arc`
+  - `/arc` はアプリの入口（ストイックで始まる）なので、紹介ページは `/lp/arc` に置いている
+- ファイル：`public/lp/arc/`（`index.html`・画面の画像3枚・`og-image.jpg`）。`/lp/arc` は `next.config.ts` で `public/lp/arc/index.html` に向けている
+- Claude Design の書き出しを、JS なしで表示できる普通の HTML にして置いている。書き出しに無かった OGP と、よくある質問の構造化データ（FAQPage）は、スクリプトがページの中身から足している
+- Claude Design で直したら、書き出した HTML で次を実行して置き直す（Playwright が要る）
+  ```bash
+  node scripts/lp-export.mjs <書き出したHTML> public/lp/arc https://15-min-ai-scheduler-agent.vercel.app/lp/arc home,chat,calendar
+  ```
+- og:image（`public/lp/arc/og-image.jpg`、1200×630）は別に用意して置く
+- ドメインを決めたら、上のコマンドの公開するアドレスを新しいドメインにして書き出し直す
