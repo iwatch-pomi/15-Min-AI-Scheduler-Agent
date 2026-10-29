@@ -98,7 +98,7 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
               <p className="mt-0.5 text-xs text-muted">{rule.tagline}</p>
               {perChat !== null && (
                 <p className={`mt-0.5 text-[11px] ${p === bestValuePlan() ? "font-bold text-accent-ink" : "text-muted"}`} data-testid={`per-chat-${p}`}>
-                  AI 1回あたり約{perChat}円{p === bestValuePlan() ? "（いちばんお得）" : ""}
+                  AI 1回あたり約{perChat}円{p === bestValuePlan() ? "（広告なしでいちばんお得）" : ""}
                 </p>
               )}
               <ul className="mt-1.5 space-y-0.5 text-xs">
@@ -110,16 +110,15 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
                   <CheckIcon className="size-3.5 text-accent-ink" />
                   モード：{rule.modes.map((m) => MODE_NAMES[m]).join("・")}
                 </li>
-                <li className="flex items-center gap-1.5">
-                  {rule.briefsPerDay !== null ? <LockIcon className="size-3.5 shrink-0 text-muted" /> : <CheckIcon className="size-3.5 shrink-0 text-accent-ink" />}
-                  {rule.briefsPerDay !== null
-                    ? `AIで更新（AIブリーフ）：1日${rule.briefsPerDay}回まで（1回で今日のAIの約${briefCostPercent(p)}%）`
-                    : "AIで更新（AIブリーフ）：回数の制限なし"}
-                </li>
-                <li className="flex items-center gap-1.5">
-                  {rule.ads ? <LockIcon className="size-3.5 text-muted" /> : <CheckIcon className="size-3.5 text-accent-ink" />}
-                  {rule.ads ? "広告あり" : "広告なし"}
-                </li>
+                <Feature ok={rule.briefsPerDay === null}>
+                  {rule.briefsPerDay === 0
+                    ? "AIで更新（AIブリーフ）：使えない"
+                    : rule.briefsPerDay !== null
+                      ? `AIで更新（AIブリーフ）：1日${rule.briefsPerDay}回まで（1回で今日のAIの約${briefCostPercent(p)}%）`
+                      : "AIで更新（AIブリーフ）：回数の制限なし"}
+                </Feature>
+                <Feature ok={rule.customInstructions}>{rule.customInstructions ? "AIへのカスタム指示：使える" : "AIへのカスタム指示：使えない"}</Feature>
+                <Feature ok={rule.ads === "none"}>{{ full: "広告：多め（全画面の広告あり）", light: "広告：少なめ（ホームだけ）", none: "広告なし" }[rule.ads]}</Feature>
               </ul>
               {showUpsell && (
                 <div className="mt-2 rounded-lg bg-accent-soft px-2.5 py-2 text-xs stoic:rounded-[8px]" data-testid={`upsell-${p}`}>
@@ -174,5 +173,15 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
         {" "}AIの上限は、今日の分は毎日0時に、月の分は毎月1日に戻ります。
       </p>
     </div>
+  );
+}
+
+/** プランの比較の1行。ok なら印、だめなら鍵 */
+function Feature({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+  return (
+    <li className="flex items-center gap-1.5">
+      {ok ? <CheckIcon className="size-3.5 shrink-0 text-accent-ink" /> : <LockIcon className="size-3.5 shrink-0 text-muted" />}
+      {children}
+    </li>
   );
 }

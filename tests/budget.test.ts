@@ -99,7 +99,7 @@ describe("月の上限とプラン", () => {
     expect(err.message).toContain("今日");
   });
 
-  it("無料プランは1日 $0.05 まで。1回使うと残りが減り、同時に送っても2回目は止まる", async () => {
+  it("無料プランは1日 $0.03 まで。1回で使い切り、同時に送っても2回目は止まる", async () => {
     create.mockResolvedValue(reply("ok")); // 1回 $0.03
     const results = await Promise.allSettled(
       Array.from({ length: 3 }, () => withAiBudget({ store, userId, tz, now, plan: "free" }, async (meter) => (await call(meter), "done"))),
@@ -107,9 +107,9 @@ describe("月の上限とプラン", () => {
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     expect(create).toHaveBeenCalledTimes(1);
     const ok = results.find((r) => r.status === "fulfilled") as PromiseFulfilledResult<{ usage: { remainingPercent: number }; costPercent: number }>;
-    // $0.05 中 $0.03（小数の誤差で 39 になることがある）
-    expect([39, 40]).toContain(ok.value.usage.remainingPercent);
-    expect(ok.value.costPercent).toBe(60);
+    // $0.03 中 $0.03（小数の誤差で 1% と出ることがある）
+    expect(ok.value.usage.remainingPercent).toBeLessThanOrEqual(1);
+    expect(ok.value.costPercent).toBe(100);
   });
 
   it("同時にたくさん送られても、月の予算を大きく超えない", async () => {

@@ -48,9 +48,9 @@ describe("1日・1か月の予算と残り％", () => {
     expect(usageOf(spent(0.1, 1.3), "plus").reason).toBe("month");
   });
 
-  it("無料は1日 $0.05。1回の依頼の割合も、プランの1日の予算に対して出す", () => {
-    expect(usageOf(spent(0.025), "free").remainingPercent).toBe(50);
-    expect(percentOfBudget(0.01, "free")).toBe(20);
+  it("無料は1日 $0.03。1回の依頼の割合も、プランの1日の予算に対して出す", () => {
+    expect(usageOf(spent(0.015), "free").remainingPercent).toBe(50);
+    expect(percentOfBudget(0.006, "free")).toBe(20);
     expect(percentOfBudget(0.034, "pro")).toBe(6.8);
   });
 

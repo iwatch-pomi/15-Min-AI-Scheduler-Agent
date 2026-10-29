@@ -9,6 +9,8 @@ export const PLAN_IDS: Plan[] = ["free", "plus", "standard", "pro"];
 export type PaidPlan = Exclude<Plan, "free">;
 export const PAID_PLANS = ["plus", "standard", "pro"] as const satisfies readonly PaidPlan[];
 
+export type AdLevel = "full" | "light" | "none";
+
 export type PlanRule = {
   label: string;
   /** ストイックで出す英語の名前 */
@@ -27,10 +29,12 @@ export type PlanRule = {
   guide: string;
   /** 使える AI の使い方（モード） */
   modes: AiMode[];
-  /** 広告を出すか */
-  ads: boolean;
-  /** 「AIで更新」（AIブリーフ）を1日に何回まで使えるか。null は上限なし（AI の予算の範囲で） */
+  /** 広告の量。full＝小さい広告（ホーム・AI 画面）と全画面広告／light＝ホームの小さい広告だけ／none＝なし */
+  ads: AdLevel;
+  /** 「AIで更新」（AIブリーフ）を1日に何回まで使えるか。0 は使えない、null は上限なし（AI の予算の範囲で） */
   briefsPerDay: number | null;
+  /** AI へのカスタム指示を使えるか（毎回 AI に送るので費用が増える） */
+  customInstructions: boolean;
   /** 比べたときに、いちばんおすすめのプラン */
   recommended?: boolean;
   /** このプランの中で「あと少しの差額で、こちらにできる」と案内する上のプラン */
@@ -41,60 +45,65 @@ export type PlanRule = {
 export const BRIEF_COST_USD = 0.02;
 
 // 値段の並べ方：スタンダードは、プロと200円しか違わないのに AI は半分以下で、最大モードも無い。
-// 並べて比べると、プロがいちばんお得に見える（スタンダードが選ばれても、AI の費用に対して黒字になる）
+// 並べて比べると、プロがいちばんお得に見える（スタンダードが選ばれても、AI の費用に対して黒字になる）。
+// どの有料プランも、為替（1ドル200円）・API の3割値上げ・決済手数料5%でも、AI を上限まで使われて黒字になる値段にする（tests/plans.test.ts）
 export const PLANS: Record<Plan, PlanRule> = {
   free: {
     label: "無料",
     en: "FREE",
-    tagline: "広告あり・AIはお試し程度",
+    tagline: "広告あり（全画面の広告も）・AIはお試し程度",
     priceYen: 0,
-    monthlyUsd: 0.5,
-    dailyUsd: 0.05,
-    monthlyChats: 25,
-    guide: "1日2〜3回・月25回ほど",
-    modes: ["save", "normal"],
-    ads: true,
-    briefsPerDay: 1,
+    monthlyUsd: 0.3,
+    dailyUsd: 0.03,
+    monthlyChats: 15,
+    guide: "1日1〜2回・月15回ほど",
+    modes: ["save"],
+    ads: "full",
+    briefsPerDay: 0,
+    customInstructions: false,
   },
   plus: {
     label: "ライト",
     en: "LITE",
-    tagline: "広告なし・強化モード（Sonnet）も使える",
+    tagline: "広告は少なめ・強化モード（Sonnet）も使える",
     priceYen: 480,
     monthlyUsd: 1.2,
     dailyUsd: 0.1,
     monthlyChats: 60,
     guide: "1日5回・月60回ほど",
     modes: ["save", "normal", "boost"],
-    ads: false,
-    briefsPerDay: null,
+    ads: "light",
+    briefsPerDay: 1,
+    customInstructions: true,
   },
   standard: {
     label: "スタンダード",
     en: "STANDARD",
     tagline: "広告なし・AIをもう少し使える",
-    priceYen: 1280,
+    priceYen: 1780,
     monthlyUsd: 2,
     dailyUsd: 0.2,
     monthlyChats: 100,
     guide: "1日10回・月100回ほど",
     modes: ["save", "normal", "boost"],
-    ads: false,
+    ads: "none",
     briefsPerDay: null,
+    customInstructions: true,
     upsell: "pro",
   },
   pro: {
     label: "プロ",
     en: "PRO",
     tagline: "広告なし・AIたっぷり・最大モード（Opus）も使える",
-    priceYen: 1480,
+    priceYen: 1980,
     monthlyUsd: 4.5,
     dailyUsd: 0.5,
     monthlyChats: 220,
     guide: "1日25回・月220回ほど",
     modes: ["save", "normal", "boost", "max"],
-    ads: false,
+    ads: "none",
     briefsPerDay: null,
+    customInstructions: true,
     recommended: true,
   },
 };
@@ -141,9 +150,9 @@ export function yenPerChat(plan: Plan): number | null {
   return priceYen ? Math.round(priceYen / monthlyChats) : null;
 }
 
-/** 1回あたりがいちばん安い有料プラン */
+/** 広告なしの有料プランの中で、1回あたりがいちばん安いプラン */
 export function bestValuePlan(): PaidPlan {
-  return [...PAID_PLANS].sort((a, b) => PLANS[a].priceYen / PLANS[a].monthlyChats - PLANS[b].priceYen / PLANS[b].monthlyChats)[0];
+  return PAID_PLANS.filter((p) => PLANS[p].ads === "none").sort((a, b) => PLANS[a].priceYen / PLANS[a].monthlyChats - PLANS[b].priceYen / PLANS[b].monthlyChats)[0];
 }
 
 /** 上のプランへの案内（「あと200円で、AIが2倍以上」）に使う、差額と AI の量の倍率 */
@@ -159,4 +168,9 @@ export function upsellOf(plan: Plan): { to: Plan; diffYen: number; aiTimes: numb
     aiTimes: Math.floor(target.monthlyUsd / from.monthlyUsd),
     newModes: target.modes.filter((m) => !from.modes.includes(m)),
   };
+}
+
+/** その機能が使える、いちばん安いプラン */
+export function firstPlanWith(test: (rule: PlanRule) => boolean): Plan {
+  return PLAN_IDS.find((p) => test(PLANS[p])) ?? "pro";
 }

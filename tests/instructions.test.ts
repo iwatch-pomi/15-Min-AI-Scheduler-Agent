@@ -4,8 +4,9 @@ import type { NextRequest } from "next/server";
 const { MemoryCalendar } = await import("@/lib/calendar/memory");
 const { MemoryStore } = await import("@/lib/store/memory");
 let userId = "";
+let plan = "pro";
 vi.mock("@/lib/context", () => ({
-  getUserContext: async () => ({ userId, calendar: new MemoryCalendar(userId), store: new MemoryStore(), plan: "pro" }),
+  getUserContext: async () => ({ userId, calendar: new MemoryCalendar(userId), store: new MemoryStore(), plan }),
 }));
 const { GET, PUT } = await import("@/app/api/instructions/route");
 const { normalizeInstructions, instructionsBlock } = await import("@/lib/custom-instructions");
@@ -17,6 +18,7 @@ const put = async (body: unknown) => {
 
 beforeEach(() => {
   userId = crypto.randomUUID();
+  plan = "pro";
 });
 
 describe("AI へのカスタム指示", () => {
@@ -28,12 +30,24 @@ describe("AI へのカスタム指示", () => {
   });
 
   it("保存すると、ほかの端末で開いても同じ指示が返る。消すこともできる", async () => {
-    expect(await (await GET()).json()).toEqual({ text: null });
+    expect(await (await GET()).json()).toEqual({ text: null, allowed: true });
     expect((await put({ text: "22時以降は予定を入れないで" })).data).toEqual({ text: "22時以降は予定を入れないで" });
-    expect(await (await GET()).json()).toEqual({ text: "22時以降は予定を入れないで" });
+    expect(await (await GET()).json()).toEqual({ text: "22時以降は予定を入れないで", allowed: true });
     expect((await put({ text: null })).data).toEqual({ text: null });
-    expect(await (await GET()).json()).toEqual({ text: null });
+    expect(await (await GET()).json()).toEqual({ text: null, allowed: true });
     expect((await put({ text: 1 })).status).toBe(400);
+  });
+
+  it("無料プランでは保存できない（403）。前に保存した指示を消すことはできる", async () => {
+    await new MemoryStore().saveCustomInstructions(userId, "朝は勉強");
+    plan = "free";
+    expect(await (await GET()).json()).toEqual({ text: "朝は勉強", allowed: false });
+    const r = await put({ text: "夜は休む" });
+    expect(r.status).toBe(403);
+    expect(r.data.error).toBe("カスタム指示は有料プラン（ライトから）で使えます");
+    expect(await new MemoryStore().getCustomInstructions(userId)).toBe("朝は勉強");
+    expect((await put({ text: null })).status).toBe(200);
+    expect(await new MemoryStore().getCustomInstructions(userId)).toBeNull();
   });
 
   it("AI には、決まりを優先することを添えて渡す", () => {

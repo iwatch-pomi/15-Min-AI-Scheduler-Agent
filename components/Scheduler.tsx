@@ -10,13 +10,14 @@ import { DEFAULT_CHAT_SETTINGS, interruptLabel, type ChatSettings } from "@/lib/
 import { DEFAULT_QUICK_ACTIONS } from "@/lib/quick-actions";
 import { THEME_COOKIE, arcProgress, defaultArc, isValidArc, parseTheme, stoicLine, timeSlot, type Arc, type Theme } from "@/lib/theme";
 import { INITIAL_USAGE, type Usage } from "@/lib/limits";
-import { allowedMode } from "@/lib/plans";
+import { PLANS, allowedMode } from "@/lib/plans";
 import type { ManualChange } from "@/lib/manual";
 import type { Routine, RoutineInput } from "@/lib/routines";
 import { isUndoRequest, type ChangeItem, type ChatEntry, type Tab } from "@/lib/ui";
 import CalendarView from "./CalendarView";
 import ChatView from "./ChatView";
 import HomeView from "./HomeView";
+import Interstitial from "./Interstitial";
 import { AppLogo } from "./icons";
 import SettingsView from "./SettingsView";
 import QuickActionsEditor from "./QuickActionsEditor";
@@ -25,6 +26,16 @@ import TabBar from "./TabBar";
 import { ThemeContext } from "./ThemeContext";
 
 const TABS: Tab[] = ["home", "calendar", "ai", "settings"];
+
+// 全画面広告（無料プランだけ）を出す間隔
+/** アプリを開いたとき・画面に戻ったときは、前に出してからこれだけたっていれば出す */
+const AD_ON_OPEN_MS = 3 * 60 * 60_000;
+/** AI を使った返事の、この回数に1回 */
+const AD_EVERY_AI_REPLIES = 3;
+/** 続けて出さない */
+const AD_MIN_GAP_MS = 60_000;
+const AD_AT_KEY = "ai15:interstitial-at";
+const AD_COUNT_KEY = "ai15:ai-replies";
 const noopSubscribe = () => () => {};
 
 function browserTz(): string {
@@ -479,6 +490,33 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     setFocusPlan(true);
   };
 
+  // 全画面広告（無料プランだけ）。プランを読み込んでから決める。出した時刻と回数はこの端末に保存する
+  const fullAds = usage !== INITIAL_USAGE && PLANS[usage.plan].ads === "full";
+  const [showAd, setShowAd] = useState(false);
+  const openAd = useCallback(() => {
+    if (Date.now() - Number(readLocal(AD_AT_KEY) ?? 0) < AD_MIN_GAP_MS) return;
+    writeLocal(AD_AT_KEY, String(Date.now()));
+    setShowAd(true);
+  }, []);
+  // アプリを開いたとき・画面に戻ったとき（3時間に1回まで）。初めての人の使い方の説明とは重ねない
+  useEffect(() => {
+    if (!fullAds || showTutorial) return;
+    const check = () => {
+      if (Date.now() - Number(readLocal(AD_AT_KEY) ?? 0) >= AD_ON_OPEN_MS) openAd();
+    };
+    check();
+    const onVisible = () => document.visibilityState === "visible" && check();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [fullAds, showTutorial, openAd]);
+  // AI を使った返事のあと、3回に1回（アプリで処理した返事・エラー・［元に戻す］は数えない）
+  const countAiReply = () => {
+    if (!fullAds) return;
+    const n = Number(readLocal(AD_COUNT_KEY) ?? 0) + 1;
+    writeLocal(AD_COUNT_KEY, String(n % AD_EVERY_AI_REPLIES));
+    if (n >= AD_EVERY_AI_REPLIES) openAd();
+  };
+
   // カウントダウン用に1秒ごとに時刻を進める。日付が変わったら「今日」も更新
   useEffect(() => {
     const id = setInterval(() => {
@@ -542,6 +580,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       const items: ChangeItem[] = data.changes?.items ?? [];
       reply(data.reply, { costPercent: data.costPercent, local: data.local, model: data.model, ...(data.opId ? { result: { opIds: [data.opId], items } } : {}) });
       await loadAll();
+      if (!data.local) countAiReply();
     } catch {
       reply("通信に失敗しました。電波の良いところでもう一度お試しください。", { error: true });
     } finally {
@@ -736,6 +775,15 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       )}
       <TabBar tab={tab} onChange={setTab} />
       {showTutorial && <Tutorial onClose={closeTutorial} />}
+      {showAd && (
+        <Interstitial
+          onClose={() => setShowAd(false)}
+          onOpenPlans={() => {
+            setShowAd(false);
+            openPlans();
+          }}
+        />
+      )}
       {editingQuick && <QuickActionsEditor actions={quickActions} onSave={saveQuickActions} onClose={() => setEditingQuick(false)} />}
     </div>
     </ThemeContext>

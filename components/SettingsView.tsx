@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { logout } from "@/app/actions";
 import { AI_MODE_HELP, SAVE_TIP, type AiMode } from "@/lib/interrupt";
 import type { Usage } from "@/lib/limits";
-import { PLANS, canUse, planFor } from "@/lib/plans";
+import { PLANS, canUse, firstPlanWith, planFor } from "@/lib/plans";
 import type { Routine, RoutineInput } from "@/lib/routines";
 import { arcProgress, type Arc, type Theme } from "@/lib/theme";
 import ArcEditor from "./ArcEditor";
@@ -15,7 +15,7 @@ import PlanSection from "./PlanSection";
 import RoutineList from "./RoutineList";
 import Segmented from "./Segmented";
 import UsageMeter from "./UsageMeter";
-import { AppLogo, BellIcon, BookIcon, CalendarIcon, DocIcon, ChevronRightIcon, ClockIcon, GaugeIcon, PencilIcon, RepeatIcon, SendIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
+import { AppLogo, BellIcon, BookIcon, CalendarIcon, DocIcon, ChevronRightIcon, ClockIcon, GaugeIcon, LockIcon, PencilIcon, RepeatIcon, SendIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
 export default function SettingsView(props: {
@@ -229,16 +229,34 @@ export default function SettingsView(props: {
               </p>
             )}
           </div>
-          <button onClick={() => setEditingInstructions(true)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2" data-testid="instructions-link">
-            <span className="text-accent-ink">
-              <SendIcon className="size-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm">AIへのカスタム指示</span>
-              <span className="block truncate text-xs text-muted">{instructions ? instructions.replace(/\n/g, " ") : "なし（毎回AIに送るので、使うと使用量が増えます）"}</span>
-            </span>
-            <ChevronRightIcon className="size-4 shrink-0 text-muted" />
-          </button>
+          {PLANS[plan].customInstructions ? (
+            <button onClick={() => setEditingInstructions(true)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2" data-testid="instructions-link">
+              <span className="text-accent-ink">
+                <SendIcon className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm">AIへのカスタム指示</span>
+                <span className="block truncate text-xs text-muted">{instructions ? instructions.replace(/\n/g, " ") : "なし（毎回AIに送るので、使うと使用量が増えます）"}</span>
+              </span>
+              <ChevronRightIcon className="size-4 shrink-0 text-muted" />
+            </button>
+          ) : (
+            // 使えないプラン（無料）では、エディタを開かずにプランの節へ
+            <button
+              onClick={() => planRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left opacity-80 active:bg-surface-2"
+              data-testid="instructions-locked"
+            >
+              <span className="text-muted">
+                <LockIcon className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm">AIへのカスタム指示</span>
+                <span className="block text-xs text-muted">{PLANS[firstPlanWith((r) => r.customInstructions)].label}プランから使えます（毎回AIに送るため）</span>
+              </span>
+              <ChevronRightIcon className="size-4 shrink-0 text-muted" />
+            </button>
+          )}
           <button onClick={onEditQuickActions} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2" data-testid="quick-actions-link">
             <span className="text-accent-ink">
               <PencilIcon className="size-5" />

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { SuggestError, generateSuggestions } from "@/lib/ai-suggest";
 import { withAiBudget } from "@/lib/budget";
 import { MODELS } from "@/lib/claude";
-import { PLANS, type Plan } from "@/lib/plans";
+import { PLANS, firstPlanWith, type Plan } from "@/lib/plans";
 import type { Store } from "@/lib/store/types";
 import { getUserContext } from "@/lib/context";
 import { errorResponse } from "@/lib/http";
@@ -63,15 +63,23 @@ export async function POST(req: NextRequest) {
     const events = (await calendar.list(start, end)).filter((b) => !b.allDay || b.start.slice(0, 10) === date);
 
     const today = localDateString(now, tz);
-    // 回数の上限があるプラン（無料）は、AI を呼ぶ前に1回分を数える（1回の足し算なので、同時に押されても2回は通らない）
+    // 回数の上限があるプラン（ライト）は、AI を呼ぶ前に1回分を数える（1回の足し算なので、同時に押されても2回は通らない）
     const limit = PLANS[plan].briefsPerDay;
+    // 使えないプラン（無料）は、数えずに断る
+    if (limit === 0) {
+      const from = firstPlanWith((r) => r.briefsPerDay !== 0);
+      return NextResponse.json(
+        { error: `${PLANS[plan].label}プランでは「AIで更新」は使えません（${PLANS[from].label}から1日${PLANS[from].briefsPerDay}回使えます）`, briefsLeft: 0 },
+        { status: 429 },
+      );
+    }
     let used = 0;
     if (limit !== null) {
       used = await store.addBriefCount(userId, today, 1);
       if (used > limit) {
         await store.addBriefCount(userId, today, -1).catch(() => {});
         return NextResponse.json(
-          { error: `無料プランの「AIで更新」は1日${limit}回までです。明日の0時にまた使えます（有料プランなら回数の制限はありません）`, briefsLeft: 0 },
+          { error: `${PLANS[plan].label}プランの「AIで更新」は1日${limit}回までです。明日の0時にまた使えます（上のプランなら回数の制限はありません）`, briefsLeft: 0 },
           { status: 429 },
         );
       }
@@ -80,7 +88,8 @@ export async function POST(req: NextRequest) {
     const refund = () => (limit !== null ? store.addBriefCount(userId, today, -1).catch(() => 0) : Promise.resolve(0));
     const left = limit === null ? null : Math.max(0, limit - used);
 
-    const instructions = await store.getCustomInstructions(userId).catch(() => null);
+    // カスタム指示は、使えるプランのときだけ渡す（前に保存した指示があっても）
+    const instructions = PLANS[plan].customInstructions ? await store.getCustomInstructions(userId).catch(() => null) : null;
     const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now, plan }, (meter) =>
       generateSuggestions(meter, { date, tz, now, today, events, tone: parsed.data.tone, model: MODELS.standard, instructions }).catch((err) => {
         if (err instanceof SuggestError) return err;

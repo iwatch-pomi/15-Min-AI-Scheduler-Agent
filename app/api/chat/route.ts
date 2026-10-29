@@ -9,7 +9,7 @@ import { currentUsage, withAiBudget } from "@/lib/budget";
 import { parseCommand, runCommand, type LocalCommand } from "@/lib/commands";
 import { HISTORY_LIMIT, compactHistory } from "@/lib/context-window";
 import { interruptInstruction, interruptLabel, parseInterrupt } from "@/lib/interrupt";
-import { allowedMode } from "@/lib/plans";
+import { PLANS, allowedMode } from "@/lib/plans";
 import { RecordingCalendar } from "@/lib/ops";
 import { safeTimeZone } from "@/lib/time";
 
@@ -77,7 +77,8 @@ export async function POST(req: NextRequest) {
     // 直近5件はそのまま、その前の5件は短い要約にして渡す（費用を下げる）
     const history = compactHistory(await store.recentMessages(userId, HISTORY_LIMIT));
     // カスタム指示（AI を使うときだけ読む。表がまだ無い環境でもチャットは動くように）
-    const instructions = await store.getCustomInstructions(userId).catch(() => null);
+    // 使えるプランのときだけ（無料では、前に保存した指示があっても渡さない）
+    const instructions = PLANS[plan].customInstructions ? await store.getCustomInstructions(userId).catch(() => null) : null;
     const prompt = interrupt ? `${interruptInstruction(interrupt)}\n${message}` : message;
     // 節約・通常は Haiku（難しい依頼は Sonnet）、強化は Sonnet、最大は Opus
     const model = modelFor(aiMode, message);

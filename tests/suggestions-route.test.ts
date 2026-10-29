@@ -12,7 +12,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
 const { MemoryCalendar } = await import("@/lib/calendar/memory");
 const { MemoryStore } = await import("@/lib/store/memory");
 let userId = "";
-let plan: "free" | "plus" | "pro" = "pro";
+let plan: "free" | "plus" | "standard" | "pro" = "pro";
 vi.mock("@/lib/context", () => ({
   getUserContext: async () => ({ userId, calendar: new MemoryCalendar(userId), store: new MemoryStore(), plan }),
 }));
@@ -91,12 +91,12 @@ describe("AI のおすすめ（AIブリーフ）の保存", () => {
   });
 });
 
-describe("無料プランの「AIで更新」は1日1回", () => {
-  // 無料の1日の予算（$0.05）に収まるよう、安い答えにする
+describe("ライトの「AIで更新」は1日1回・無料は使えない", () => {
+  // ライトの1日の予算（$0.10）に収まるよう、安い答えにする
   const cheap = { ...answer("x"), usage: { input_tokens: 100, output_tokens: 20 } };
 
   it("1回目は作れ、2回目は AI を呼ばずに 429。明日になればまた使える", async () => {
-    plan = "free";
+    plan = "plus";
     create.mockResolvedValue(cheap);
     expect((await get("date=2026-10-28&tz=Asia/Tokyo")).briefsLeft).toBe(1);
     const first = await post({ date: "2026-10-28" });
@@ -119,7 +119,7 @@ describe("無料プランの「AIで更新」は1日1回", () => {
   });
 
   it("同時に押しても、AI を呼ぶのは1回だけ", async () => {
-    plan = "free";
+    plan = "plus";
     create.mockResolvedValue(cheap);
     const results = await Promise.all([post({ date: "2026-10-28" }), post({ date: "2026-10-28" }), post({ date: "2026-10-28" })]);
     expect(results.map((r) => r.status).sort()).toEqual([200, 429, 429]);
@@ -127,15 +127,24 @@ describe("無料プランの「AIで更新」は1日1回", () => {
   });
 
   it("AI のおすすめを作れなかったときは、数えた1回を戻す", async () => {
-    plan = "free";
+    plan = "plus";
     create.mockResolvedValueOnce({ ...cheap, content: [{ type: "text", text: "壊れた答え" }] });
     const failed = await post({ date: "2026-10-28" });
     expect(failed.status).toBe(502);
     expect((await get("date=2026-10-28&tz=Asia/Tokyo")).briefsLeft).toBe(1);
   });
 
-  it("有料プランは回数の制限なし", async () => {
-    plan = "plus";
+  it("無料プランは1回目から、AI を呼ばずに 429", async () => {
+    plan = "free";
+    expect((await get("date=2026-10-28&tz=Asia/Tokyo")).briefsLeft).toBe(0);
+    const r = await post({ date: "2026-10-28" });
+    expect(r.status).toBe(429);
+    expect(r.data.error).toBe("無料プランでは「AIで更新」は使えません（ライトから1日1回使えます）");
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("スタンダード・プロは回数の制限なし", async () => {
+    plan = "standard";
     create.mockResolvedValue(cheap);
     for (let i = 0; i < 3; i++) expect((await post({ date: "2026-10-28" })).status).toBe(200);
     expect((await get("date=2026-10-28&tz=Asia/Tokyo")).briefsLeft).toBeNull();

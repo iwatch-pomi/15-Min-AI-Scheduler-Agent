@@ -1,7 +1,7 @@
 "use client";
 
 import type { Usage } from "@/lib/limits";
-import { briefCostPercent } from "@/lib/plans";
+import { PLANS, briefCostPercent, firstPlanWith } from "@/lib/plans";
 import type { Suggestion } from "@/lib/suggest";
 import type { Block } from "@/lib/types";
 import { dayRange, localTime, minutesBetween } from "@/lib/time";
@@ -62,8 +62,11 @@ export default function HomeView(props: {
 }) {
   const { date, today, tz, now, events, suggestions, aiSuggest, suggestLoading, suggestError, usage, briefsLeft, onOpenPlans, onRefreshSuggestions, stoicQuote, error, demo, onDateChange, onOpenAi } = props;
   const usageExhausted = usage.exhausted;
-  // 無料プランで、今日の「AIで更新」を使い切った
+  // 「AIで更新」を使えないプラン（無料）か、今日の分を使い切った（ライト）
+  const rule = PLANS[usage.plan];
+  const briefsNone = rule.briefsPerDay === 0;
   const briefsUsedUp = briefsLeft === 0;
+  const briefFrom = PLANS[firstPlanWith((r) => r.briefsPerDay !== 0)];
   const timed = events.filter((e) => !e.allDay);
   const allDay = events.filter((e) => e.allDay);
   const isToday = date === today;
@@ -215,13 +218,17 @@ export default function HomeView(props: {
             {briefsLeft !== null && (
               <p className="mb-2 flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-[11px] leading-relaxed" data-testid="brief-limit">
                 <span className="flex-1">
-                  {briefsUsedUp
+                  {briefsNone
                     ? stoic
-                      ? "今日の「AIで更新」は使った。明日0時に戻る。"
-                      : "今日の「AIで更新」は使いました。明日の0時にまた使えます。"
-                    : stoic
-                      ? `無料プランの「AIで更新」は1日1回。1回で今日のAIの約${briefCostPercent(usage.plan)}%を使う。`
-                      : `無料プランでは「AIで更新」は1日1回までです。1回で今日のAIの${briefCostPercent(usage.plan)}%ほどを使います。`}
+                      ? `${rule.label}プランでは「AIで更新」は使えない。${briefFrom.label}から1日${briefFrom.briefsPerDay}回。`
+                      : `${rule.label}プランでは「AIで更新」は使えません。${briefFrom.label}から1日${briefFrom.briefsPerDay}回使えます。`
+                    : briefsUsedUp
+                      ? stoic
+                        ? "今日の「AIで更新」は使った。明日0時に戻る。"
+                        : "今日の「AIで更新」は使いました。明日の0時にまた使えます。"
+                      : stoic
+                        ? `${rule.label}プランの「AIで更新」は1日${rule.briefsPerDay}回。1回で今日のAIの約${briefCostPercent(usage.plan)}%を使う。`
+                        : `${rule.label}プランでは「AIで更新」は1日${rule.briefsPerDay}回までです。1回で今日のAIの${briefCostPercent(usage.plan)}%ほどを使います。`}
                 </span>
                 <button onClick={onOpenPlans} className="shrink-0 font-bold text-accent-ink" data-testid="brief-limit-plans">
                   {stoic ? "制限を外す" : "プランを見る"}
