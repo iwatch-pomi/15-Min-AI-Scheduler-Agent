@@ -1,7 +1,7 @@
 // 規約などのページ（/legal/…）の中身。有料プランを売るには、特定商取引法に基づく表記などが必要。
 // ★ 公開する前に OPERATOR を埋め、内容を確かめること（ひな形なので、必要なら専門家にも確認する）
 
-import { PLANS, priceLabel } from "./plans";
+import { PAID_PLANS, PLANS, priceLabel } from "./plans";
 
 /** 運営者の情報。「（記入してください）」のままの所を埋める */
 export const OPERATOR = {
@@ -21,7 +21,7 @@ export const SERVICE = "AIスケジュールアシスタント";
 
 export type LegalDoc = { slug: "tokushoho" | "terms" | "privacy"; title: string; sections: { heading: string; body: string[] }[] };
 
-const paid = (["plus", "pro"] as const).map((p) => `${PLANS[p].label}：${priceLabel(p)}（税込）`).join("／");
+const paid = PAID_PLANS.map((p) => `${PLANS[p].label}：${priceLabel(p)}（税込）`).join("／");
 
 export const LEGAL_DOCS: LegalDoc[] = [
   {

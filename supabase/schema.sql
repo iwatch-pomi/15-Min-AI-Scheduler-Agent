@@ -16,16 +16,16 @@ create table if not exists users (
 -- 既存のデータベース向け（2026-10 の更新で追加した列）
 alter table users add column if not exists ai_calendar_id text;
 
--- プラン（free＝無料／plus＝有料1／pro＝有料2）と、Stripe の契約の状態。
+-- プラン（free＝無料／plus＝ライト／standard＝スタンダード／pro＝プロ）と、Stripe の契約の状態。
 -- プランは Stripe からの知らせ（webhook）でアプリが書き換える。手で変えるときは plan だけを書き換える
 alter table users add column if not exists plan text not null default 'free';
 alter table users add column if not exists stripe_customer_id text;
 alter table users add column if not exists stripe_subscription_id text;
 alter table users add column if not exists plan_status text;       -- active / trialing / past_due / canceling（期間の終わりに解約）
 alter table users add column if not exists plan_renews_at timestamptz; -- 次の更新日（解約したときは、有料が終わる日）
-do $$ begin
-  alter table users add constraint users_plan_check check (plan in ('free', 'plus', 'pro'));
-exception when duplicate_object then null; end $$;
+-- プランを増やしたときも、作り直せば新しい名前を受け付ける
+alter table users drop constraint if exists users_plan_check;
+alter table users add constraint users_plan_check check (plan in ('free', 'plus', 'standard', 'pro'));
 create unique index if not exists users_stripe_customer_idx on users (stripe_customer_id);
 
 -- Undo 用の操作ログ。1回のチャットで行った変更は同じ op_group_id にまとまる

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { pricesConfigured } from "@/lib/billing";
 import { getUserContext, isDemo } from "@/lib/context";
 import { errorResponse } from "@/lib/http";
 import { getBilling } from "@/lib/users";
 
 /** Stripe の設定（環境変数）がそろっているか */
-const configured = () => Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_PLUS && process.env.STRIPE_PRICE_PRO);
+const configured = () => Boolean(process.env.STRIPE_SECRET_KEY) && pricesConfigured();
 
 // GET /api/billing → 今のプランと、契約の状態（次の更新日など）。マイページのプランの節で使う
 export async function GET() {

@@ -20,7 +20,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
 const { MemoryCalendar } = await import("@/lib/calendar/memory");
 const { MemoryStore } = await import("@/lib/store/memory");
 let userId = "";
-let plan: "free" | "plus" | "pro" = "pro";
+let plan: "free" | "plus" | "standard" | "pro" = "pro";
 vi.mock("@/lib/context", () => ({
   getUserContext: async () => ({ userId, calendar: new MemoryCalendar(userId), store: new MemoryStore(), plan }),
 }));
@@ -239,6 +239,7 @@ describe("プランごとに使えるモード", () => {
     ["free", "max", "claude-haiku-5-5", "normal"],
     ["free", "boost", "claude-haiku-5-5", "normal"],
     ["plus", "max", "claude-sonnet-5-5", "boost"],
+    ["standard", "max", "claude-sonnet-5-5", "boost"],
     ["pro", "max", "claude-opus-5-5", "max"],
   ] as const)("%s で %s を送ると、%s（%s モード）で考える", async (p, aiMode, model, used) => {
     plan = p;

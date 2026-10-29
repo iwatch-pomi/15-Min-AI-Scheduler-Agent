@@ -23,7 +23,7 @@ export type UserContext = { userId: string; calendar: CalendarBackend; store: St
 export async function getUserContext(): Promise<UserContext> {
   if (isDemo()) {
     const userId = "demo";
-    // デモのプランは DEMO_PLAN（free / plus / pro）で切り替えられる。既定はすべて使える有料2
+    // デモのプランは DEMO_PLAN（free / plus / standard / pro）で切り替えられる。既定はすべて使えるプロ
     const plan = process.env.DEMO_PLAN ? toPlan(process.env.DEMO_PLAN) : "pro";
     return { userId, calendar: new MemoryCalendar(userId, demoSeed()), store: new MemoryStore(), plan };
   }

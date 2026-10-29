@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PLANS, PLAN_IDS, briefCostPercent, priceLabel, type PaidPlan, type Plan } from "@/lib/plans";
-import { CheckIcon, LockIcon } from "./icons";
+import { PLANS, PLAN_IDS, bestValuePlan, briefCostPercent, priceLabel, upsellOf, yenPerChat, type PaidPlan, type Plan } from "@/lib/plans";
+import { CheckIcon, LockIcon, SparkleIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
 type BillingInfo = { plan: Plan; status: string | null; renewsAt: string | null; customer: boolean; available: boolean };
@@ -55,7 +55,7 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
         <span className="text-sm">今のプラン</span>
         <span className="t-num text-lg font-bold text-accent-ink" data-testid="current-plan">
           {PLANS[plan].label}
-          {stoic && <span className="ml-1.5 text-xs tracking-[0.12em] text-muted">{plan.toUpperCase()}</span>}
+          {stoic && <span className="ml-1.5 text-xs tracking-[0.12em] text-muted">{PLANS[plan].en}</span>}
         </span>
       </div>
       {plan !== "free" && renews && (
@@ -69,18 +69,38 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
           const rule = PLANS[p];
           const current = p === plan;
           const higher = PLAN_IDS.indexOf(p) > PLAN_IDS.indexOf(plan);
+          const perChat = yenPerChat(p);
+          const up = upsellOf(p);
+          // 上のプランへの案内は、そのプランより上をまだ使っていない人にだけ出す
+          const showUpsell = up && PLAN_IDS.indexOf(plan) < PLAN_IDS.indexOf(up.to);
           return (
             <li
               key={p}
-              className={`rounded-xl border px-3 py-2.5 ${current ? "border-accent bg-accent-soft" : "border-line-soft"} stoic:rounded-[10px]`}
+              className={`rounded-xl border px-3 py-2.5 stoic:rounded-[10px] ${
+                current ? "border-accent bg-accent-soft" : rule.recommended ? "border-2 border-accent" : "border-line-soft"
+              }`}
               data-testid={`plan-${p}`}
             >
+              {rule.recommended && !current && (
+                <p className="mb-1 flex items-center gap-1 text-[11px] font-bold text-accent-ink" data-testid="plan-recommended">
+                  <SparkleIcon className="size-3.5" />
+                  {stoic ? "RECOMMENDED・おすすめ" : "おすすめ"}
+                </p>
+              )}
               <div className="flex items-baseline gap-2">
-                <span className="font-bold text-heading">{rule.label}</span>
+                <span className="font-bold text-heading">
+                  {rule.label}
+                  {stoic && <span className="ml-1 text-[10px] font-normal tracking-[0.12em] text-muted">{rule.en}</span>}
+                </span>
                 <span className="t-code text-xs text-muted">{priceLabel(p)}</span>
                 {current && <span className="ml-auto text-[11px] font-bold text-accent-ink">利用中</span>}
               </div>
               <p className="mt-0.5 text-xs text-muted">{rule.tagline}</p>
+              {perChat !== null && (
+                <p className={`mt-0.5 text-[11px] ${p === bestValuePlan() ? "font-bold text-accent-ink" : "text-muted"}`} data-testid={`per-chat-${p}`}>
+                  AI 1回あたり約{perChat}円{p === bestValuePlan() ? "（いちばんお得）" : ""}
+                </p>
+              )}
               <ul className="mt-1.5 space-y-0.5 text-xs">
                 <li className="flex items-center gap-1.5">
                   <CheckIcon className="size-3.5 text-accent-ink" />
@@ -101,14 +121,32 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
                   {rule.ads ? "広告あり" : "広告なし"}
                 </li>
               </ul>
-              {higher && plan === "free" && (
+              {showUpsell && (
+                <div className="mt-2 rounded-lg bg-accent-soft px-2.5 py-2 text-xs stoic:rounded-[8px]" data-testid={`upsell-${p}`}>
+                  <p className="font-bold text-accent-ink">
+                    あと{up.diffYen.toLocaleString("ja-JP")}円で{PLANS[up.to].label}：AIが{up.aiTimes}倍以上
+                    {up.newModes.length ? `・${up.newModes.map((m) => MODE_NAMES[m]).join("・")}モードも使える` : ""}
+                  </p>
+                  <button
+                    onClick={() => upgrade(up.to as PaidPlan)}
+                    disabled={busy !== null || unavailable}
+                    className="mt-1.5 w-full rounded-full bg-accent py-1.5 text-xs font-bold text-on-accent disabled:opacity-50 stoic:rounded-[8px]"
+                    data-testid={`upsell-button-${p}`}
+                  >
+                    {busy === up.to ? "開いています…" : `${PLANS[up.to].label}にする（${priceLabel(up.to)}）`}
+                  </button>
+                </div>
+              )}
+              {higher && (
                 <button
                   onClick={() => upgrade(p as PaidPlan)}
                   disabled={busy !== null || unavailable}
-                  className="mt-2 w-full rounded-full bg-accent py-2 text-sm font-bold text-on-accent disabled:opacity-50 stoic:h-10 stoic:rounded-[10px] stoic:py-0"
+                  className={`mt-2 w-full rounded-full py-2 text-sm font-bold disabled:opacity-50 stoic:h-10 stoic:rounded-[10px] stoic:py-0 ${
+                    showUpsell ? "border border-line text-muted" : "bg-accent text-on-accent"
+                  }`}
                   data-testid={`upgrade-${p}`}
                 >
-                  {busy === p ? "開いています…" : `${rule.label}にする（${priceLabel(p)}）`}
+                  {busy === p ? "開いています…" : `${rule.label}${plan === "free" ? "にする" : "に変更"}（${priceLabel(p)}）`}
                 </button>
               )}
             </li>

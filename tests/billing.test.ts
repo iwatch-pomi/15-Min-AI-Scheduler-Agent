@@ -47,6 +47,7 @@ vi.mock("@/lib/context", () => ({
 process.env.STRIPE_SECRET_KEY = "sk_test_x";
 process.env.STRIPE_WEBHOOK_SECRET = "whsec_x";
 process.env.STRIPE_PRICE_PLUS = "price_plus";
+process.env.STRIPE_PRICE_STANDARD = "price_standard";
 process.env.STRIPE_PRICE_PRO = "price_pro";
 
 const webhook = (await import("@/app/api/billing/webhook/route")).POST;
@@ -112,6 +113,17 @@ describe("Stripe からの知らせ（webhook）", () => {
     expect(users.get(userId)).toMatchObject({ plan: "free", stripe_subscription_id: null, plan_status: null });
   });
 
+  it("スタンダードの価格ならスタンダード。サブスクが2つあるときは、上のプランを採る", async () => {
+    stripe.subscriptions.list.mockResolvedValue({ data: [sub("price_standard")] });
+    stripe.webhooks.constructEvent.mockReturnValue(event("customer.subscription.created", { customer: "cus_1" }));
+    await post(webhook, "http://x/api/billing/webhook", "{}", { "stripe-signature": "s" });
+    expect(users.get(userId)!.plan).toBe("standard");
+
+    stripe.subscriptions.list.mockResolvedValue({ data: [sub("price_pro"), sub("price_standard"), sub("price_plus")] });
+    await post(webhook, "http://x/api/billing/webhook", "{}", { "stripe-signature": "s" });
+    expect(users.get(userId)!.plan).toBe("pro");
+  });
+
   it("知らない価格のサブスクではプランを上げない", async () => {
     stripe.subscriptions.list.mockResolvedValue({ data: [sub("price_other")] });
     stripe.webhooks.constructEvent.mockReturnValue(event("customer.subscription.created", { customer: "cus_1" }));
@@ -137,6 +149,13 @@ describe("申し込みの画面（Checkout）", () => {
       success_url: "https://app.example/?billing=success",
       cancel_url: "https://app.example/?billing=cancel",
     });
+  });
+
+  it("スタンダードも申し込める", async () => {
+    stripe.checkout.sessions.create.mockResolvedValue({ url: "https://checkout.stripe.com/c/pay/s" });
+    const { status } = await post(checkout, "https://app.example/api/billing/checkout", JSON.stringify({ plan: "standard" }));
+    expect(status).toBe(200);
+    expect(stripe.checkout.sessions.create.mock.calls[0][0].line_items).toEqual([{ price: "price_standard", quantity: 1 }]);
   });
 
   it("すでに契約していたら、二重に契約しないよう管理の画面（ポータル）を返す", async () => {

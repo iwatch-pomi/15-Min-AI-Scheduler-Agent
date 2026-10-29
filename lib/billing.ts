@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { BillingNotConfiguredError } from "./errors";
-import { PLAN_IDS, type PaidPlan, type Plan } from "./plans";
+import { PAID_PLANS, PLAN_IDS, type PaidPlan, type Plan } from "./plans";
 import { applySubscription, getBilling, saveStripeCustomerId } from "./users";
 
 export { BillingNotConfiguredError };
@@ -18,17 +18,26 @@ export function stripe(): Stripe {
 }
 
 /** プランの価格 ID（Stripe の管理画面で作り、環境変数に入れる） */
+const PRICE_ENV: Record<PaidPlan, string> = {
+  plus: "STRIPE_PRICE_PLUS",
+  standard: "STRIPE_PRICE_STANDARD",
+  pro: "STRIPE_PRICE_PRO",
+};
+
 export function priceFor(plan: PaidPlan): string {
-  const id = plan === "plus" ? process.env.STRIPE_PRICE_PLUS : process.env.STRIPE_PRICE_PRO;
+  const id = process.env[PRICE_ENV[plan]];
   if (!id) throw new BillingNotConfiguredError();
   return id;
 }
 
+/** 有料プランの価格 ID がすべてそろっているか */
+export function pricesConfigured(): boolean {
+  return PAID_PLANS.every((p) => Boolean(process.env[PRICE_ENV[p]]));
+}
+
 export function planForPrice(priceId: string | null | undefined): Plan | null {
   if (!priceId) return null;
-  if (priceId === process.env.STRIPE_PRICE_PLUS) return "plus";
-  if (priceId === process.env.STRIPE_PRICE_PRO) return "pro";
-  return null;
+  return PAID_PLANS.find((p) => process.env[PRICE_ENV[p]] === priceId) ?? null;
 }
 
 /** 使える状態のサブスク（支払いが遅れている間も、すぐには止めない） */

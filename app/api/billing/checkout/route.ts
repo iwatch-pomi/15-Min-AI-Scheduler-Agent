@@ -3,8 +3,9 @@ import { z } from "zod";
 import { checkoutUrl } from "@/lib/billing";
 import { getUserContext, isDemo } from "@/lib/context";
 import { billingError } from "@/lib/http";
+import { PAID_PLANS } from "@/lib/plans";
 
-const body = z.object({ plan: z.enum(["plus", "pro"]) });
+const body = z.object({ plan: z.enum(PAID_PLANS) });
 
 // POST /api/billing/checkout { plan } → Stripe の申し込み画面の URL（すでに契約していれば管理の画面の URL）
 export async function POST(req: NextRequest) {
