@@ -287,3 +287,14 @@ A. マイページの「お支払い・プランの変更・解約」から、�
 - **Googleの確認**：Googleのアプリの審査（OAuth の確認）が済むまでは、ログインのときに「このアプリは Google で確認されていません」と出ます。また、使えるのは登録したテストユーザーだけです。広く公開する前に審査を通してください。
 - **料金・機能**：料金や機能を変えたら、この原稿とページも直してください。決まりは `lib/plans.ts` にあります。
 - **画像**：画像はデモの画面です。予定の内容（授業・研究室など）を変えたい場合は、撮り直しを頼んでください。
+
+## 公開（2026-10-29）
+- 公開しているアドレス：`https://15-min-ai-scheduler-agent.vercel.app/lp`
+- ファイル：`public/lp/`（`index.html`・画面の画像3枚・`og-image.jpg`）。`/lp` は `next.config.ts` で `public/lp/index.html` に向けている
+- Claude Design の書き出しは、開いたあとに中身を展開する作りで、そのままでは Google や SNS が説明文・og:image を読めない。そこで、展開したあとの中身を、JS なしで表示できる普通の HTML にして置いている
+- Claude Design で直したら、書き出した HTML で次を実行して置き直す（Playwright が要る）
+  ```bash
+  node scripts/lp-export.mjs <書き出したHTML> public/lp https://15-min-ai-scheduler-agent.vercel.app/lp home,chat,calendar
+  ```
+- og:image（`public/lp/og-image.jpg`、1200×630）は別に用意して置く
+- ドメインを決めたら、上のコマンドの公開するアドレスを新しいドメインにして書き出し直す（og:image・og:url・canonical が変わる）
