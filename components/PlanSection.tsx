@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PLANS, PLAN_IDS, bestValuePlan, briefCostPercent, priceLabel, yenPerChat, type PaidPlan, type Plan } from "@/lib/plans";
+import { PLANS, PLAN_IDS, briefCostPercent, priceLabel, type PaidPlan, type Plan } from "@/lib/plans";
 import { CheckIcon, LockIcon, SparkleIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
@@ -69,7 +69,6 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
           const rule = PLANS[p];
           const current = p === plan;
           const higher = PLAN_IDS.indexOf(p) > PLAN_IDS.indexOf(plan);
-          const perChat = yenPerChat(p);
           return (
             <li
               key={p}
@@ -93,11 +92,6 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
                 {current && <span className="ml-auto text-[11px] font-bold text-accent-ink">利用中</span>}
               </div>
               <p className="mt-0.5 text-xs text-muted">{rule.tagline}</p>
-              {perChat !== null && (
-                <p className={`mt-0.5 text-[11px] ${p === bestValuePlan() ? "font-bold text-accent-ink" : "text-muted"}`} data-testid={`per-chat-${p}`}>
-                  AI 1回あたり約{perChat}円{p === bestValuePlan() ? "（広告なしでいちばんお得）" : ""}
-                </p>
-              )}
               <ul className="mt-1.5 space-y-0.5 text-xs">
                 <li className="flex items-center gap-1.5">
                   <CheckIcon className="size-3.5 text-accent-ink" />

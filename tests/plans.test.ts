@@ -3,14 +3,12 @@ import {
   PAID_PLANS,
   PLANS,
   allowedMode,
-  bestValuePlan,
   briefCostPercent,
   canUse,
   firstPlanWith,
   planFor,
   priceLabel,
   toPlan,
-  yenPerChat,
 } from "@/lib/plans";
 
 describe("プランごとの決まり", () => {
@@ -82,12 +80,6 @@ describe("値段の並べ方（プロを選びたくなる形）", () => {
     expect(PLANS.pro.priceYen - PLANS.standard.priceYen).toBe(200);
     expect(PLANS.standard.monthlyUsd).toBeLessThanOrEqual(PLANS.pro.monthlyUsd / 2);
     expect(canUse("standard", "max")).toBe(false);
-  });
-
-  it("AI 1回あたりの値段。広告なしのプランの中では、プロがいちばん安い", () => {
-    expect(PAID_PLANS.map((p) => yenPerChat(p))).toEqual([8, 18, 9]);
-    expect(yenPerChat("free")).toBeNull();
-    expect(bestValuePlan()).toBe("pro");
   });
 
   it("為替が1ドル200円・API が3割値上げ・決済手数料5%でも、AI を上限まで使われて赤字にならない", () => {
