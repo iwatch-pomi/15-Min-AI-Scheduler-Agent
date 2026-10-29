@@ -16,11 +16,8 @@
 - 規約などのページ（`/legal/…`、中身は `lib/legal.ts`）
 
 ## 残っていること
-1. **広告の事業者を決めて入れる**（AdSense など）
-   - `components/AdSlot.tsx`・`components/Interstitial.tsx` の中身を差し替える
-   - 全画面広告は AdSense では入れられない（自作のオーバーレイは禁止）。Google Ad Manager の Web インタースティシャルなどを使う
-   - `proxy.ts` の Content-Security-Policy に、その事業者のドメインを足す（script-src・img-src・frame-src・connect-src）
-   - 広告の文字・リンクを、予定の情報（AI に渡す文脈）に混ぜない
+1. ~~広告の事業者を決めて入れる~~ → アプリの側は済み。小さい広告は AdSense、全画面はアド マネージャーの Web インタースティシャル（`components/GoogleAds.tsx`）
+   - 残り：AdSense・アド マネージャーのアカウントを作り、ID を Vercel の環境変数に入れる（[ads-setup.md](ads-setup.md)）
 2. ~~規約などのページの運営者の情報を埋める~~ → 済み（`lib/legal.ts` の `OPERATOR`）
 3. 1回あたりの費用を下げる
    - `get_schedule` の返事から、要らない項目を削る（`lib/tools.ts` の `view`）

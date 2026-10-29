@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { CalendarIcon, ClockIcon, GaugeIcon, Mascot, RepeatIcon, SparkleIcon } from "@/components/icons";
 import Scheduler from "@/components/Scheduler";
+import { adsConfig } from "@/lib/ads";
 import { isDemo } from "@/lib/context";
 import { LEGAL_DOCS } from "@/lib/legal";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
@@ -13,7 +14,7 @@ import { login } from "./actions";
 export const dynamic = "force-dynamic";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ error?: string | string[] }> }) {
-  if (isDemo()) return <Scheduler demo />;
+  if (isDemo()) return <Scheduler demo ads={adsConfig()} />;
 
   const { error } = await searchParams;
   const session = await auth();
@@ -25,7 +26,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
   }
   // ほかのタブで先にログインできていれば、エラーは気にせずそのまま使う（URL の ?error= を消す）
   if (error) redirect("/");
-  return <Scheduler email={session.user.email ?? undefined} />;
+  return <Scheduler email={session.user.email ?? undefined} ads={adsConfig()} />;
 }
 
 const FEATURES = [

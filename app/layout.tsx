@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
+import { adsConfig } from "@/lib/ads";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import "./globals.css";
 
@@ -8,6 +9,7 @@ import "./globals.css";
 export async function generateMetadata(): Promise<Metadata> {
   const stoic = parseTheme((await cookies()).get(THEME_COOKIE)?.value) === "stoic";
   const prefix = stoic ? "/stoic-" : "/";
+  const { client } = adsConfig();
   return {
     title: "AIスケジュールアシスタント",
     description: "15分単位のタイムラインと、予定を組んでくれるAI秘書",
@@ -20,6 +22,8 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: `${prefix}apple-touch-icon.png`,
     },
     appleWebApp: { capable: true, title: "AIスケジュールアシスタント", statusBarStyle: stoic ? "black" : "default" },
+    // AdSense の審査で、このサイトの持ち主かを確かめるための印
+    ...(client ? { other: { "google-adsense-account": client } } : {}),
   };
 }
 

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { AD_HOSTS, adsConfig, adsEnabled } from "@/lib/ads";
 import { THEME_COOKIE } from "@/lib/theme";
 
 // すべてのリクエストの手前で動く（Next.js の Proxy）。
@@ -26,7 +27,9 @@ export function isSameOrigin(req: Request): boolean {
   }
 }
 
-export function contentSecurityPolicy(nonce: string, dev = false): string {
+/** ads：Google の広告（AdSense・アド マネージャー）を使うときは、その通信・iframe・画像を許す（lib/ads.ts） */
+export function contentSecurityPolicy(nonce: string, dev = false, ads = false): string {
+  const adHosts = ads ? ` ${AD_HOSTS.join(" ")}` : "";
   return [
     "default-src 'self'",
     // Next.js の scripts には nonce が自動で付く。開発時だけ React のデバッグに eval が要る
@@ -34,8 +37,9 @@ export function contentSecurityPolicy(nonce: string, dev = false): string {
     // 画面の部品が style 属性を使うので unsafe-inline は残す（スクリプトは実行できない）
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob:",
-    "connect-src 'self'",
+    `img-src 'self' data: blob:${ads ? " https:" : ""}`,
+    `connect-src 'self'${adHosts}`,
+    `frame-src 'self'${adHosts}`,
     "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
@@ -65,7 +69,7 @@ export function proxy(req: NextRequest) {
   }
 
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const csp = contentSecurityPolicy(nonce, process.env.NODE_ENV === "development");
+  const csp = contentSecurityPolicy(nonce, process.env.NODE_ENV === "development", adsEnabled(adsConfig()));
   const headers = new Headers(req.headers);
   headers.set("x-nonce", nonce);
   headers.set("Content-Security-Policy", csp);

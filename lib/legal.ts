@@ -103,7 +103,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "3. 外部のサービスへの送信",
         body: [
           "Anthropic（AI の処理）：AI に頼んだときに、依頼の文・関係する予定・カスタム指示を送ります。",
-          "Supabase（データの保存）、Vercel（サーバー）、Google（ログイン・カレンダー）、Stripe（お支払い）を利用しています。",
+          "Supabase（データの保存）、Vercel（サーバー）、Google（ログイン・カレンダー・広告）、Stripe（お支払い）を利用しています。",
           "法令に基づく場合を除き、ご本人の同意なく、これら以外の第三者に個人情報を提供しません。",
         ],
       },
@@ -112,11 +112,19 @@ export const LEGAL_DOCS: LegalDoc[] = [
         body: ["Google API から受け取った情報の利用と他のアプリへの転送は、Google API Services User Data Policy（Limited Use の要件を含む）に従います。"],
       },
       {
-        heading: "5. 保存と削除",
+        heading: "5. 広告",
+        body: [
+          "無料プランとライトプランでは、Google（Google AdSense・Google アド マネージャー）の広告を表示します。有料プランのうち、スタンダードとプロでは広告を表示せず、広告のためのプログラムも読み込みません。",
+          "Google などの第三者配信事業者は、Cookie などを使い、本サービスやほかのサイトへの過去のアクセスの情報に基づいて広告を配信します。Google の広告設定（https://adssettings.google.com）で、パーソナライズ広告を無効にできます。詳しくは「Google のポリシーと規約」（https://policies.google.com/technologies/ads）をご覧ください。",
+          "広告のために、Google カレンダーの予定・チャットの内容・カスタム指示を使ったり、広告の事業者に渡したりすることはありません。",
+        ],
+      },
+      {
+        heading: "6. 保存と削除",
         body: ["チャットの履歴は、マイページの「チャット履歴を削除」からいつでも消せます。アカウントのすべてのデータを消したいときは、下の連絡先までご連絡ください。Google アカウントの設定から、本サービスの権限を取り消すこともできます。"],
       },
-      { heading: "6. 安全のための対策", body: ["通信は暗号化し、Google のログインの情報は暗号化して保存しています。データは、ご本人の分だけを読み書きするようにしています。"] },
-      { heading: "7. お問い合わせ", body: [`${OPERATOR.name}　${OPERATOR.email}`] },
+      { heading: "7. 安全のための対策", body: ["通信は暗号化し、Google のログインの情報は暗号化して保存しています。データは、ご本人の分だけを読み書きするようにしています。"] },
+      { heading: "8. お問い合わせ", body: [`${OPERATOR.name}　${OPERATOR.email}`] },
       { heading: "制定日", body: [OPERATOR.updated] },
     ],
   },

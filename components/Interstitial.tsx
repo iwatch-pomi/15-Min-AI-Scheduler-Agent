@@ -8,9 +8,8 @@ import { SparkleIcon } from "./icons";
 export const INTERSTITIAL_WAIT_SECONDS = 5;
 
 /**
- * 全画面広告（無料プランだけ）。今は自前の案内を出す。
- * 広告の事業者に替えるときの注意：AdSense は、自分で作った全画面の枠（オーバーレイ）に広告を入れることを禁止している。
- * 全画面にするなら、Google Ad Manager の Web インタースティシャルなど、全画面を認めている形式を使い、proxy.ts の CSP にドメインを足す
+ * 自前の全画面の案内（無料プランだけ）。アド マネージャーの全画面広告（GoogleAds.tsx）が使えないときに出す。
+ * AdSense は、自分で作った全画面の枠（オーバーレイ）に広告を入れることを禁止しているので、この枠に Google の広告は入れない
  */
 export default function Interstitial(props: { onClose: () => void; onOpenPlans: () => void }) {
   const [left, setLeft] = useState(INTERSTITIAL_WAIT_SECONDS);

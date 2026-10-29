@@ -37,7 +37,7 @@
   - スタンダードはプロと200円差で AI は半分以下（おとりの値段）。画面では同じ形のカードを並べるだけにする（「おすすめ」の印・おとりだと分かる案内・1回あたりの値段は出さない）
   - マイページの「プラン」から Stripe で申し込み・変更・解約できる。設定のしかたは [docs/stripe-setup.md](docs/stripe-setup.md)
   - 使えないモードは、マイページで鍵の印が付く。サーバーでも、使えるいちばん上のモードに下げる
-  - 広告：無料は小さい広告と全画面広告（開いたとき3時間に1回・AI の返事3回に1回。`components/Interstitial.tsx`）、ライトはホームの小さい広告だけ（`components/AdSlot.tsx`）。中身は今は有料プランの案内
+  - 広告：無料は小さい広告と全画面広告（開いたとき3時間に1回・AI の返事3回に1回。`components/Interstitial.tsx`）、ライトはホームの小さい広告だけ（`components/AdSlot.tsx`）。Google の広告（小さい広告は AdSense、全画面はアド マネージャー）は、ID を環境変数に入れると出る。入れるまで・広告が無いときは有料プランの案内（[docs/ads-setup.md](docs/ads-setup.md)）
   - 「AIで更新」（AIブリーフ）：無料・ライトは簡易版（Haiku）で1日1回、スタンダードからは詳しい版（Sonnet）で回数の制限なし。簡易版であること・1回で今日のAIの何%を使うかを、ホームとプランの比較に明記（`PLANS` の `brief`・`briefsPerDay`）
   - カスタム指示：有料だけ（無料では、前に保存した指示も AI に渡さない）
   - 規約などのページ：`/legal/terms`・`/legal/privacy`・`/legal/tokushoho`（中身は `lib/legal.ts`）
@@ -162,4 +162,4 @@ npm run build
 2. ブロック終了時の Web Push 通知、「延長／完了／スキップ」の通知アクション、週ビュー
 3. iOS ショートカット・LINE Bot からの入力（`/api/status` + API トークン）、タスクの持ち越し
 4. 公開準備：OAuth 審査、LP
-5. ~~**プラン（無料・広告あり／ライト／スタンダード／プロ）**と Stripe の課金~~ → 済み（[docs/stripe-setup.md](docs/stripe-setup.md)）。残りは広告の事業者（[docs/plans-todo.md](docs/plans-todo.md)）
+5. ~~**プラン（無料・広告あり／ライト／スタンダード／プロ）**と Stripe の課金~~ → 済み（[docs/stripe-setup.md](docs/stripe-setup.md)）。Google の広告は ID を入れれば動く（[docs/ads-setup.md](docs/ads-setup.md)）

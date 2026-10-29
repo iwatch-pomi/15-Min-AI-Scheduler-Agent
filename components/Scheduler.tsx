@@ -10,12 +10,14 @@ import { DEFAULT_CHAT_SETTINGS, interruptLabel, type ChatSettings } from "@/lib/
 import { DEFAULT_QUICK_ACTIONS } from "@/lib/quick-actions";
 import { THEME_COOKIE, arcProgress, defaultArc, isValidArc, parseTheme, stoicLine, timeSlot, type Arc, type Theme } from "@/lib/theme";
 import { INITIAL_USAGE, type Usage } from "@/lib/limits";
+import { NO_ADS, type AdsConfig } from "@/lib/ads";
 import { PLANS, allowedMode } from "@/lib/plans";
 import type { ManualChange } from "@/lib/manual";
 import type { Routine, RoutineInput } from "@/lib/routines";
 import { isUndoRequest, type ChangeItem, type ChatEntry, type Tab } from "@/lib/ui";
 import CalendarView from "./CalendarView";
 import ChatView from "./ChatView";
+import { AdsContext, useGamInterstitial } from "./GoogleAds";
 import HomeView from "./HomeView";
 import Interstitial from "./Interstitial";
 import { AppLogo } from "./icons";
@@ -77,7 +79,7 @@ function tabFromHash(): Tab {
   return TABS.includes(t) ? t : "home";
 }
 
-export default function Scheduler(props: { demo?: boolean; email?: string }) {
+export default function Scheduler(props: { demo?: boolean; email?: string; ads?: AdsConfig }) {
   const { demo, email } = props;
   const [tz] = useState(browserTz);
   const [today, setToday] = useState(() => localDateString(new Date(), tz));
@@ -490,8 +492,12 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     setFocusPlan(true);
   };
 
-  // 全画面広告（無料プランだけ）。プランを読み込んでから決める。出した時刻と回数はこの端末に保存する
+  // 全画面広告（無料プランだけ）。プランを読み込んでから決める。
+  // アド マネージャーの全画面広告が使えるときは、出すときを Google に任せる。使えないときは自前の案内を、下の決まりで出す（出した時刻と回数はこの端末に保存する）
+  const ads = props.ads ?? NO_ADS;
   const fullAds = usage !== INITIAL_USAGE && PLANS[usage.plan].ads === "full";
+  const gam = useGamInterstitial(ads.interstitialUnit, fullAds);
+  const ownAds = fullAds && gam === "off";
   const [showAd, setShowAd] = useState(false);
   const openAd = useCallback(() => {
     if (Date.now() - Number(readLocal(AD_AT_KEY) ?? 0) < AD_MIN_GAP_MS) return;
@@ -500,7 +506,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   }, []);
   // アプリを開いたとき・画面に戻ったとき（3時間に1回まで）。初めての人の使い方の説明とは重ねない
   useEffect(() => {
-    if (!fullAds || showTutorial) return;
+    if (!ownAds || showTutorial) return;
     const check = () => {
       if (Date.now() - Number(readLocal(AD_AT_KEY) ?? 0) >= AD_ON_OPEN_MS) openAd();
     };
@@ -508,10 +514,10 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     const onVisible = () => document.visibilityState === "visible" && check();
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [fullAds, showTutorial, openAd]);
+  }, [ownAds, showTutorial, openAd]);
   // AI を使った返事のあと、3回に1回（アプリで処理した返事・エラー・［元に戻す］は数えない）
   const countAiReply = () => {
-    if (!fullAds) return;
+    if (!ownAds) return;
     const n = Number(readLocal(AD_COUNT_KEY) ?? 0) + 1;
     writeLocal(AD_COUNT_KEY, String(n % AD_EVERY_AI_REPLIES));
     if (n >= AD_EVERY_AI_REPLIES) openAd();
@@ -665,6 +671,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
 
   return (
     <ThemeContext value={{ theme, arc }}>
+    <AdsContext value={ads}>
     <div className="mx-auto flex h-dvh max-w-xl flex-col pt-[env(safe-area-inset-top)]">
       {tab === "home" && (
         <HomeView
@@ -786,6 +793,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       )}
       {editingQuick && <QuickActionsEditor actions={quickActions} onSave={saveQuickActions} onClose={() => setEditingQuick(false)} />}
     </div>
+    </AdsContext>
     </ThemeContext>
   );
 }
