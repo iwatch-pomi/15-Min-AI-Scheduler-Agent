@@ -22,13 +22,8 @@ export default function AdSlot(props: { plan: Plan; onOpenPlans: () => void; pla
       >
         <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-bold text-muted stoic:t-label">{stoic ? "AD" : "広告"}</span>
         <span className="min-w-0 flex-1 text-xs leading-relaxed">
-          {ads === "light"
-            ? stoic
-              ? `${adFree()}以上で広告を消せ。AIの上限も上がる。`
-              : `${adFree()}以上なら広告なし。AIももっと使えます`
-            : stoic
-              ? "有料プランで広告を減らせ。AIの上限も上がる。"
-              : "有料プランなら広告が減り、AIももっと使えます"}
+          {/* プラン（購入）の案内なので、ストイックでも丁寧語にする */}
+          {ads === "light" ? `${adFree()}以上なら広告なし。AIももっと使えます` : "有料プランなら広告が減り、AIももっと使えます"}
         </span>
         <SparkleIcon className="size-4 shrink-0 text-accent-ink" />
       </button>

@@ -115,7 +115,7 @@ function SignInStoic({ notice }: { notice: string | null }) {
         <h1 className="t-num text-[44px] font-bold leading-[1.1] tracking-[-0.03em] text-heading">
           時間を、
           <br />
-          支配しろ。
+          支配しよう。
         </h1>
         <p className="text-sm leading-relaxed text-muted">やることを投げれば、AI コーチが15分単位で組み込む。浪費した時間も、数字で見える。</p>
       </div>

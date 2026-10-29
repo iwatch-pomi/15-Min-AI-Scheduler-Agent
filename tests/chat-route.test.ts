@@ -194,11 +194,12 @@ describe("ストイックの返事の口調", () => {
     expect(String(soft.messages.at(-1)!.content)).not.toContain("口調: ストイック");
     expect(JSON.stringify(stoic.system)).toBe(JSON.stringify(soft.system));
     expect(JSON.stringify(stoic.system)).toContain("敬語（です・ます・ください）は使わない");
+    expect(JSON.stringify(stoic.system)).toContain("命令形（「〜しろ」「〜するな」「〜せよ」など）は使わない");
   });
 
   it("アプリが処理する返事（節約モード）もストイックの口調になる", async () => {
     const { data } = await send({ message: "14時から要件定義1時間", aiMode: "save", tone: "stoic" });
-    expect(data.reply).toBe("14:00-15:00 に「要件定義」を入れた。始めたら、終わるまで離れるな。");
+    expect(data.reply).toBe("14:00-15:00 に「要件定義」を入れた。始めたら、最後までやり切ろう。");
   });
 });
 

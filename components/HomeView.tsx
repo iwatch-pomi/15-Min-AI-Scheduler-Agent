@@ -153,7 +153,7 @@ export default function HomeView(props: {
           {timed.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <p className="font-medium text-heading">{stoic ? "まだ何も積まれていない。" : "予定はまだありません"}</p>
-              <p className="mt-1 text-sm text-muted">{stoic ? "右下の ＋ から、コーチに予定を投げろ。" : "右下の ＋ から、AI にひと言で頼んでみましょう"}</p>
+              <p className="mt-1 text-sm text-muted">{stoic ? "右下の ＋ から、コーチに予定を投げよう。" : "右下の ＋ から、AI にひと言で頼んでみましょう"}</p>
             </div>
           ) : (
             <ul className={stoic ? "divide-y divide-line-soft [&>li]:mx-4" : "space-y-2"}>
@@ -217,27 +217,22 @@ export default function HomeView(props: {
             </p>
             {briefsLeft !== null && (
               <p className="mb-2 flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-[11px] leading-relaxed" data-testid="brief-limit">
+                {/* プラン（購入）の案内なので、ストイックでも丁寧語にする */}
                 <span className="flex-1">
                   {briefsNone
-                    ? stoic
-                      ? `${rule.label}プランでは「AIで更新」は使えない。${briefFrom.label}から1日${briefFrom.briefsPerDay}回。`
-                      : `${rule.label}プランでは「AIで更新」は使えません。${briefFrom.label}から1日${briefFrom.briefsPerDay}回使えます。`
+                    ? `${rule.label}プランでは「AIで更新」は使えません。${briefFrom.label}から1日${briefFrom.briefsPerDay}回使えます。`
                     : briefsUsedUp
-                      ? stoic
-                        ? "今日の「AIで更新」は使った。明日0時に戻る。"
-                        : "今日の「AIで更新」は使いました。明日の0時にまた使えます。"
-                      : stoic
-                        ? `${rule.label}プランの「AIで更新」は1日${rule.briefsPerDay}回。1回で今日のAIの約${briefCostPercent(usage.plan)}%を使う。`
-                        : `${rule.label}プランでは「AIで更新」は1日${rule.briefsPerDay}回までです。1回で今日のAIの${briefCostPercent(usage.plan)}%ほどを使います。`}
+                      ? "今日の「AIで更新」は使いました。明日の0時にまた使えます。"
+                      : `${rule.label}プランでは「AIで更新」は1日${rule.briefsPerDay}回までです。1回で今日のAIの${briefCostPercent(usage.plan)}%ほどを使います。`}
                 </span>
                 <button onClick={onOpenPlans} className="shrink-0 font-bold text-accent-ink" data-testid="brief-limit-plans">
-                  {stoic ? "制限を外す" : "プランを見る"}
+                  プランを見る
                 </button>
               </p>
             )}
             {suggestError && <p className="mb-2 px-1 text-xs text-now">{suggestError}</p>}
             {suggestions.length === 0 && (
-              <p className="rounded-2xl bg-surface px-4 py-4 text-center text-sm text-muted shadow-card">{stoic ? "今は、伝えることはない。予定どおりに進めろ。" : "今のところ、おすすめはありません"}</p>
+              <p className="rounded-2xl bg-surface px-4 py-4 text-center text-sm text-muted shadow-card">{stoic ? "今は、伝えることはない。予定どおりに進めよう。" : "今のところ、おすすめはありません"}</p>
             )}
             <ul className="divide-y divide-line-soft overflow-hidden rounded-2xl bg-surface shadow-card">
               {suggestions.map((s) => {

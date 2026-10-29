@@ -46,19 +46,10 @@ export default function Interstitial(props: { onClose: () => void; onOpenPlans: 
       <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
         <SparkleIcon className="size-14 text-accent-ink" />
         <p className="t-num text-2xl font-bold leading-snug text-heading">
-          {stoic ? (
-            <>
-              広告に時間を
-              <br />
-              奪われるな。
-            </>
-          ) : (
-            <>
-              有料プランなら
-              <br />
-              この広告は出ません
-            </>
-          )}
+          {/* プラン（購入）の案内なので、ストイックでも丁寧語にする */}
+          有料プランなら
+          <br />
+          この広告は出ません
         </p>
         <p className="max-w-xs text-sm leading-relaxed text-muted">
           {lite.label}（{lite.priceYen.toLocaleString("ja-JP")}円/月）から、全画面の広告がなくなり、AIの上限も上がります。

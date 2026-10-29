@@ -96,7 +96,7 @@ export async function runCommand(
   opts: { tz: string; now: Date; interrupt: InterruptSettings; tone?: Theme },
 ): Promise<string | null> {
   const { tz, now } = opts;
-  // ストイックでは、コーチの口調（敬語なしの言い切り＋最後にひと言）で返す
+  // ストイックでは、コーチの口調（敬語なしの言い切り＋最後に「〜しよう」のひと言。命令形は使わない）で返す
   const stoic = opts.tone === "stoic";
   const coach = (soft: string, hard: string) => (stoic ? hard : soft);
   const today = localDateString(now, tz);
@@ -125,7 +125,7 @@ export async function runCommand(
     }
     await calendar.remove(target);
     const range = `今の「${target.title}」（${hm(target.start)}-${hm(target.end)}）`;
-    return coach(`${range}をスキップしました。`, `${range}を飛ばした。飛ばした分は、どこかで取り返せ。`);
+    return coach(`${range}をスキップしました。`, `${range}を飛ばした。飛ばした分は、どこかで取り返そう。`);
   }
 
   if (cmd.kind === "extend") {
@@ -144,7 +144,7 @@ export async function runCommand(
     const until = target ? hm(addMinutes(new Date(target.end), cmd.minutes)) : "";
     const head = target ? coach(`「${target.title}」を${cmd.minutes}分延長して ${until} までにしました。`, `「${target.title}」を${cmd.minutes}分延長し、${until} までにした。`) : "";
     const tail = plan.length ? coach(`後ろの予定を${cmd.minutes}分ずらしました（${plan.length}件）。`, `後ろの予定${target ? "も" : "を"}${cmd.minutes}分ずらした（${plan.length}件）。`) : "";
-    const push = stoic && target ? "延長はこれで最後にしろ。" : "";
+    const push = stoic && target ? "延長はこれで最後にしよう。" : "";
     return [head + tail + push, ...new Set(warnings)].join("\n");
   }
 
@@ -168,7 +168,7 @@ export async function runCommand(
   const block = await calendar.create({ title: cmd.title, start: start.toISOString(), end: end.toISOString(), energy: "MEDIUM" });
   const when = cmd.day === 0 ? "" : cmd.day === 1 ? "明日の" : "明後日の";
   const placed = `${when}${hm(start)}-${hm(end)} に「${block.title}」を入れ`;
-  const lines = [coach(`${placed}ました。`, `${placed}た。始めたら、終わるまで離れるな。`)];
+  const lines = [coach(`${placed}ました。`, `${placed}た。始めたら、最後までやり切ろう。`)];
   const clash = overlapping(existing, start, end);
   if (clash.length) {
     const warning = `⚠ ${clash.map((c) => `「${c.title}」`).join("、")}と重なっています`;

@@ -103,18 +103,20 @@ describe("ストイックの返事（コーチの口調）", () => {
     runCommand(parseCommand(text)!, cal, { tz, now, interrupt: { start: "now", mode: "slide" }, tone: "stoic" });
   const polite = /です|ます|ください|しょう/;
 
-  it("追加・延長・スキップ・割り込みとも、敬語を使わず言い切る", async () => {
+  it("追加・延長・スキップ・割り込みとも、敬語を使わず言い切る。命令形は使わず「〜しよう」と誘う", async () => {
     const replies = [];
     for (const text of ["14時から要件定義1時間", "15分延長", "割り込み30分", "今のをスキップ"]) {
       const { cal } = setup();
       replies.push(await stoic(cal, text));
     }
-    expect(replies[0]).toBe("14:00-15:00 に「要件定義」を入れた。始めたら、終わるまで離れるな。\n⚠ 「MTG」と重なっている");
-    expect(replies[1]).toContain("「資料作成」を15分延長し、13:45 までにした。後ろの予定も15分ずらした（2件）。延長はこれで最後にしろ。");
+    expect(replies[0]).toBe("14:00-15:00 に「要件定義」を入れた。始めたら、最後までやり切ろう。\n⚠ 「MTG」と重なっている");
+    expect(replies[1]).toContain("「資料作成」を15分延長し、13:45 までにした。後ろの予定も15分ずらした（2件）。延長はこれで最後にしよう。");
     expect(replies[1]).toContain("⚠ ずらした「返信」が「MTG」と重なった");
-    expect(replies[2]).toContain("済ませたら、すぐ戻れ。");
-    expect(replies[3]).toBe("今の「資料作成」（12:30-13:30）を飛ばした。飛ばした分は、どこかで取り返せ。");
+    expect(replies[2]).toContain("済ませたら、すぐ戻ろう。");
+    expect(replies[3]).toBe("今の「資料作成」（12:30-13:30）を飛ばした。飛ばした分は、どこかで取り返そう。");
     for (const r of replies) expect(r).not.toMatch(polite);
+    // 命令形（〜しろ・〜するな・〜せ・〜れ など）を使わない
+    for (const r of replies) expect(r).not.toMatch(/しろ|するな|離れるな|取り返せ|戻れ|[積入]め。|入れろ/);
   });
 
   it("やさしい（tone なし）は今までどおり丁寧語", async () => {

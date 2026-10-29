@@ -470,12 +470,12 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     const result = params.get("billing");
     if (!result) return;
     history.replaceState(null, "", window.location.pathname + window.location.hash);
-    const stoic = document.documentElement.dataset.theme === "stoic";
+    // お支払い（購入）のお知らせは、どちらのデザインでも丁寧語にする
     const text =
       result === "success"
-        ? stoic ? "申し込み完了。プランを反映している。" : "お申し込みありがとうございます。プランを反映しています。"
+        ? "お申し込みありがとうございます。プランを反映しています。"
         : result === "cancel"
-          ? stoic ? "申し込みは中止した。" : "お申し込みを中止しました。"
+          ? "お申し込みを中止しました。"
           : null;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBillingNotice(text);

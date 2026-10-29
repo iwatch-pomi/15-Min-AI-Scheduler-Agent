@@ -97,7 +97,7 @@ export default function ChatView(props: {
         {entries.length === 0 && !sending && (
           <div className="space-y-3 pt-6 text-center">
             {stoic ? <GaugeIcon className="mx-auto size-14 text-accent-ink" /> : <Mascot className="mx-auto size-20" />}
-            <p className="font-bold">{stoic ? "予定を投げろ。15分単位で組み込む。" : "ひと言で、今日の予定が整う。"}</p>
+            <p className="font-bold">{stoic ? "予定を投げよう。15分単位で組み込む。" : "ひと言で、今日の予定が整う。"}</p>
             <p className="text-sm text-muted">やりたいことを送ると、空き時間に15分単位で組み込みます。</p>
             {save && (
               <p className="mx-auto max-w-xs rounded-xl bg-accent-soft px-3 py-2 text-left text-xs leading-relaxed text-accent-ink" data-testid="save-tip">
@@ -216,7 +216,7 @@ export default function ChatView(props: {
             {save && "「14時から会議1時間」「15分延長」のような決まった形の依頼は、AIを使わずに処理できます。時刻と長さをはっきり書いて1件ずつ送ってください。"}
             {usage.plan !== "pro" && (
               <button onClick={onOpenPlans} className="ml-1 font-bold underline" data-testid="exhausted-plans">
-                {stoic ? "プランを上げる" : "プランを見る"}
+                プランを見る
               </button>
             )}
           </p>

@@ -213,7 +213,7 @@ export function interruptReply(r: InterruptResult, mode: InterruptMode, tz: stri
     if (r.deleted) parts.push(`${r.deleted}件を削除`);
     lines.push(parts.length ? `重なった予定を${parts.join("、")}し${stoic ? "た" : "ました"}。` : stoic ? "重なる予定はない。" : "重なる予定はありませんでした。");
   }
-  if (stoic) lines.push("済ませたら、すぐ戻れ。");
+  if (stoic) lines.push("済ませたら、すぐ戻ろう。");
   return [...lines, ...r.warnings.map((w) => `⚠ ${stoic ? plainWarning(w) : w}`)].join("\n");
 }
 
