@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PLANS, PLAN_IDS, briefCostPercent, priceLabel, type PaidPlan, type Plan } from "@/lib/plans";
-import { CheckIcon, LockIcon, SparkleIcon } from "./icons";
+import { CheckIcon, LockIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
 type BillingInfo = { plan: Plan; status: string | null; renewsAt: string | null; customer: boolean; available: boolean };
@@ -72,17 +72,9 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
           return (
             <li
               key={p}
-              className={`rounded-xl border px-3 py-2.5 stoic:rounded-[10px] ${
-                current ? "border-accent bg-accent-soft" : rule.recommended ? "border-2 border-accent" : "border-line-soft"
-              }`}
+              className={`rounded-xl border px-3 py-2.5 stoic:rounded-[10px] ${current ? "border-accent bg-accent-soft" : "border-line-soft"}`}
               data-testid={`plan-${p}`}
             >
-              {rule.recommended && !current && (
-                <p className="mb-1 flex items-center gap-1 text-[11px] font-bold text-accent-ink" data-testid="plan-recommended">
-                  <SparkleIcon className="size-3.5" />
-                  {stoic ? "RECOMMENDED・おすすめ" : "おすすめ"}
-                </p>
-              )}
               <div className="flex items-baseline gap-2">
                 <span className="font-bold text-heading">
                   {rule.label}

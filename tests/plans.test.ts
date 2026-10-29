@@ -69,11 +69,10 @@ describe("プランごとの決まり", () => {
 });
 
 describe("値段の並べ方（プロを選びたくなる形）", () => {
-  it("有料プランは3つ。安い順に並び、プロだけがおすすめ", () => {
+  it("有料プランは3つ。安い順に並ぶ", () => {
     expect([...PAID_PLANS]).toEqual(["plus", "standard", "pro"]);
     const prices = PAID_PLANS.map((p) => PLANS[p].priceYen);
     expect(prices).toEqual([...prices].sort((a, b) => a - b));
-    expect(PAID_PLANS.filter((p) => PLANS[p].recommended)).toEqual(["pro"]);
   });
 
   it("スタンダードはプロとの差額が200円なのに、AI は半分以下で最大モードも無い", () => {

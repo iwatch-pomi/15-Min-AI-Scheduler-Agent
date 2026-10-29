@@ -33,8 +33,6 @@ export type PlanRule = {
   briefsPerDay: number | null;
   /** AI へのカスタム指示を使えるか（毎回 AI に送るので費用が増える） */
   customInstructions: boolean;
-  /** 比べたときに、いちばんおすすめのプラン */
-  recommended?: boolean;
 };
 
 /** AIブリーフ1回のおおよその費用（米ドル。いつも Sonnet で作る）。画面で「今日のAIの◯割」と出すのに使う */
@@ -95,7 +93,6 @@ export const PLANS: Record<Plan, PlanRule> = {
     ads: "none",
     briefsPerDay: null,
     customInstructions: true,
-    recommended: true,
   },
 };
 
