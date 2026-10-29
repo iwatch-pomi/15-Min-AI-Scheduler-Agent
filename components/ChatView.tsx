@@ -204,7 +204,7 @@ export default function ChatView(props: {
           <button
             type="button"
             onClick={onOpenSettings}
-            className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-muted stoic:t-label stoic:rounded-md stoic:border stoic:border-line stoic:bg-transparent stoic:px-2 stoic:py-[5px] stoic:text-[10px] stoic:font-normal stoic:tracking-[0.12em] stoic:text-[#a8a8ae]"
+            className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-muted stoic:t-label stoic:rounded-md stoic:border stoic:border-line stoic:bg-transparent stoic:px-2 stoic:py-[5px] stoic:text-[10px] stoic:font-normal stoic:tracking-[0.12em] stoic:text-[#c9c9cf]"
             data-testid="ai-mode-chip"
           >
             {stoic

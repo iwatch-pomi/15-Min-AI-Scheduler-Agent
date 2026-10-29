@@ -344,7 +344,7 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
     <div className="flex items-center gap-3 px-4 py-3">
       <span className="text-accent-ink">{icon}</span>
       <span className="flex-1 text-sm">{label}</span>
-      <span className="min-w-0 truncate text-sm text-muted stoic:t-code stoic:text-xs stoic:text-[#a8a8ae]">{value}</span>
+      <span className="min-w-0 truncate text-sm text-muted stoic:t-code stoic:text-xs stoic:text-[#c9c9cf]">{value}</span>
     </div>
   );
 }

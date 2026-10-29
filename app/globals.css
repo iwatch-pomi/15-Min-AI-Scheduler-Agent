@@ -69,9 +69,10 @@ html[data-theme="stoic"] {
   --surface-2: #1c1c1f;
   --text: #f2f2f0;
   --heading: #f2f2f0;
-  --muted: #8b8b92;
-  --line: #2a2a2e;
-  --line-soft: #1f1f22;
+  /* 補足・ラベルの灰色と、区切り線・枠は、暗い背景でもはっきり読める明るさにする */
+  --muted: #ababb3;
+  --line: #3a3a40;
+  --line-soft: #2a2a2f;
   --accent: #8bd3ff;
   --accent-ink: #8bd3ff;
   --accent-soft: #15232d;
@@ -86,7 +87,7 @@ html[data-theme="stoic"] {
   --blk-main-bg: #18181b;
 
   /* 影の代わりに 1px の枠線 */
-  --shadow: 0 0 0 1px #1f1f22;
+  --shadow: 0 0 0 1px #2a2a2f;
   --on-accent: #0a0a0b;
   --pill: 12px;
   --font-num: "Space Grotesk", "Noto Sans JP", sans-serif;
@@ -154,4 +155,19 @@ body {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+/* ストイック：いちばん小さい文字（9〜11px）を1px大きくして読みやすくする（タブのラベル・時刻・英字の小見出しなど）。
+   ベースの大きさより stoic: で指定した小さい大きさを優先するよう、大きい順に書く（後ろほど優先） */
+html[data-theme="stoic"] .t-label {
+  font-size: 12px;
+}
+html[data-theme="stoic"] :is(.text-\[11px\], .stoic\:text-\[11px\]) {
+  font-size: 12px;
+}
+html[data-theme="stoic"] :is(.text-\[10px\], .stoic\:text-\[10px\]) {
+  font-size: 11px;
+}
+html[data-theme="stoic"] :is(.text-\[9px\], .stoic\:text-\[9px\]) {
+  font-size: 10px;
 }
