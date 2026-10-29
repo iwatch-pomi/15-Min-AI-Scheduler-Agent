@@ -38,7 +38,7 @@ export default function QuickActionsEditor(props: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 stoic:bg-black/50" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-x-0 top-0 z-50 h-dvh flex items-end justify-center bg-black/30 stoic:bg-black/50" onClick={onClose} role="dialog" aria-modal="true">
       <div
         className="max-h-[90dvh] w-full max-w-xl space-y-4 overflow-y-auto rounded-t-3xl bg-bg px-5 pt-5 pb-[max(20px,env(safe-area-inset-bottom))] shadow-card stoic:border-t stoic:border-line"
         onClick={(e) => e.stopPropagation()}

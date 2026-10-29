@@ -7,10 +7,11 @@ import type { Usage } from "@/lib/limits";
 import type { Routine, RoutineInput } from "@/lib/routines";
 import { arcProgress, type Arc, type Theme } from "@/lib/theme";
 import ArcEditor from "./ArcEditor";
+import NotifyGuide from "./NotifyGuide";
 import RoutineList from "./RoutineList";
 import Segmented from "./Segmented";
 import UsageMeter from "./UsageMeter";
-import { AppLogo, CalendarIcon, ChevronRightIcon, ClockIcon, GaugeIcon, PencilIcon, RepeatIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
+import { AppLogo, BellIcon, BookIcon, CalendarIcon, ChevronRightIcon, ClockIcon, GaugeIcon, PencilIcon, RepeatIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
 export default function SettingsView(props: {
@@ -33,8 +34,10 @@ export default function SettingsView(props: {
   onQuoteOnChange: (on: boolean) => void;
   quickActionCount: number;
   onEditQuickActions: () => void;
+  onShowTutorial: () => void;
 }) {
-  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange, today, onThemeChange, onArcChange, quoteOn, onQuoteOnChange, quickActionCount, onEditQuickActions } = props;
+  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange, today, onThemeChange, onArcChange, quoteOn, onQuoteOnChange, quickActionCount, onEditQuickActions, onShowTutorial } = props;
+  const [notifyGuide, setNotifyGuide] = useState(false);
   const { theme, arc } = useTheme();
   const stoic = theme === "stoic";
   const [editingArc, setEditingArc] = useState(false);
@@ -152,6 +155,7 @@ export default function SettingsView(props: {
             </span>
             <ChevronRightIcon className="size-4 shrink-0 text-muted" />
           </button>
+          <LinkRow icon={<BellIcon className="size-5" />} label="予定の通知（Googleカレンダー）" onClick={() => setNotifyGuide(true)} testId="notify-link" />
           <Row icon={<ClockIcon className="size-5" />} label="タイムゾーン" value={tz} />
           <Row icon={<CalendarIcon className="size-5" />} label="AIの予定の保存先" value="AIスケジューラー" />
           <p className="px-4 py-3 text-xs text-muted">
@@ -236,6 +240,11 @@ export default function SettingsView(props: {
           </p>
         </Section>
 
+        {notifyGuide && <NotifyGuide onClose={() => setNotifyGuide(false)} />}
+        <Section title={t("使い方", "GUIDE")}>
+          <LinkRow icon={<BookIcon className="size-5" />} label="使い方（チュートリアル）をもう一度見る" onClick={onShowTutorial} testId="tutorial-link" />
+        </Section>
+
         <div className="flex items-center justify-center gap-2 pt-2 text-xs text-muted">
           {stoic ? <SparkleIcon className="size-4 text-accent-ink" /> : <AppLogo className="size-5 rounded-md" />}
           AIスケジュールアシスタント
@@ -261,5 +270,15 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
       <span className="flex-1 text-sm">{label}</span>
       <span className="min-w-0 truncate text-sm text-muted stoic:t-code stoic:text-xs stoic:text-[#a8a8ae]">{value}</span>
     </div>
+  );
+}
+
+function LinkRow({ icon, label, onClick, testId }: { icon: React.ReactNode; label: string; onClick: () => void; testId?: string }) {
+  return (
+    <button onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2" data-testid={testId}>
+      <span className="text-accent-ink">{icon}</span>
+      <span className="flex-1 text-sm">{label}</span>
+      <ChevronRightIcon className="size-4 shrink-0 text-muted" />
+    </button>
   );
 }

@@ -19,6 +19,7 @@ import HomeView from "./HomeView";
 import { AppLogo } from "./icons";
 import SettingsView from "./SettingsView";
 import QuickActionsEditor from "./QuickActionsEditor";
+import Tutorial from "./Tutorial";
 import TabBar from "./TabBar";
 import { ThemeContext } from "./ThemeContext";
 
@@ -255,6 +256,13 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   }, [theme, quoteOn, quote, quoteKey, hour, arc, today, tz]);
   // 画面に出すひと言。null は出さない、"" は作っている途中
   const stoicQuote = !quoteOn ? null : quote?.key === quoteKey ? (quote.text ?? stoicLine(hour, today)) : "";
+
+  // 初めての人向けの使い方。最初に開いたときに1回だけ出す（この端末に保存）。マイページからもう一度見られる
+  const [showTutorial, setShowTutorial] = useState(() => typeof window !== "undefined" && readLocal("ai15:tutorial-done") === null);
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    writeLocal("ai15:tutorial-done", "1");
+  };
 
   // クイックボタン（AI 画面のワンタップのボタン）。サーバーに保存し、端末間で共有する
   const [quickActions, setQuickActions] = useState<string[]>(DEFAULT_QUICK_ACTIONS);
@@ -606,6 +614,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           onThemeChange={changeTheme}
           onArcChange={changeArc}
           quickActionCount={quickActions.length}
+          onShowTutorial={() => setShowTutorial(true)}
           onEditQuickActions={() => setEditingQuick(true)}
           quoteOn={quoteOn}
           onQuoteOnChange={changeQuoteOn}
@@ -614,6 +623,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           onDeleteRoutine={deleteRoutine}
         />}
       <TabBar tab={tab} onChange={setTab} />
+      {showTutorial && <Tutorial onClose={closeTutorial} />}
       {editingQuick && <QuickActionsEditor actions={quickActions} onSave={saveQuickActions} onClose={() => setEditingQuick(false)} />}
     </div>
     </ThemeContext>

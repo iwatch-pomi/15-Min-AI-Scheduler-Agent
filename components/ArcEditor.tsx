@@ -14,7 +14,7 @@ export default function ArcEditor(props: { arc: Arc; today: string; onSave: (arc
   const progress = valid ? arcProgress(draft, today) : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-x-0 top-0 z-50 h-dvh flex items-end justify-center bg-black/50" onClick={onClose} role="dialog" aria-modal="true">
       <div
         className="w-full max-w-xl space-y-4 rounded-t-3xl border-t border-line bg-bg px-5 pt-5 pb-[max(20px,env(safe-area-inset-bottom))]"
         onClick={(e) => e.stopPropagation()}
