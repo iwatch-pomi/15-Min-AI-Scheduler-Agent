@@ -66,6 +66,23 @@ export async function syncCustomer(customerId: string): Promise<Plan | null> {
   return ok ? (best?.plan ?? "free") : null;
 }
 
+/**
+ * 期間の終わりに予定されているプランの変更（安いプランへの切り替え）。無ければ null。
+ * カスタマーポータルで「請求期間の終了時まで待ってから更新する」にしていると、Stripe はサブスクリプションスケジュールに
+ * 次のプランを予約する。今のプランは期間の終わりまでそのまま（syncCustomer は今の価格を読むので、そのまま正しい）で、
+ * 切り替わったときに customer.subscription.updated が届いて、新しいプランになる
+ */
+export async function pendingChange(subscriptionId: string, now = new Date()): Promise<{ plan: Plan; at: string } | null> {
+  const sub = await stripe().subscriptions.retrieve(subscriptionId, { expand: ["schedule"] });
+  const schedule = sub.schedule && typeof sub.schedule === "object" ? sub.schedule : null;
+  if (!schedule || schedule.status !== "active") return null;
+  const next = schedule.phases.find((ph) => ph.start_date * 1000 > now.getTime());
+  if (!next) return null;
+  const price = next.items[0]?.price;
+  const plan = planForPrice(typeof price === "string" ? price : price?.id);
+  return plan ? { plan, at: new Date(next.start_date * 1000).toISOString() } : null;
+}
+
 /** ユーザーの Stripe の顧客。まだ無ければ作って結び付ける（同時に作られても、最初の1つを使う） */
 async function customerFor(userId: string): Promise<string> {
   const billing = await getBilling(userId);

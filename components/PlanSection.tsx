@@ -5,7 +5,15 @@ import { PLANS, PLAN_IDS, briefCostPercent, priceLabel, type PaidPlan, type Plan
 import { CheckIcon, LockIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
-type BillingInfo = { plan: Plan; status: string | null; renewsAt: string | null; customer: boolean; available: boolean };
+type BillingInfo = {
+  plan: Plan;
+  status: string | null;
+  renewsAt: string | null;
+  /** 期間の終わりに予定されている、安いプランへの切り替え */
+  next: { plan: Plan; at: string } | null;
+  customer: boolean;
+  available: boolean;
+};
 
 const MODE_NAMES: Record<string, string> = { save: "節約", normal: "通常", boost: "強化", max: "最大" };
 
@@ -61,6 +69,11 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
       {plan !== "free" && renews && (
         <p className="text-xs text-muted">
           {info?.status === "canceling" ? `解約済み。${renews}まで今のプランを使えます` : info?.status === "past_due" ? "お支払いが確認できていません。カードを確かめてください" : `次の更新日：${renews}`}
+        </p>
+      )}
+      {info?.next && (
+        <p className="text-xs text-muted" data-testid="plan-next">
+          {new Date(info.next.at).toLocaleDateString("ja-JP", { month: "long", day: "numeric" })}から{PLANS[info.next.plan].label}プランに変わります。それまでは今のプランを使えます。
         </p>
       )}
 

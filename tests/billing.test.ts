@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 
 // 偽の Stripe：サブスクの一覧・顧客・申し込み画面・ポータル・署名の確認
 const stripe = {
-  subscriptions: { list: vi.fn() },
+  subscriptions: { list: vi.fn(), retrieve: vi.fn() },
   customers: { create: vi.fn(), del: vi.fn() },
   checkout: { sessions: { create: vi.fn() } },
   billingPortal: { sessions: { create: vi.fn() } },
@@ -56,6 +56,7 @@ process.env.STRIPE_PRICE_PRO = "price_pro";
 
 const webhook = (await import("@/app/api/billing/webhook/route")).POST;
 const checkout = (await import("@/app/api/billing/checkout/route")).POST;
+const billingStatus = (await import("@/app/api/billing/route")).GET;
 
 const sub = (price: string, status = "active", extra: Record<string, unknown> = {}) => ({
   id: `sub_${price}_${status}`,
@@ -233,5 +234,48 @@ describe("お支払いの画面を開けなかったとき", () => {
     expect(data.url).toBe("https://checkout.stripe.com/c/pay/live");
     expect(users.get(userId)!.stripe_customer_id).toBe("cus_live");
     expect(stripe.checkout.sessions.create.mock.calls[0][0].customer).toBe("cus_live");
+  });
+});
+
+describe("安いプランへの切り替えは、期間の終わりに（サブスクリプションスケジュール）", () => {
+  const future = Math.floor(Date.now() / 1000) + 10 * 86400;
+  const past = Math.floor(Date.now() / 1000) - 20 * 86400;
+  const scheduled = {
+    schedule: {
+      status: "active",
+      phases: [
+        { start_date: past, items: [{ price: "price_pro" }] },
+        { start_date: future, items: [{ price: { id: "price_plus" } }] },
+      ],
+    },
+  };
+
+  it("期間の終わりまでは今のプランのまま。マイページには、いつどのプランに変わるかを返す", async () => {
+    Object.assign(users.get(userId)!, { plan: "pro", stripe_subscription_id: "sub_pro" });
+    // 予約が入っても、サブスクの今の価格はプロのまま。知らせが来ても、プランはプロのまま
+    stripe.subscriptions.list.mockResolvedValue({ data: [sub("price_pro", "active", { schedule: "sub_sched_1" })] });
+    stripe.webhooks.constructEvent.mockReturnValue(event("customer.subscription.updated", { customer: "cus_1" }));
+    await post(webhook, "http://x/api/billing/webhook", "{}", { "stripe-signature": "s" });
+    expect(users.get(userId)!.plan).toBe("pro");
+
+    stripe.subscriptions.retrieve.mockResolvedValue(scheduled);
+    const data = await (await billingStatus()).json();
+    expect(stripe.subscriptions.retrieve).toHaveBeenCalledWith("sub_price_pro_active", { expand: ["schedule"] });
+    expect(data.plan).toBe("pro");
+    expect(data.next).toEqual({ plan: "plus", at: new Date(future * 1000).toISOString() });
+
+    // 期間が終わって切り替わったら、知らせでライトになる
+    stripe.subscriptions.list.mockResolvedValue({ data: [sub("price_plus")] });
+    await post(webhook, "http://x/api/billing/webhook", "{}", { "stripe-signature": "s" });
+    expect(users.get(userId)!.plan).toBe("plus");
+  });
+
+  it("予約がなければ next は null。Stripe を読めなくても、ほかの表示は返す", async () => {
+    Object.assign(users.get(userId)!, { plan: "plus", stripe_subscription_id: "sub_plus" });
+    stripe.subscriptions.retrieve.mockResolvedValueOnce({ schedule: null });
+    expect((await (await billingStatus()).json()).next).toBeNull();
+    stripe.subscriptions.retrieve.mockRejectedValueOnce(new Error("network"));
+    const data = await (await billingStatus()).json();
+    expect(data).toMatchObject({ plan: "plus", next: null });
   });
 });
