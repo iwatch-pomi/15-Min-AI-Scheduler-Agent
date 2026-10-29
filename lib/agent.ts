@@ -3,12 +3,13 @@ import { createMessage } from "./claude";
 import type { RecordingCalendar } from "./ops";
 import { UnauthorizedError } from "./errors";
 import { instructionsBlock } from "./custom-instructions";
-import type { CostMeter } from "./pricing";
+import { OverBudgetError, type CostMeter } from "./pricing";
 import type { Theme } from "./theme";
 import { toLocalIso } from "./time";
 import { ToolError, executeTool, toolDefinitions } from "./tools";
 import type { ChatMessage } from "./types";
 
+/** 1回の依頼で、AI とやり取りする回数の上限（ツールを使うたびに1回）。費用は、これとは別に予算の残りで止める */
 const MAX_TURNS = 10;
 
 // キャッシュが効くように、毎回変わる情報（現在時刻など）はここに入れずユーザーメッセージ側に付ける
@@ -91,7 +92,12 @@ export async function runAgent(opts: {
       ],
       tools: toolDefinitions,
       messages,
+    }).catch((err) => {
+      // 予算の残りが足りなくなった。1回目なら依頼ごと断り（AI は呼んでいない）、途中ならここまでで止める
+      if (err instanceof OverBudgetError && turn > 0) return null;
+      throw err;
     });
+    if (!response) return { reply: BUDGET_STOP };
 
     if (response.stop_reason === "refusal") {
       return { reply: "すみません、この依頼にはお応えできませんでした。言い方を変えてもう一度送ってください。" };
@@ -100,6 +106,8 @@ export async function runAgent(opts: {
     messages.push({ role: "assistant", content: response.content });
 
     if (response.stop_reason === "pause_turn") continue;
+    // 予算に合わせて短くした返事の上限に達した（ツールの呼び出しが途中で切れていることがあるので、ここで止める）
+    if (response.stop_reason === "max_tokens") return { reply: textOf(response.content) || BUDGET_STOP };
     if (response.stop_reason !== "tool_use") return { reply: textOf(response.content) || "完了しました。" };
 
     const toolUses = response.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
@@ -121,6 +129,8 @@ export async function runAgent(opts: {
 
   return { reply: "処理が長くなったので途中で止めました。ここまでの変更はカレンダーに反映されています。" };
 }
+
+const BUDGET_STOP = "今日のAIの残りが少なくなったので、途中で止めました。ここまでの変更はカレンダーに反映されています。";
 
 function textOf(content: Anthropic.Beta.BetaContentBlock[]): string {
   return content

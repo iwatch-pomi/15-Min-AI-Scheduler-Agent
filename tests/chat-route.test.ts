@@ -287,4 +287,15 @@ describe("プランごとに使えるモード", () => {
     expect(data.usage).toMatchObject({ exhausted: true, reason: "day", plan: "free" });
     expect(create).not.toHaveBeenCalled();
   });
+
+  it("今日の残りが、最大モード（Opus）の短い返事にも足りなければ、AI を呼ばずに 429（使用量は増えない）", async () => {
+    await new MemoryStore().addCost(userId, "2026-10-28", 0.49); // プロの1日 $0.50 の残り $0.01
+    create.mockReset();
+    const { status, data } = await send({ message: "直近2週間を分析して", aiMode: "max" });
+    expect(status).toBe(429);
+    expect(data.error).toContain("今日のAIの残りでは");
+    expect(create).not.toHaveBeenCalled();
+    expect(await cost()).toBeCloseTo(0.49, 10);
+    expect(await savedMessages()).toEqual([]);
+  });
 });

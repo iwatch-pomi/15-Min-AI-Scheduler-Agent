@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
-import { BudgetExceededError } from "./budget";
+import { AiBusyError, BudgetExceededError } from "./budget";
 import { BillingNotConfiguredError, UnauthorizedError } from "./errors";
+import { OverBudgetError } from "./pricing";
 
 /** ルートハンドラ共通のエラー処理 */
 export function errorResponse(err: unknown) {
   if (err instanceof BudgetExceededError) {
     return NextResponse.json({ error: err.message, usage: err.usage }, { status: 429 });
+  }
+  // 予算の残りが足りない・ほかの AI の依頼を処理中（どちらも AI は呼んでいない）
+  if (err instanceof OverBudgetError || err instanceof AiBusyError) {
+    return NextResponse.json({ error: err.message }, { status: 429 });
   }
   if (err instanceof UnauthorizedError) {
     return NextResponse.json({ error: err.message }, { status: 401 });

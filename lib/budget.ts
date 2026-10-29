@@ -1,5 +1,5 @@
 import { percentOfBudget, usageOf, type Usage } from "./limits";
-import type { Plan } from "./plans";
+import { PLANS, type Plan } from "./plans";
 import { CostMeter } from "./pricing";
 import type { Store } from "./store/types";
 import { localDateString, monthOf } from "./time";
@@ -15,7 +15,39 @@ export class BudgetExceededError extends Error {
   }
 }
 
+/** 同じ人のほかの AI の依頼が終わらず、待っても鍵が取れなかった（AI は呼ばない） */
+export class AiBusyError extends Error {
+  constructor() {
+    super("前のAIの依頼を処理しています。終わってから、もう一度お試しください");
+  }
+}
+
 export type BudgetedResult<T> = { result: T; usage: Usage; costPercent: number };
+
+/**
+ * 1人が同時に送れる AI の依頼は1つまで。ほかの依頼（チャット・おすすめ・ひと言）が動いていたら、終わるまで待つ。
+ * 待つ間隔と回数（合わせて約20秒）。テストでは短くする
+ */
+export const LOCK_WAIT = { intervalMs: 200, tries: 100 };
+/** 鍵の有効期限（秒）。処理の途中で落ちても、これを過ぎれば次の依頼が通る（API の最長の実行時間60秒より長くする） */
+export const LOCK_TTL_SECONDS = 90;
+
+/** 鍵を取り、外す関数を返す。鍵の表が無いなど、鍵を使えないときは記録だけして通す（AI が使えなくならないように） */
+async function lockAi(store: Store, userId: string): Promise<() => Promise<void>> {
+  const token = crypto.randomUUID();
+  for (let i = 0; i < LOCK_WAIT.tries; i++) {
+    let ok: boolean;
+    try {
+      ok = await store.acquireAiLock(userId, token, LOCK_TTL_SECONDS);
+    } catch (err) {
+      console.error("AI の依頼の鍵を使えませんでした（schema.sql の更新が必要かもしれません）", err);
+      return async () => {};
+    }
+    if (ok) return () => store.releaseAiLock(userId, token).catch((err) => console.error("AI の依頼の鍵を外せませんでした", err));
+    await new Promise((resolve) => setTimeout(resolve, LOCK_WAIT.intervalMs));
+  }
+  throw new AiBusyError();
+}
 
 /**
  * 1回の依頼を始める前に、先に予算から押さえておく額（米ドル）。
@@ -33,12 +65,27 @@ export async function currentUsage(ctx: { store: Store; userId: string; tz: stri
 
 /**
  * Claude を使う処理は必ずこれで包む。
+ * 0. その人の AI の依頼の鍵を取る（同時に1つまで。ほかの依頼が終わるまで待つ）
  * 1. 今日の予算から RESERVE_USD を先に押さえる。押さえる前の時点で、今日か今月の予算を
  *    使い切っていたら、押さえた分を戻して BudgetExceededError（AI は呼ばない）
- * 2. fn に meter を渡して実行する（Claude は lib/claude.ts の createMessage(meter, …) で呼ぶ）
- * 3. 成功しても失敗しても、実際にかかった費用との差を記録する（押さえた分は必ず精算する）
+ * 2. fn に meter を渡して実行する（Claude は lib/claude.ts の createMessage(meter, …) で呼ぶ）。
+ *    meter には、今日と今月の予算の残りの少ないほうを、この依頼で使える額として持たせる。
+ *    createMessage は、1回ごとの最悪の費用がその残りに入るよう返事の長さを抑え、入らなければ AI を呼ばない
+ * 3. 成功しても失敗しても、実際にかかった費用との差を記録する（押さえた分は必ず精算する）。最後に鍵を外す
  */
 export async function withAiBudget<T>(
+  ctx: { store: Store; userId: string; tz: string; now?: Date; plan: Plan },
+  fn: (meter: CostMeter) => Promise<T>,
+): Promise<BudgetedResult<T>> {
+  const unlock = await lockAi(ctx.store, ctx.userId);
+  try {
+    return await spendWithinBudget(ctx, fn);
+  } finally {
+    await unlock();
+  }
+}
+
+async function spendWithinBudget<T>(
   ctx: { store: Store; userId: string; tz: string; now?: Date; plan: Plan },
   fn: (meter: CostMeter) => Promise<T>,
 ): Promise<BudgetedResult<T>> {
@@ -52,14 +99,17 @@ export async function withAiBudget<T>(
     await store.addCost(userId, date, -RESERVE_USD).catch(() => {});
     throw err;
   });
-  const before = usageOf({ dayUsd: reserved - RESERVE_USD, monthUsd: monthReserved - RESERVE_USD }, plan);
+  const spent = { dayUsd: reserved - RESERVE_USD, monthUsd: monthReserved - RESERVE_USD };
+  const before = usageOf(spent, plan);
   if (before.exhausted) {
     await store.addCost(userId, date, -RESERVE_USD).catch(() => {});
     throw new BudgetExceededError(before);
   }
   await store.incrementUsage(userId, date);
 
-  const meter = new CostMeter();
+  // この依頼で使える額：今日と今月の予算の残りの少ないほう
+  const rule = PLANS[plan];
+  const meter = new CostMeter(Math.max(0, Math.min(rule.dailyUsd - spent.dayUsd, rule.monthlyUsd - spent.monthUsd)));
   let settled = false;
   const settle = async (): Promise<number> => {
     settled = true;

@@ -26,6 +26,13 @@ export interface Store {
   /** その日に「AIで更新」（AIブリーフ）を使った回数を delta だけ足し、足した後の回数を返す（1回の足し算で数える） */
   addBriefCount(userId: string, date: string, delta: number): Promise<number>;
   getBriefCount(userId: string, date: string): Promise<number>;
+  /**
+   * AI の依頼の鍵を取る（1人が同時に送れる AI の依頼は1つまで）。取れたら true。
+   * ttlSeconds を過ぎた鍵は、外し忘れ（処理の途中で落ちたなど）とみなして取り直せる
+   */
+  acquireAiLock(userId: string, token: string, ttlSeconds: number): Promise<boolean>;
+  /** 自分が取った鍵（token が同じもの）だけを外す */
+  releaseAiLock(userId: string, token: string): Promise<void>;
   /** 今日の AI の費用（米ドル）を足し、足した後の合計を返す */
   addCost(userId: string, date: string, usd: number): Promise<number>;
   /** チャット履歴を古い順に。before（その id より前）から limit 件 */

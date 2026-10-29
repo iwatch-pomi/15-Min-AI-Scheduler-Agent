@@ -11,6 +11,7 @@ type MemoryData = {
   briefs: Map<string, SavedBrief[]>;
   quickActions: Map<string, string[]>;
   instructions: Map<string, string>;
+  aiLocks: Map<string, { token: string; until: number }>;
 };
 
 const g = globalThis as Record<string, unknown>;
@@ -25,6 +26,7 @@ data.cost ??= new Map();
 data.briefs ??= new Map();
 data.quickActions ??= new Map();
 data.instructions ??= new Map();
+data.aiLocks ??= new Map();
 g.__ai15MemoryStore = data;
 
 export class MemoryStore implements Store {
@@ -89,6 +91,17 @@ export class MemoryStore implements Store {
     const next = (data.usage.get(key) ?? 0) + 1;
     data.usage.set(key, next);
     return next;
+  }
+
+  async acquireAiLock(userId: string, token: string, ttlSeconds: number) {
+    const held = data.aiLocks.get(userId);
+    if (held && held.until > Date.now()) return false;
+    data.aiLocks.set(userId, { token, until: Date.now() + ttlSeconds * 1000 });
+    return true;
+  }
+
+  async releaseAiLock(userId: string, token: string) {
+    if (data.aiLocks.get(userId)?.token === token) data.aiLocks.delete(userId);
   }
 
   async addCost(userId: string, date: string, usd: number) {

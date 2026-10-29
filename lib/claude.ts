@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { CostMeter } from "./pricing";
+import { estimateInputTokens, fitMaxTokens, type CostMeter } from "./pricing";
 
 // Claude API を呼ぶ唯一の入り口。
 // ルール：Claude を使ったら必ず使用量を記録する。そのため、ここ以外から SDK を呼ばない
@@ -45,15 +45,22 @@ let client: Anthropic | null = null;
 
 export type MessageParams = Omit<Anthropic.Beta.MessageCreateParamsNonStreaming, "model" | "betas" | "fallbacks"> & { model?: string };
 
-/** Claude に1回問い合わせ、その費用を meter に足す */
+/**
+ * Claude に1回問い合わせ、その費用を meter に足す。
+ * 送る前に、この1回の最悪の費用（入力＋返事を max_tokens まで書いた場合）が、この依頼で使える額（meter の残り）に入るよう、
+ * 返事の長さの上限を下げる。短い返事も入らないときは、AI を呼ばずに OverBudgetError
+ */
 export async function createMessage(meter: CostMeter, params: MessageParams): Promise<Anthropic.Beta.BetaMessage> {
   client ??= new Anthropic();
   // model: undefined が渡されても、決まったモデルを使う
   const model = params.model ?? MODEL;
+  const inputTokens = estimateInputTokens({ system: params.system, tools: params.tools, messages: params.messages });
+  const maxTokens = fitMaxTokens(model, inputTokens, params.max_tokens, meter.leftUsd);
   const response = await client.beta.messages.create({
     // 断られたとき、Anthropic 推奨の別モデルでやり直す（Haiku にはこの仕組みがないので付けない）
     ...(model.includes("haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
     ...params,
+    max_tokens: maxTokens,
     model,
   });
   meter.add(response.model ?? model, response.usage);

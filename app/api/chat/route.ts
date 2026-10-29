@@ -11,6 +11,7 @@ import { HISTORY_LIMIT, compactHistory } from "@/lib/context-window";
 import { interruptInstruction, interruptLabel, parseInterrupt } from "@/lib/interrupt";
 import { PLANS, allowedMode } from "@/lib/plans";
 import { RecordingCalendar } from "@/lib/ops";
+import { OverBudgetError } from "@/lib/pricing";
 import { safeTimeZone } from "@/lib/time";
 
 export const maxDuration = 60;
@@ -86,20 +87,21 @@ export async function POST(req: NextRequest) {
     const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now, plan }, async (meter) => {
       try {
         const { reply } = await runAgent({ message: prompt, history, calendar: recording, tz, now, meter, model, tone, instructions });
-        return { reply, authError: null };
+        return { reply, fatal: null };
       } catch (err) {
-        if (err instanceof UnauthorizedError) return { reply: "", authError: err };
+        // ログインし直し・予算の残りが足りない（AI を呼ぶ前に断った）は、そのまま画面に伝える
+        if (err instanceof UnauthorizedError || err instanceof OverBudgetError) return { reply: "", fatal: err };
         console.error(err);
         let reply = "AIの処理中にエラーが発生しました。";
         if (recording.ops.length) reply += "途中までの変更は［元に戻す］で取り消せます。";
-        return { reply, authError: null };
+        return { reply, fatal: null };
       }
     });
-    const { reply, authError } = result;
+    const { reply, fatal } = result;
     // 途中で失敗しても、反映済みの変更は Undo できるように記録する
     const opId = recording.ops.length ? crypto.randomUUID() : null;
     if (opId) await store.recordOps(userId, opId, recording.ops);
-    if (authError) throw authError;
+    if (fatal) throw fatal;
     await store.addMessages(
       userId,
       [

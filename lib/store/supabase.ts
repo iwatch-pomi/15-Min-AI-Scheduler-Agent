@@ -89,6 +89,17 @@ export class SupabaseStore implements Store {
     return Number(data?.brief_calls ?? 0);
   }
 
+  async acquireAiLock(userId: string, token: string, ttlSeconds: number) {
+    const { data, error } = await db().rpc("acquire_ai_lock", { p_user_id: userId, p_token: token, p_ttl_seconds: ttlSeconds });
+    if (error) throw error;
+    return data === true;
+  }
+
+  async releaseAiLock(userId: string, token: string) {
+    const { error } = await db().from("ai_locks").delete().eq("user_id", userId).eq("token", token);
+    if (error) throw error;
+  }
+
   async addCost(userId: string, date: string, usd: number) {
     const { data, error } = await db().rpc("add_usage_cost", {
       p_user_id: userId,

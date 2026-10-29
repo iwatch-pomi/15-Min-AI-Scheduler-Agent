@@ -87,6 +87,27 @@ returns int language sql as $$
   returning brief_calls;
 $$;
 
+-- AI の依頼の鍵。1人が同時に送れる AI の依頼は1つまで（同時にたくさん送って、予算を超えて AI を呼ばれないように）。
+-- locked_until を過ぎた鍵は、外し忘れとみなして取り直せる
+create table if not exists ai_locks (
+  user_id uuid primary key references users(id) on delete cascade,
+  token text not null,
+  locked_until timestamptz not null
+);
+
+create or replace function acquire_ai_lock(p_user_id uuid, p_token text, p_ttl_seconds int)
+returns boolean language plpgsql as $$
+declare
+  n int;
+begin
+  insert into ai_locks (user_id, token, locked_until) values (p_user_id, p_token, now() + make_interval(secs => p_ttl_seconds))
+  on conflict (user_id) do update set token = excluded.token, locked_until = excluded.locked_until
+  where ai_locks.locked_until < now();
+  get diagnostics n = row_count;
+  return n > 0;
+end;
+$$;
+
 -- AI で作った「AIのおすすめ／AIブリーフ」。日付とデザイン（口調）ごとに1つ。更新したら置き換える
 create table if not exists briefs (
   user_id uuid not null references users(id) on delete cascade,
@@ -113,15 +134,19 @@ alter table messages enable row level security;
 alter table usage enable row level security;
 alter table briefs enable row level security;
 alter table user_settings enable row level security;
+alter table ai_locks enable row level security;
 
 -- 関数はサーバー（service_role）からだけ呼べるようにする。
 -- anon / authenticated キーが漏れても、ほかの人の使用量を書き換えられないように
 alter function increment_usage(uuid, date) set search_path = public;
 alter function add_usage_cost(uuid, date, bigint) set search_path = public;
 alter function add_brief_calls(uuid, date, int) set search_path = public;
+alter function acquire_ai_lock(uuid, text, int) set search_path = public;
 revoke execute on function increment_usage(uuid, date) from public, anon, authenticated;
 revoke execute on function add_usage_cost(uuid, date, bigint) from public, anon, authenticated;
 revoke execute on function add_brief_calls(uuid, date, int) from public, anon, authenticated;
+revoke execute on function acquire_ai_lock(uuid, text, int) from public, anon, authenticated;
 grant execute on function increment_usage(uuid, date) to service_role;
 grant execute on function add_usage_cost(uuid, date, bigint) to service_role;
 grant execute on function add_brief_calls(uuid, date, int) to service_role;
+grant execute on function acquire_ai_lock(uuid, text, int) to service_role;
