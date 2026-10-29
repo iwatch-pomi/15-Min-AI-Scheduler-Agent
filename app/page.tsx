@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { CalendarIcon, ClockIcon, GaugeIcon, Mascot, RepeatIcon, SparkleIcon } from "@/components/icons";
 import Scheduler from "@/components/Scheduler";
@@ -9,15 +10,19 @@ import { login } from "./actions";
 // DEMO_MODE などの環境変数をビルド時ではなくリクエスト時に読む
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ error?: string | string[] }> }) {
   if (isDemo()) return <Scheduler demo />;
 
+  const { error } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) {
     // ログイン画面もデザインごとに分ける（/arc から来た人・ストイックを選んだ人はストイック）
     const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
-    return theme === "stoic" ? <SignInStoic /> : <SignInSoft />;
+    const notice = error ? loginErrorText(String(error)) : null;
+    return theme === "stoic" ? <SignInStoic notice={notice} /> : <SignInSoft notice={notice} />;
   }
+  // ほかのタブで先にログインできていれば、エラーは気にせずそのまま使う（URL の ?error= を消す）
+  if (error) redirect("/");
   return <Scheduler email={session.user.email ?? undefined} />;
 }
 
@@ -27,11 +32,26 @@ const FEATURES = [
   { Icon: CalendarIcon, text: "Googleカレンダーと連携" },
 ];
 
+/** Auth.js のエラーの種類を、ログイン画面に出す案内にする */
+function loginErrorText(error: string): string {
+  if (error === "AccessDenied") return "ログインがキャンセルされました。使うときは、もう一度［Google でログイン］を押してください。";
+  return "ログインを完了できませんでした。2つのタブで同時にログインしたときなどに起こります。このタブで、もう一度［Google でログイン］を押してください。";
+}
+
+function LoginNotice({ text }: { text: string | null }) {
+  if (!text) return null;
+  return (
+    <p className="rounded-xl bg-now/10 px-3 py-2.5 text-xs leading-relaxed text-now" role="alert" data-testid="login-error">
+      {text}
+    </p>
+  );
+}
+
 const PERMISSION_NOTE =
   "ログインすると、Google カレンダーの予定の閲覧と、AI 専用カレンダー「AIスケジューラー」の作成・編集を許可します。メインのカレンダーは変更しません。";
 
 /** やさしい：万人向けのログイン画面 */
-function SignInSoft() {
+function SignInSoft({ notice }: { notice: string | null }) {
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-8 px-6 py-14" data-testid="signin-soft">
       <div className="space-y-5">
@@ -60,6 +80,7 @@ function SignInSoft() {
         ))}
       </ul>
 
+      <LoginNotice text={notice} />
       <form action={login} className="space-y-3">
         <button
           type="submit"
@@ -80,7 +101,7 @@ const STOIC_FEATURES = [
 ];
 
 /** ストイック：Winter Arc などに打ち込む人向けのログイン画面 */
-function SignInStoic() {
+function SignInStoic({ notice }: { notice: string | null }) {
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-9 px-6 py-14" data-testid="signin-stoic">
       <div className="space-y-5">
@@ -110,6 +131,7 @@ function SignInStoic() {
         ))}
       </ul>
 
+      <LoginNotice text={notice} />
       <form action={login} className="space-y-3">
         <button type="submit" className="h-12 w-full rounded-xl bg-accent font-bold text-on-accent transition active:scale-[0.99]">
           Google でログイン

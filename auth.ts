@@ -23,6 +23,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   session: { strategy: "jwt" },
+  // ログインに失敗したとき（同時に2つのタブでログインしたときなど）は、Auth.js の英語のエラー画面ではなくトップに戻す。
+  // トップでは、ほかのタブでログインできていればそのまま使え、できていなければログイン画面に案内を出す
+  pages: { error: "/" },
   callbacks: {
     async jwt({ token, account, profile }) {
       if (account?.provider === "google") {
