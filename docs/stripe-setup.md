@@ -84,7 +84,7 @@ update users set plan = 'pro' where email = 'あなたのメールアドレス';
 
 ## 4. 規約などのページを埋める
 
-`lib/legal.ts` の `OPERATOR` で、「（記入してください）」になっている所を埋めます。
+済み（2026-10-29）：`lib/legal.ts` の `OPERATOR` に、運営者の情報を入れました。変わったときは、ここを書き換えます。
 
 - 販売事業者
 - 運営責任者

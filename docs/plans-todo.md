@@ -21,7 +21,7 @@
    - 全画面広告は AdSense では入れられない（自作のオーバーレイは禁止）。Google Ad Manager の Web インタースティシャルなどを使う
    - `proxy.ts` の Content-Security-Policy に、その事業者のドメインを足す（script-src・img-src・frame-src・connect-src）
    - 広告の文字・リンクを、予定の情報（AI に渡す文脈）に混ぜない
-2. **規約などのページの運営者の情報を埋める**（`lib/legal.ts` の `OPERATOR`）
+2. ~~規約などのページの運営者の情報を埋める~~ → 済み（`lib/legal.ts` の `OPERATOR`）
 3. 1回あたりの費用を下げる
    - `get_schedule` の返事から、要らない項目を削る（`lib/tools.ts` の `view`）
    - ~~「AIで更新」（AIブリーフ）の回数~~ → 済み：無料は使えない、ライトは1日1回（`PLANS` の `briefsPerDay`）
