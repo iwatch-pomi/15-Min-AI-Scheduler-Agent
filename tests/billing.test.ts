@@ -212,6 +212,10 @@ describe("お支払いの画面を開けなかったとき", () => {
     const inactive = await post(checkout, "https://app.example/api/billing/checkout", JSON.stringify({ plan: "pro" }));
     expect(inactive.data.error).toContain("アーカイブ");
 
+    stripe.checkout.sessions.create.mockRejectedValueOnce(stripeError("StripeInvalidRequestError", "Invalid line_items[0]: the product tax code is missing. Set the product's tax_code field"));
+    const tax = await post(checkout, "https://app.example/api/billing/checkout", JSON.stringify({ plan: "pro" }));
+    expect(tax.data.error).toContain("税コード");
+
     stripe.checkout.sessions.create.mockRejectedValueOnce(stripeError("StripeInvalidRequestError", "Something odd with sk_test_51Abc and whsec_xyz"));
     const other = await post(checkout, "https://app.example/api/billing/checkout", JSON.stringify({ plan: "pro" }));
     expect(other.data.error).toContain("Something odd with sk_**** and whsec_****");

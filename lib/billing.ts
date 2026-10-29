@@ -160,6 +160,7 @@ export function billingFailureReason(err: unknown): string {
       : "価格 ID が見つかりません。STRIPE_PRICE_… の値と、テスト環境・本番のどちらのキーかが合っているか確かめてください";
   }
   if (/price/i.test(msg) && /inactive|archived/i.test(msg)) return "価格がアーカイブ（無効）になっています。STRIPE_PRICE_… に、今使っている価格の ID を入れてください";
+  if (/tax code/i.test(msg)) return "Stripe の商品に「税コード」が入っていません（Managed Payments を使うときは必須）。3つの商品それぞれに、税コード「Software as a service (SaaS) - personal use」を設定してください";
   if (/recurring/i.test(msg)) return "価格が「継続（毎月）」になっていません。Stripe で、継続・毎月の価格を作り直してください";
   if (/business name|account name/i.test(msg)) return "Stripe の設定で、公開用のビジネス名（アカウント名）を入れてください";
   if (/configuration/i.test(msg) && /portal/i.test(msg)) return "カスタマーポータルの設定がまだです。Stripe の 設定 → Billing → カスタマーポータル で保存してください";
