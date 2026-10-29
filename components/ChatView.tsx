@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useLayoutEffect, useRef } from "react";
 import { SAVE_TIP, type ChatSettings } from "@/lib/interrupt";
 import type { Usage } from "@/lib/limits";
 import type { ManualChange } from "@/lib/manual";
@@ -51,13 +51,17 @@ export default function ChatView(props: {
   const { tz, usage, draft, onDraftChange, focusInput, entries, hasOlder, loadingOlder, onLoadOlder, sending, onSend, settings, onSettingsChange, onOpenSettings, quickActions, onEditQuickActions, onUndo, onSaveEdits, onConfirm, onBack, onOpenPlans } = props;
   // 節約モードなら、アプリで読める依頼は AI を使わずに処理できるので、上限に達していても送れる
   const save = settings.aiMode === "save";
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const logRef = useRef<HTMLDivElement>(null);
   const stoic = useTheme().theme === "stoic";
   const lastId = entries.at(-1)?.id;
 
-  // 新しいメッセージが来たら一番下までスクロール（古い履歴を読み込んだときは動かさない）
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: lastId ? "smooth" : "auto", block: "end" });
+  // 一番下を出す。開いたとき・履歴を読み込んだときは、上から流れてこないよう、描く前にすぐ一番下へ。
+  // 開いたあとに新しいメッセージが来たときだけ、なめらかに動かす（古い履歴を読み込んだときは動かさない）
+  const shownLastId = useRef<string | undefined>(undefined);
+  useLayoutEffect(() => {
+    const log = logRef.current;
+    log?.scrollTo({ top: log.scrollHeight, behavior: shownLastId.current ? "smooth" : "auto" });
+    shownLastId.current = lastId;
   }, [lastId, sending]);
 
   return (
@@ -84,7 +88,7 @@ export default function ChatView(props: {
 
       <AdSlot plan={usage.plan} onOpenPlans={onOpenPlans} place="chat" />
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3" data-testid="chat-log">
+      <div ref={logRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3" data-testid="chat-log">
         {hasOlder && (
           <button
             onClick={onLoadOlder}
@@ -193,7 +197,6 @@ export default function ChatView(props: {
             </div>
           </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
       <div className="space-y-2 px-4 pt-1 pb-3 stoic:space-y-2.5 stoic:border-t stoic:border-line-soft stoic:px-5 stoic:pt-2.5">
