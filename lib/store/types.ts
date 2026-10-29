@@ -23,6 +23,9 @@ export interface Store {
   recentMessages(userId: string, limit: number): Promise<ChatMessage[]>;
   /** 今日の AI 呼び出し回数を1増やす（記録用。上限には使わない） */
   incrementUsage(userId: string, date: string): Promise<number>;
+  /** その日に「AIで更新」（AIブリーフ）を使った回数を delta だけ足し、足した後の回数を返す（1回の足し算で数える） */
+  addBriefCount(userId: string, date: string, delta: number): Promise<number>;
+  getBriefCount(userId: string, date: string): Promise<number>;
   /** 今日の AI の費用（米ドル）を足し、足した後の合計を返す */
   addCost(userId: string, date: string, usd: number): Promise<number>;
   /** チャット履歴を古い順に。before（その id より前）から limit 件 */

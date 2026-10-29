@@ -63,6 +63,8 @@ create table if not exists usage (
   primary key (user_id, date)
 );
 alter table usage add column if not exists cost_microusd bigint not null default 0;
+-- 「AIで更新」（AIブリーフ）を使った回数。無料プランは1日1回まで
+alter table usage add column if not exists brief_calls int not null default 0;
 
 create or replace function increment_usage(p_user_id uuid, p_date date)
 returns int language sql as $$
@@ -76,6 +78,13 @@ returns bigint language sql as $$
   insert into usage (user_id, date, cost_microusd) values (p_user_id, p_date, p_cost)
   on conflict (user_id, date) do update set cost_microusd = usage.cost_microusd + excluded.cost_microusd
   returning cost_microusd;
+$$;
+
+create or replace function add_brief_calls(p_user_id uuid, p_date date, p_delta int)
+returns int language sql as $$
+  insert into usage (user_id, date, brief_calls) values (p_user_id, p_date, greatest(p_delta, 0))
+  on conflict (user_id, date) do update set brief_calls = greatest(usage.brief_calls + p_delta, 0)
+  returning brief_calls;
 $$;
 
 -- AI で作った「AIのおすすめ／AIブリーフ」。日付とデザイン（口調）ごとに1つ。更新したら置き換える
@@ -109,7 +118,10 @@ alter table user_settings enable row level security;
 -- anon / authenticated キーが漏れても、ほかの人の使用量を書き換えられないように
 alter function increment_usage(uuid, date) set search_path = public;
 alter function add_usage_cost(uuid, date, bigint) set search_path = public;
+alter function add_brief_calls(uuid, date, int) set search_path = public;
 revoke execute on function increment_usage(uuid, date) from public, anon, authenticated;
 revoke execute on function add_usage_cost(uuid, date, bigint) from public, anon, authenticated;
+revoke execute on function add_brief_calls(uuid, date, int) from public, anon, authenticated;
 grant execute on function increment_usage(uuid, date) to service_role;
 grant execute on function add_usage_cost(uuid, date, bigint) to service_role;
+grant execute on function add_brief_calls(uuid, date, int) to service_role;

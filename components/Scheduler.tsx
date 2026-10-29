@@ -345,6 +345,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   type AiSuggest = { items: Suggestion[]; costPercent: number; at: string };
   const [aiSuggest, setAiSuggest] = useState<Record<string, AiSuggest | null>>({});
   const [suggestState, setSuggestState] = useState<{ loading: boolean; error: string | null }>({ loading: false, error: null });
+  // 今日あと何回「AIで更新」を使えるか（無料プランは1日1回）。null は回数の上限なし
+  const [briefsLeft, setBriefsLeft] = useState<number | null>(null);
   const briefKey = `${date}:${theme}`;
   useEffect(() => {
     // 以前この端末に保存していた分は使わない
@@ -357,16 +359,25 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   useEffect(() => {
     if (date < today || briefKey in aiSuggest) return;
     let cancelled = false;
-    fetch(`/api/suggestions?date=${date}&tone=${theme}`, { cache: "no-store" })
+    fetch(`/api/suggestions?date=${date}&tone=${theme}&tz=${encodeURIComponent(tz)}`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { brief: AiSuggest | null } | null) => {
-        if (!cancelled && data) setAiSuggest((prev) => (briefKey in prev ? prev : { ...prev, [briefKey]: data.brief }));
+      .then((data: { brief: AiSuggest | null; briefsLeft?: number | null } | null) => {
+        if (cancelled || !data) return;
+        setAiSuggest((prev) => (briefKey in prev ? prev : { ...prev, [briefKey]: data.brief }));
+        if (data.briefsLeft !== undefined) setBriefsLeft(data.briefsLeft);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [briefKey, date, theme, today, aiSuggest]);
+  }, [briefKey, date, theme, today, tz, aiSuggest]);
+  // 日付が変わったら（0時に）、またその日の回数から数える
+  useEffect(() => {
+    fetch(`/api/suggestions?date=${today}&tone=soft&tz=${encodeURIComponent(tz)}`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { briefsLeft?: number | null } | null) => data && data.briefsLeft !== undefined && setBriefsLeft(data.briefsLeft))
+      .catch(() => {});
+  }, [today, tz, usage.plan]);
 
   const refreshSuggestions = async (d: string) => {
     setSuggestState({ loading: true, error: null });
@@ -380,6 +391,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) return setAuthExpired(true);
       if (data.usage) setUsage(data.usage);
+      if (data.briefsLeft !== undefined) setBriefsLeft(data.briefsLeft);
       if (!res.ok) return setSuggestState({ loading: false, error: data.error ?? "おすすめを更新できませんでした" });
       // サーバーに保存されたものと同じものを、この画面にも出す
       setAiSuggest((prev) => ({ ...prev, [`${d}:${tone}`]: { items: data.suggestions, costPercent: data.costPercent, at: data.at ?? new Date().toISOString() } }));
@@ -638,6 +650,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           suggestLoading={suggestState.loading}
           suggestError={suggestState.error}
           usage={usage}
+          briefsLeft={briefsLeft}
           onOpenPlans={openPlans}
           onRefreshSuggestions={() => refreshSuggestions(date)}
           stoicQuote={stoicQuote}

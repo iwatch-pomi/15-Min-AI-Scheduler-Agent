@@ -1,6 +1,7 @@
 "use client";
 
 import type { Usage } from "@/lib/limits";
+import { briefCostPercent } from "@/lib/plans";
 import type { Suggestion } from "@/lib/suggest";
 import type { Block } from "@/lib/types";
 import { dayRange, localTime, minutesBetween } from "@/lib/time";
@@ -47,6 +48,8 @@ export default function HomeView(props: {
   suggestLoading: boolean;
   suggestError: string | null;
   usage: Usage;
+  /** 今日あと何回「AIで更新」を使えるか（無料プランは1日1回）。null は回数の上限なし */
+  briefsLeft: number | null;
   /** マイページの「プラン」を開く（上限・広告の案内から） */
   onOpenPlans: () => void;
   onRefreshSuggestions: () => void;
@@ -57,8 +60,10 @@ export default function HomeView(props: {
   onDateChange: (d: string) => void;
   onOpenAi: (draft?: string) => void;
 }) {
-  const { date, today, tz, now, events, suggestions, aiSuggest, suggestLoading, suggestError, usage, onOpenPlans, onRefreshSuggestions, stoicQuote, error, demo, onDateChange, onOpenAi } = props;
+  const { date, today, tz, now, events, suggestions, aiSuggest, suggestLoading, suggestError, usage, briefsLeft, onOpenPlans, onRefreshSuggestions, stoicQuote, error, demo, onDateChange, onOpenAi } = props;
   const usageExhausted = usage.exhausted;
+  // 無料プランで、今日の「AIで更新」を使い切った
+  const briefsUsedUp = briefsLeft === 0;
   const timed = events.filter((e) => !e.allDay);
   const allDay = events.filter((e) => e.allDay);
   const isToday = date === today;
@@ -182,7 +187,7 @@ export default function HomeView(props: {
               )}
               <button
                 onClick={onRefreshSuggestions}
-                disabled={suggestLoading || usageExhausted}
+                disabled={suggestLoading || usageExhausted || briefsUsedUp}
                 className="flex items-center gap-1 rounded-full bg-surface px-3 py-1.5 text-xs font-bold text-accent-ink shadow-card disabled:opacity-50 stoic:h-[34px] stoic:gap-1.5 stoic:rounded-[10px] stoic:border stoic:border-line stoic:bg-transparent stoic:font-medium stoic:text-heading stoic:shadow-none"
                 data-testid="refresh-suggestions"
               >
@@ -204,9 +209,25 @@ export default function HomeView(props: {
                     ? `AIが${localTime(new Date(aiSuggest.at), tz)}に考えたブリーフ（今日のAIを${aiSuggest.costPercent < 0.1 ? "0.1%未満" : `${aiSuggest.costPercent}%`}使用）`
                     : `AIが${localTime(new Date(aiSuggest.at), tz)}に考えたおすすめ（この更新で今日のAIを${aiSuggest.costPercent < 0.1 ? "0.1%未満" : `${aiSuggest.costPercent}%`}使いました）`
                   : stoic
-                    ? "予定から自動で出したブリーフ。「AIで更新」でAIが考える（今日のAIを少し使う）"
-                    : "予定から自動で出したおすすめです。「AIで更新」でAIが考えます（今日のAIを少し使います）"}
+                    ? `予定から自動で出したブリーフ。「AIで更新」でAIが考える${briefsLeft === null ? "（今日のAIを少し使う）" : ""}`
+                    : `予定から自動で出したおすすめです。「AIで更新」でAIが考えます${briefsLeft === null ? "（今日のAIを少し使います）" : ""}`}
             </p>
+            {briefsLeft !== null && (
+              <p className="mb-2 flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-[11px] leading-relaxed" data-testid="brief-limit">
+                <span className="flex-1">
+                  {briefsUsedUp
+                    ? stoic
+                      ? "今日の「AIで更新」は使った。明日0時に戻る。"
+                      : "今日の「AIで更新」は使いました。明日の0時にまた使えます。"
+                    : stoic
+                      ? `無料プランの「AIで更新」は1日1回。1回で今日のAIの約${briefCostPercent(usage.plan)}%を使う。`
+                      : `無料プランでは「AIで更新」は1日1回までです。1回で今日のAIの${briefCostPercent(usage.plan)}%ほどを使います。`}
+                </span>
+                <button onClick={onOpenPlans} className="shrink-0 font-bold text-accent-ink" data-testid="brief-limit-plans">
+                  {stoic ? "制限を外す" : "プランを見る"}
+                </button>
+              </p>
+            )}
             {suggestError && <p className="mb-2 px-1 text-xs text-now">{suggestError}</p>}
             {suggestions.length === 0 && (
               <p className="rounded-2xl bg-surface px-4 py-4 text-center text-sm text-muted shadow-card">{stoic ? "今は、伝えることはない。予定どおりに進めろ。" : "今のところ、おすすめはありません"}</p>

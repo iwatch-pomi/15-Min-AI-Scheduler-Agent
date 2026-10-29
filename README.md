@@ -37,6 +37,7 @@
   - マイページの「プラン」から Stripe で申し込み・変更・解約できる。設定のしかたは [docs/stripe-setup.md](docs/stripe-setup.md)
   - 使えないモードは、マイページで鍵の印が付く。サーバーでも、使えるいちばん上のモードに下げる
   - 無料プランだけに広告の枠を出す（今は有料プランの案内。`components/AdSlot.tsx`）
+  - 無料プランの「AIで更新」（AIブリーフ）は1日1回まで（1回で今日のAIの約4割を使うため。ホームにも明記）
   - 規約などのページ：`/legal/terms`・`/legal/privacy`・`/legal/tokushoho`（中身は `lib/legal.ts`）
 
 ## 構成

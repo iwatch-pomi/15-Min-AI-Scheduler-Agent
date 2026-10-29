@@ -73,6 +73,17 @@ export class MemoryStore implements Store {
     data.messages.delete(userId);
   }
 
+  async addBriefCount(userId: string, date: string, delta: number) {
+    const key = `brief:${userId}:${date}`;
+    const next = (data.usage.get(key) ?? 0) + delta;
+    data.usage.set(key, next);
+    return next;
+  }
+
+  async getBriefCount(userId: string, date: string) {
+    return data.usage.get(`brief:${userId}:${date}`) ?? 0;
+  }
+
   async incrementUsage(userId: string, date: string) {
     const key = `${userId}:${date}`;
     const next = (data.usage.get(key) ?? 0) + 1;

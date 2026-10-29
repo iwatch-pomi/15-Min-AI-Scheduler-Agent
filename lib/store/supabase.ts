@@ -77,6 +77,18 @@ export class SupabaseStore implements Store {
     return data as number;
   }
 
+  async addBriefCount(userId: string, date: string, delta: number) {
+    const { data, error } = await db().rpc("add_brief_calls", { p_user_id: userId, p_date: date, p_delta: delta });
+    if (error) throw error;
+    return Number(data);
+  }
+
+  async getBriefCount(userId: string, date: string) {
+    const { data, error } = await db().from("usage").select("*").eq("user_id", userId).eq("date", date).maybeSingle();
+    if (error) throw error;
+    return Number(data?.brief_calls ?? 0);
+  }
+
   async addCost(userId: string, date: string, usd: number) {
     const { data, error } = await db().rpc("add_usage_cost", {
       p_user_id: userId,

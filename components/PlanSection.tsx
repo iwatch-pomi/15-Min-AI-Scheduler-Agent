@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PLANS, PLAN_IDS, priceLabel, type PaidPlan, type Plan } from "@/lib/plans";
+import { PLANS, PLAN_IDS, briefCostPercent, priceLabel, type PaidPlan, type Plan } from "@/lib/plans";
 import { CheckIcon, LockIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
@@ -89,6 +89,12 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
                 <li className="flex items-center gap-1.5">
                   <CheckIcon className="size-3.5 text-accent-ink" />
                   モード：{rule.modes.map((m) => MODE_NAMES[m]).join("・")}
+                </li>
+                <li className="flex items-center gap-1.5">
+                  {rule.briefsPerDay !== null ? <LockIcon className="size-3.5 shrink-0 text-muted" /> : <CheckIcon className="size-3.5 shrink-0 text-accent-ink" />}
+                  {rule.briefsPerDay !== null
+                    ? `AIで更新（AIブリーフ）：1日${rule.briefsPerDay}回まで（1回で今日のAIの約${briefCostPercent(p)}%）`
+                    : "AIで更新（AIブリーフ）：回数の制限なし"}
                 </li>
                 <li className="flex items-center gap-1.5">
                   {rule.ads ? <LockIcon className="size-3.5 text-muted" /> : <CheckIcon className="size-3.5 text-accent-ink" />}

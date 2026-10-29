@@ -23,7 +23,12 @@ export type PlanRule = {
   modes: AiMode[];
   /** 広告を出すか */
   ads: boolean;
+  /** 「AIで更新」（AIブリーフ）を1日に何回まで使えるか。null は上限なし（AI の予算の範囲で） */
+  briefsPerDay: number | null;
 };
+
+/** AIブリーフ1回のおおよその費用（米ドル。いつも Sonnet で作る）。画面で「今日のAIの◯割」と出すのに使う */
+export const BRIEF_COST_USD = 0.02;
 
 export const PLANS: Record<Plan, PlanRule> = {
   free: {
@@ -35,6 +40,7 @@ export const PLANS: Record<Plan, PlanRule> = {
     guide: "1日2〜3回・月25回ほど",
     modes: ["save", "normal"],
     ads: true,
+    briefsPerDay: 1,
   },
   plus: {
     label: "有料1",
@@ -45,6 +51,7 @@ export const PLANS: Record<Plan, PlanRule> = {
     guide: "1日5回・月60回ほど",
     modes: ["save", "normal", "boost"],
     ads: false,
+    briefsPerDay: null,
   },
   pro: {
     label: "有料2",
@@ -55,6 +62,7 @@ export const PLANS: Record<Plan, PlanRule> = {
     guide: "1日25回・月220回ほど",
     modes: ["save", "normal", "boost", "max"],
     ads: false,
+    briefsPerDay: null,
   },
 };
 
@@ -87,4 +95,9 @@ export function planFor(mode: AiMode): Plan {
 export function priceLabel(plan: Plan): string {
   const yen = PLANS[plan].priceYen;
   return yen ? `${yen.toLocaleString("ja-JP")}円/月` : "0円";
+}
+
+/** AIブリーフ1回で、そのプランの今日のAIのおよそ何％を使うか（10％単位） */
+export function briefCostPercent(plan: Plan): number {
+  return Math.round((BRIEF_COST_USD / PLANS[plan].dailyUsd) * 10) * 10;
 }

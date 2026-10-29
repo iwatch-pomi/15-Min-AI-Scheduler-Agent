@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PLANS, allowedMode, canUse, planFor, priceLabel, toPlan } from "@/lib/plans";
+import { PLANS, allowedMode, briefCostPercent, canUse, planFor, priceLabel, toPlan } from "@/lib/plans";
 
 describe("プランごとの決まり", () => {
   it("無料は節約・通常、有料1は強化まで、最大（Opus）は有料2だけ", () => {
@@ -25,6 +25,13 @@ describe("プランごとの決まり", () => {
     expect(PLANS.plus.ads).toBe(false);
     expect(PLANS.pro.ads).toBe(false);
     for (const p of Object.values(PLANS)) expect(p.dailyUsd).toBeGreaterThan(p.monthlyUsd / 30);
+  });
+
+  it("AIブリーフは無料だけ1日1回。1回で今日のAIの約4割を使う", () => {
+    expect(PLANS.free.briefsPerDay).toBe(1);
+    expect(PLANS.plus.briefsPerDay).toBeNull();
+    expect(PLANS.pro.briefsPerDay).toBeNull();
+    expect(briefCostPercent("free")).toBe(40);
   });
 
   it("読めない値は無料にし、値段は円で出す", () => {
