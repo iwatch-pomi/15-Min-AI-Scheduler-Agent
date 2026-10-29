@@ -407,8 +407,9 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     if (isUndoRequest(message)) {
       const latest = [...entries].reverse().find((e) => e.role === "assistant" && e.result && !e.result.undone);
       try {
-        if (!latest) reply("取り消せる変更がありません。（AIの利用回数は使っていません）");
-        else if (await undo(latest.id)) reply("直前の変更を元に戻しました。（AIの利用回数は使っていません）");
+        const stoic = theme === "stoic";
+        if (!latest) reply(stoic ? "戻せる変更はない。（AIは使っていない）" : "取り消せる変更がありません。（AIの利用回数は使っていません）");
+        else if (await undo(latest.id)) reply(stoic ? "直前の変更を戻した。（AIは使っていない）" : "直前の変更を元に戻しました。（AIの利用回数は使っていません）");
       } finally {
         setSending(false);
       }
@@ -423,6 +424,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           message,
           tz,
           aiMode: chatSettings.aiMode,
+          tone: theme,
           interruptPrefs: { start: chatSettings.start, mode: chatSettings.mode },
           ...(interrupt ? { interrupt: { start: chatSettings.start, mode: chatSettings.mode } } : {}),
         }),

@@ -177,3 +177,25 @@ describe("最大モード（Opus）", () => {
     expect(JSON.stringify(calls[0].system)).toContain("振り返り・分析");
   });
 });
+
+describe("ストイックの返事の口調", () => {
+  it("AI には、毎回のメッセージに「口調: ストイック（コーチ）」を付ける。system は口調で変えない（キャッシュが効く）", async () => {
+    const reply = { model: "x", stop_reason: "end_turn", usage, content: [{ type: "text", text: "入れた。" }] };
+    create.mockReset();
+    requests.length = 0;
+    create.mockResolvedValue(reply);
+    await send({ message: "ちょっとコンビニ", aiMode: "normal", tone: "stoic" });
+    await send({ message: "ちょっとコンビニ", aiMode: "normal" });
+    // 呼んだ時点のリクエスト（requests は呼んだときの複製）
+    const [stoic, soft] = requests as unknown as { system: unknown; messages: { content: unknown }[] }[];
+    expect(String(stoic.messages.at(-1)!.content)).toContain("口調: ストイック（コーチ）");
+    expect(String(soft.messages.at(-1)!.content)).not.toContain("口調: ストイック");
+    expect(JSON.stringify(stoic.system)).toBe(JSON.stringify(soft.system));
+    expect(JSON.stringify(stoic.system)).toContain("敬語（です・ます・ください）は使わない");
+  });
+
+  it("アプリが処理する返事（節約モード）もストイックの口調になる", async () => {
+    const { data } = await send({ message: "14時から要件定義1時間", aiMode: "save", tone: "stoic" });
+    expect(data.reply).toBe("14:00-15:00 に「要件定義」を入れた。始めたら、終わるまで離れるな。");
+  });
+});

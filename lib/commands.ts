@@ -1,4 +1,5 @@
-import { applyInterrupt, ceil15, cleanTitle, interruptReply, normalizeText, takeDuration, type InterruptSettings } from "./interrupt";
+import { applyInterrupt, ceil15, cleanTitle, interruptReply, normalizeText, plainWarning, takeDuration, type InterruptSettings } from "./interrupt";
+import type { Theme } from "./theme";
 import type { RecordingCalendar } from "./ops";
 import { freeSlots, overlapping, planShift } from "./slots";
 import type { Block } from "./types";
@@ -92,16 +93,19 @@ const editable = (b: Block) => b.ai && !b.routine && !b.allDay;
 export async function runCommand(
   cmd: LocalCommand,
   calendar: RecordingCalendar,
-  opts: { tz: string; now: Date; interrupt: InterruptSettings },
+  opts: { tz: string; now: Date; interrupt: InterruptSettings; tone?: Theme },
 ): Promise<string | null> {
   const { tz, now } = opts;
+  // ストイックでは、コーチの口調（敬語なしの言い切り＋最後にひと言）で返す
+  const stoic = opts.tone === "stoic";
+  const coach = (soft: string, hard: string) => (stoic ? hard : soft);
   const today = localDateString(now, tz);
   const day = dayRange(today, tz);
   const hm = (d: Date | string) => localTime(new Date(d), tz);
 
   if (cmd.kind === "interrupt") {
     const r = await applyInterrupt(calendar, { title: cmd.title, minutes: cmd.minutes, tz, now, ...opts.interrupt });
-    return interruptReply(r, opts.interrupt.mode, tz);
+    return interruptReply(r, opts.interrupt.mode, tz, opts.tone);
   }
 
   const blocks = (await calendar.list(addMinutes(day.start, -24 * 60), addMinutes(day.end, 24 * 60))).filter((b) => !b.allDay);
@@ -111,24 +115,37 @@ export async function runCommand(
     const target = current.filter((b) => b.ai).at(-1);
     if (!target) {
       const fixed = current.at(-1);
-      return fixed ? `今の「${fixed.title}」はメインのカレンダーの予定なので、変更できません。` : "今進行中の予定はありません。";
+      if (fixed) {
+        return coach(
+          `今の「${fixed.title}」はメインのカレンダーの予定なので、変更できません。`,
+          `今の「${fixed.title}」はメインのカレンダーの予定だ。ここでは動かせない。`,
+        );
+      }
+      return coach("今進行中の予定はありません。", "今進行中の予定はない。");
     }
     await calendar.remove(target);
-    return `今の「${target.title}」（${hm(target.start)}-${hm(target.end)}）をスキップしました。`;
+    const range = `今の「${target.title}」（${hm(target.start)}-${hm(target.end)}）`;
+    return coach(`${range}をスキップしました。`, `${range}を飛ばした。飛ばした分は、どこかで取り返せ。`);
   }
 
   if (cmd.kind === "extend") {
     const target = current.filter(editable).at(-1);
     const from = target ? new Date(target.end) : ceil15(now);
     const plan = planShift(blocks.filter((b) => b.id !== target?.id), from, cmd.minutes, day.end);
-    if (!target && !plan.length) return "今進行中の予定も、このあとの AI の予定もないので、ずらすものはありませんでした。";
+    if (!target && !plan.length) {
+      return coach("今進行中の予定も、このあとの AI の予定もないので、ずらすものはありませんでした。", "今進行中の予定も、このあとの AI の予定もない。ずらすものはない。");
+    }
     if (target) await calendar.update(target, { end: addMinutes(new Date(target.end), cmd.minutes).toISOString() });
     for (const p of plan) await calendar.update(p.block, { start: p.start.toISOString(), end: p.end.toISOString() });
     const fixed = blocks.filter((b) => !editable(b));
-    const warnings = plan.flatMap((p) => overlapping(fixed, p.start, p.end).map((c) => `⚠ ずらした「${p.block.title}」が「${c.title}」と重なりました`));
-    const head = target ? `「${target.title}」を${cmd.minutes}分延長して ${hm(addMinutes(new Date(target.end), cmd.minutes))} までにしました。` : "";
-    const tail = plan.length ? `後ろの予定を${cmd.minutes}分ずらしました（${plan.length}件）。` : "";
-    return [head + tail, ...new Set(warnings)].join("\n");
+    const warnings = plan.flatMap((p) =>
+      overlapping(fixed, p.start, p.end).map((c) => `⚠ ずらした「${p.block.title}」が「${c.title}」と${coach("重なりました", "重なった")}`),
+    );
+    const until = target ? hm(addMinutes(new Date(target.end), cmd.minutes)) : "";
+    const head = target ? coach(`「${target.title}」を${cmd.minutes}分延長して ${until} までにしました。`, `「${target.title}」を${cmd.minutes}分延長し、${until} までにした。`) : "";
+    const tail = plan.length ? coach(`後ろの予定を${cmd.minutes}分ずらしました（${plan.length}件）。`, `後ろの予定${target ? "も" : "を"}${cmd.minutes}分ずらした（${plan.length}件）。`) : "";
+    const push = stoic && target ? "延長はこれで最後にしろ。" : "";
+    return [head + tail + push, ...new Set(warnings)].join("\n");
   }
 
   // 予定を1つ入れる
@@ -150,8 +167,12 @@ export async function runCommand(
   const existing = cmd.time ? await calendar.list(start, end) : [];
   const block = await calendar.create({ title: cmd.title, start: start.toISOString(), end: end.toISOString(), energy: "MEDIUM" });
   const when = cmd.day === 0 ? "" : cmd.day === 1 ? "明日の" : "明後日の";
-  const lines = [`${when}${hm(start)}-${hm(end)} に「${block.title}」を入れました。`];
+  const placed = `${when}${hm(start)}-${hm(end)} に「${block.title}」を入れ`;
+  const lines = [coach(`${placed}ました。`, `${placed}た。始めたら、終わるまで離れるな。`)];
   const clash = overlapping(existing, start, end);
-  if (clash.length) lines.push(`⚠ ${clash.map((c) => `「${c.title}」`).join("、")}と重なっています`);
+  if (clash.length) {
+    const warning = `⚠ ${clash.map((c) => `「${c.title}」`).join("、")}と重なっています`;
+    lines.push(stoic ? plainWarning(warning) : warning);
+  }
   return lines.join("\n");
 }

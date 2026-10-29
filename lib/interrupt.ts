@@ -1,4 +1,5 @@
 import type { RecordingCalendar } from "./ops";
+import type { Theme } from "./theme";
 import { overlapping, planShift } from "./slots";
 import type { Block } from "./types";
 import { SLOT_MINUTES, addMinutes, dayRange, localDateString, localTime, minutesBetween } from "./time";
@@ -197,19 +198,26 @@ export async function applyInterrupt(
   return { block, start, end, ...result, warnings: [...new Set(warnings)] };
 }
 
-/** AI を使わずに処理したときの返事 */
-export function interruptReply(r: InterruptResult, mode: InterruptMode, tz: string): string {
-  const lines = [`${localTime(r.start, tz)}-${localTime(r.end, tz)} に「${r.block.title}」を割り込ませました。`];
+/** AI を使わずに処理したときの返事。ストイックではコーチの口調（敬語なしの言い切り） */
+export function interruptReply(r: InterruptResult, mode: InterruptMode, tz: string, tone: Theme = "soft"): string {
+  const stoic = tone === "stoic";
+  const lines = [`${localTime(r.start, tz)}-${localTime(r.end, tz)} に「${r.block.title}」を割り込ませ${stoic ? "た" : "ました"}。`];
   const minutes = minutesBetween(r.start, r.end);
   if (mode === "slide") {
-    if (r.moved) lines.push(`後ろの予定を${minutes}分ずらしました（${r.moved}件）。`);
-    if (r.continued) lines.push("途中だった予定の残りは、割り込みのあとに「（続き）」として入れました。");
-    if (!r.moved && !r.continued) lines.push("後ろにずらす予定はありませんでした。");
+    if (r.moved) lines.push(`後ろの予定を${minutes}分ずらし${stoic ? "た" : "ました"}（${r.moved}件）。`);
+    if (r.continued) lines.push(`途中だった予定の残りは、割り込みのあとに「（続き）」として入れ${stoic ? "た" : "ました"}。`);
+    if (!r.moved && !r.continued) lines.push(stoic ? "後ろにずらす予定はない。" : "後ろにずらす予定はありませんでした。");
   } else {
     const parts = [];
     if (r.trimmed) parts.push(`${r.trimmed}件を短く`);
     if (r.deleted) parts.push(`${r.deleted}件を削除`);
-    lines.push(parts.length ? `重なった予定を${parts.join("、")}しました。` : "重なる予定はありませんでした。");
+    lines.push(parts.length ? `重なった予定を${parts.join("、")}し${stoic ? "た" : "ました"}。` : stoic ? "重なる予定はない。" : "重なる予定はありませんでした。");
   }
-  return [...lines, ...r.warnings.map((w) => `⚠ ${w}`)].join("\n");
+  if (stoic) lines.push("済ませたら、すぐ戻れ。");
+  return [...lines, ...r.warnings.map((w) => `⚠ ${stoic ? plainWarning(w) : w}`)].join("\n");
+}
+
+/** 警告の文を言い切りにする（ストイック） */
+export function plainWarning(w: string): string {
+  return w.replace(/重なっています/g, "重なっている").replace(/重なりました/g, "重なった");
 }

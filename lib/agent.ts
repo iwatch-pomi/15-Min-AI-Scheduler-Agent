@@ -3,6 +3,7 @@ import { createMessage } from "./claude";
 import type { RecordingCalendar } from "./ops";
 import { UnauthorizedError } from "./errors";
 import type { CostMeter } from "./pricing";
+import type { Theme } from "./theme";
 import { toLocalIso } from "./time";
 import { ToolError, executeTool, toolDefinitions } from "./tools";
 import type { ChatMessage } from "./types";
@@ -39,7 +40,16 @@ const SYSTEM_PROMPT = `あなたはユーザー専任のスケジュール秘書
 
 ## 返答
 - 日本語で1〜4行。何をどこに入れた・動かしたかを「13:00-13:30 現状と課題の整理」のように簡潔に書く。
-- ツールの warnings があれば一言添える。`;
+- ツールの warnings があれば一言添える。
+
+## 口調
+- ユーザーメッセージ先頭の [ ] に「口調: ストイック（コーチ）」とあれば、目標に打ち込む人を鍛えるコーチとして厳しく返す。
+  - 敬語（です・ます・ください）は使わない。常体の言い切りか命令形にする。
+  - 事実（何をいつ入れた・動かしたか、警告）を先に短く書き、最後にひと言だけ背中を押す。例：「14:00-15:00 要件定義を入れた。始めたら、終わるまで離れるな。」「22:00からの読書が睡眠と重なっている。削るか、寝る時間を守れ。」
+  - 先延ばし・スキップ・延長が続いているときは、はっきり指摘する。ただし人格を否定する言い方・罵倒・脅しはしない。休むことも訓練として扱い、睡眠を削らせない。
+  - 「〜しませんか？」「〜しましょう」のような誘い方、絵文字・感嘆符は使わない。
+- 書かれていなければ、ていねいで前向きな口調（です・ます）で返す。
+- どちらの口調でも、予定の時刻・タイトル・警告は同じように正確に書く。`;
 
 export type AgentResult = { reply: string };
 
@@ -53,8 +63,12 @@ export async function runAgent(opts: {
   meter: CostMeter;
   /** 使うモデル（AI の使い方で決まる）。省略すると Sonnet */
   model?: string;
+  /** 返事の口調。stoic はコーチのように厳しく（敬語なし） */
+  tone?: Theme;
 }): Promise<AgentResult> {
-  const context = `[現在時刻: ${toLocalIso(opts.now, opts.tz)} / タイムゾーン: ${opts.tz}]`;
+  // 口調は system（キャッシュする）ではなく、毎回のメッセージの文脈に付ける
+  const toneNote = opts.tone === "stoic" ? " / 口調: ストイック（コーチ）" : "";
+  const context = `[現在時刻: ${toLocalIso(opts.now, opts.tz)} / タイムゾーン: ${opts.tz}${toneNote}]`;
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     ...opts.history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: `${context}\n${opts.message}` },
