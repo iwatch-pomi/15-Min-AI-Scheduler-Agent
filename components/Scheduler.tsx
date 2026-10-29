@@ -9,7 +9,8 @@ import { DEFAULT_TZ, addDays, localDateString, localTime } from "@/lib/time";
 import { DEFAULT_CHAT_SETTINGS, interruptLabel, type ChatSettings } from "@/lib/interrupt";
 import { DEFAULT_QUICK_ACTIONS } from "@/lib/quick-actions";
 import { THEME_COOKIE, arcProgress, defaultArc, isValidArc, parseTheme, stoicLine, timeSlot, type Arc, type Theme } from "@/lib/theme";
-import type { Usage } from "@/lib/limits";
+import { INITIAL_USAGE, type Usage } from "@/lib/limits";
+import { allowedMode } from "@/lib/plans";
 import type { ManualChange } from "@/lib/manual";
 import type { Routine, RoutineInput } from "@/lib/routines";
 import { isUndoRequest, type ChangeItem, type ChatEntry, type Tab } from "@/lib/ui";
@@ -80,13 +81,15 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   }, []);
   // おすすめから AI を開いたときは、すぐ入力できるようにする
   const [focusChat, setFocusChat] = useState(false);
+  // 上限・広告の案内から、マイページの「プラン」を開いたとき
+  const [focusPlan, setFocusPlan] = useState(false);
   const [eventsByDate, setEventsByDate] = useState<Record<string, Block[]>>({});
   const [now, setNow] = useState(() => new Date());
   const [tab, setTabState] = useState<Tab>(tabFromHash);
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [usage, setUsage] = useState<Usage>({ remainingPercent: 100, exhausted: false });
+  const [usage, setUsage] = useState<Usage>(INITIAL_USAGE);
   const [older, setOlder] = useState<{ hasOlder: boolean; loading: boolean }>({ hasOlder: false, loading: false });
   // Google との接続切れ（期限切れ・権限の取り消し）。再読み込みではなくログインし直しの画面を出す
   const [authExpired, setAuthExpired] = useState(false);
@@ -95,6 +98,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
   const setTab = useCallback((t: Tab) => {
     setTabState(t);
     if (t !== "ai") setFocusChat(false);
+    setFocusPlan(false);
     history.replaceState(null, "", t === "home" ? window.location.pathname : `#${t}`);
   }, []);
 
@@ -175,6 +179,10 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
       // 保存できない環境では既定のまま
     }
   }, []);
+  // 今のプランで使えないモード（無料で強化など）は、使えるいちばん上のモードにして使う。
+  // 保存した選択は残すので、プランを上げるとそのモードに戻る。
+  // プランを読み込む前は下げない（有料の人が一瞬下がらないように。サーバーでも必ず下げている）
+  const aiMode = usage === INITIAL_USAGE ? chatSettings.aiMode : allowedMode(usage.plan, chatSettings.aiMode);
   const changeChatSettings = (patch: Partial<ChatSettings>) =>
     setChatSettings((prev) => {
       const next = { ...prev, ...patch };
@@ -421,13 +429,43 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
     return true;
   };
 
-  // AI の残り回数。日付が変わったら（0時に）読み直す
-  useEffect(() => {
+  // AI の残りと今のプラン。日付が変わったら（0時に）読み直す
+  const loadUsage = useCallback(() => {
     fetch(`/api/usage?tz=${encodeURIComponent(tz)}`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((u: Usage | null) => u && setUsage(u))
       .catch(() => {});
-  }, [today, tz]);
+  }, [tz]);
+  useEffect(() => {
+    loadUsage();
+  }, [today, loadUsage]);
+
+  // Stripe の画面から戻ってきたとき（?billing=success など）。お知らせを出し、URL からは消す
+  const [billingNotice, setBillingNotice] = useState<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get("billing");
+    if (!result) return;
+    history.replaceState(null, "", window.location.pathname + window.location.hash);
+    const stoic = document.documentElement.dataset.theme === "stoic";
+    const text =
+      result === "success"
+        ? stoic ? "申し込み完了。プランを反映している。" : "お申し込みありがとうございます。プランを反映しています。"
+        : result === "cancel"
+          ? stoic ? "申し込みは中止した。" : "お申し込みを中止しました。"
+          : null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBillingNotice(text);
+    setTabState("settings");
+    // Stripe からの知らせ（webhook）は少し遅れて届くことがあるので、何度か読み直す
+    const timers = [2000, 6000, 15000].map((ms) => setTimeout(loadUsage, ms));
+    const hide = setTimeout(() => setBillingNotice(null), 8000);
+    return () => [...timers, hide].forEach(clearTimeout);
+  }, [loadUsage]);
+  const openPlans = () => {
+    setTab("settings");
+    setFocusPlan(true);
+  };
 
   // カウントダウン用に1秒ごとに時刻を進める。日付が変わったら「今日」も更新
   useEffect(() => {
@@ -473,7 +511,7 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
         body: JSON.stringify({
           message,
           tz,
-          aiMode: chatSettings.aiMode,
+          aiMode,
           tone: theme,
           interruptPrefs: { start: chatSettings.start, mode: chatSettings.mode },
           ...(interrupt ? { interrupt: { start: chatSettings.start, mode: chatSettings.mode } } : {}),
@@ -599,7 +637,8 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           aiSuggest={cachedSuggest ? { costPercent: cachedSuggest.costPercent, at: cachedSuggest.at } : null}
           suggestLoading={suggestState.loading}
           suggestError={suggestState.error}
-          usageExhausted={usage.exhausted}
+          usage={usage}
+          onOpenPlans={openPlans}
           onRefreshSuggestions={() => refreshSuggestions(date)}
           stoicQuote={stoicQuote}
           error={error}
@@ -638,8 +677,9 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           entries={entries}
           sending={sending}
           onSend={send}
-          settings={chatSettings}
+          settings={{ ...chatSettings, aiMode }}
           onSettingsChange={changeChatSettings}
+          onOpenPlans={openPlans}
           onOpenSettings={() => setTab("settings")}
           quickActions={quickActions}
           onEditQuickActions={() => setEditingQuick(true)}
@@ -655,8 +695,9 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
         />
       )}
       {tab === "settings" && <SettingsView tz={tz} email={email} demo={demo} usage={usage} onClearHistory={clearHistory}
-          aiMode={chatSettings.aiMode}
-          onAiModeChange={(aiMode) => changeChatSettings({ aiMode })}
+          aiMode={aiMode}
+          onAiModeChange={(m) => changeChatSettings({ aiMode: m })}
+          focusPlan={focusPlan}
           today={today}
           onThemeChange={changeTheme}
           onArcChange={changeArc}
@@ -671,6 +712,15 @@ export default function Scheduler(props: { demo?: boolean; email?: string }) {
           onSaveRoutine={saveRoutine}
           onDeleteRoutine={deleteRoutine}
         />}
+      {billingNotice && (
+        <p
+          role="status"
+          className="fixed inset-x-4 top-[calc(env(safe-area-inset-top)+12px)] z-50 mx-auto max-w-md rounded-2xl bg-heading px-4 py-3 text-center text-sm font-bold text-bg shadow-card"
+          data-testid="billing-notice"
+        >
+          {billingNotice}
+        </p>
+      )}
       <TabBar tab={tab} onChange={setTab} />
       {showTutorial && <Tutorial onClose={closeTutorial} />}
       {editingQuick && <QuickActionsEditor actions={quickActions} onSave={saveQuickActions} onClose={() => setEditingQuick(false)} />}

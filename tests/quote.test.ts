@@ -30,7 +30,7 @@ describe("時間帯のひと言（AI の名言）", () => {
     create.mockResolvedValue(reply("今日の汗は、明日の自分への投資だ。"));
     const store = new MemoryStore();
     const userId = crypto.randomUUID();
-    const r = await withAiBudget({ store, userId, tz, now }, (meter) =>
+    const r = await withAiBudget({ store, userId, tz, now, plan: "pro" }, (meter) =>
       generateQuote(meter, { slot: "night", arc: { name: "WINTER ARC", day: 31, total: 92 }, recent: ["前のひと言。"] }),
     );
     expect(r.result).toBe("今日の汗は、明日の自分への投資だ。");

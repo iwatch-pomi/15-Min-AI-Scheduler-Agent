@@ -1,6 +1,13 @@
 /** ログインし直しが必要なとき（未ログイン、Google の権限切れ・期限切れ）に投げる */
 export class UnauthorizedError extends Error {}
 
+/** お支払い（Stripe）の設定（環境変数）がまだ無いときに投げる */
+export class BillingNotConfiguredError extends Error {
+  constructor() {
+    super("お支払いはまだ準備中です");
+  }
+}
+
 /** Google のリフレッシュトークンが失効・取り消しされたときのエラーか */
 export function isInvalidGrant(err: unknown): boolean {
   const e = err as { response?: { data?: { error?: string } }; message?: string } | null;

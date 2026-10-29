@@ -7,13 +7,14 @@ import { MemoryStore } from "./store/memory";
 import { SupabaseStore } from "./store/supabase";
 import type { Store } from "./store/types";
 import { UnauthorizedError } from "./errors";
+import { toPlan, type Plan } from "./plans";
 import { clearAiCalendarId, getGoogleAccount, saveAiCalendarId } from "./users";
 
 export { UnauthorizedError };
 
 export { isDemo };
 
-export type UserContext = { userId: string; calendar: CalendarBackend; store: Store };
+export type UserContext = { userId: string; calendar: CalendarBackend; store: Store; plan: Plan };
 
 /**
  * API ルートから呼ぶ。ログイン中のユーザーのカレンダーと保存先を返す。
@@ -22,7 +23,9 @@ export type UserContext = { userId: string; calendar: CalendarBackend; store: St
 export async function getUserContext(): Promise<UserContext> {
   if (isDemo()) {
     const userId = "demo";
-    return { userId, calendar: new MemoryCalendar(userId, demoSeed()), store: new MemoryStore() };
+    // デモのプランは DEMO_PLAN（free / plus / pro）で切り替えられる。既定はすべて使える有料2
+    const plan = process.env.DEMO_PLAN ? toPlan(process.env.DEMO_PLAN) : "pro";
+    return { userId, calendar: new MemoryCalendar(userId, demoSeed()), store: new MemoryStore(), plan };
   }
   const session = await auth();
   const userId = session?.user?.id;
@@ -35,5 +38,5 @@ export async function getUserContext(): Promise<UserContext> {
     { save: (id) => saveAiCalendarId(userId, id), clear: (id) => clearAiCalendarId(userId, id) },
     account.timezone,
   );
-  return { userId, calendar, store: new SupabaseStore() };
+  return { userId, calendar, store: new SupabaseStore(), plan: account.plan };
 }

@@ -307,3 +307,10 @@ export const BellIcon = (p: IconProps) => (
     <path d="M10 20.5a2 2 0 0 0 4 0" />
   </Svg>
 );
+
+export const DocIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z" />
+    <path d="M13.5 3.5V8H18M9 12.5h6M9 16h6" />
+  </Svg>
+);

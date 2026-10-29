@@ -8,6 +8,9 @@ import { THEME_COOKIE } from "@/lib/theme";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
+/** ほかのサイトから届くことになっている API。送り元ではなく、署名で確かめる */
+export const SIGNED_WEBHOOKS = new Set(["/api/billing/webhook"]);
+
 /** 同じサイト（このアプリの画面）から送られたリクエストか */
 export function isSameOrigin(req: Request): boolean {
   // ブラウザが付ける Sec-Fetch-Site（ほかのサイトからなら cross-site）
@@ -54,8 +57,8 @@ export function proxy(req: NextRequest) {
     return res;
   }
   if (pathname.startsWith("/api/")) {
-    // Auth.js（/api/auth）は自分の CSRF トークンで守っている
-    if (!SAFE_METHODS.has(req.method) && !pathname.startsWith("/api/auth/") && !isSameOrigin(req)) {
+    // Auth.js（/api/auth）は自分の CSRF トークンで、Stripe からの知らせは署名で守っている
+    if (!SAFE_METHODS.has(req.method) && !pathname.startsWith("/api/auth/") && !SIGNED_WEBHOOKS.has(pathname) && !isSameOrigin(req)) {
       return NextResponse.json({ error: "このリクエストは受け付けられません" }, { status: 403 });
     }
     return NextResponse.next();

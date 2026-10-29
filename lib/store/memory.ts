@@ -91,6 +91,12 @@ export class MemoryStore implements Store {
     return data.cost.get(`${userId}:${date}`) ?? 0;
   }
 
+  async getMonthCost(userId: string, month: string) {
+    let sum = 0;
+    for (const [key, usd] of data.cost) if (key.startsWith(`${userId}:${month}-`)) sum += usd;
+    return sum;
+  }
+
   async saveBrief(userId: string, brief: SavedBrief, keepFrom: string) {
     const list = (data.briefs.get(userId) ?? []).filter((b) => b.date >= keepFrom && !(b.date === brief.date && b.tone === brief.tone));
     data.briefs.set(userId, [...list, brief]);

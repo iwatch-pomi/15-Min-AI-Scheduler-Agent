@@ -1,16 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { currentUsage } from "@/lib/budget";
 import { getUserContext } from "@/lib/context";
 import { errorResponse } from "@/lib/http";
-import { usageOf } from "@/lib/limits";
-import { localDateString, safeTimeZone } from "@/lib/time";
+import { safeTimeZone } from "@/lib/time";
 
-// GET /api/usage?tz=… → 今日の AI の残り（予算に対する％）
+// GET /api/usage?tz=… → 今日・今月の AI の残り（予算に対する％）と、今のプラン
 export async function GET(req: NextRequest) {
   try {
     const tz = safeTimeZone(req.nextUrl.searchParams.get("tz"));
-    const { userId, store } = await getUserContext();
-    const used = await store.getCost(userId, localDateString(new Date(), tz));
-    return NextResponse.json(usageOf(used));
+    const { userId, store, plan } = await getUserContext();
+    return NextResponse.json(await currentUsage({ store, userId, tz, plan }));
   } catch (err) {
     return errorResponse(err);
   }

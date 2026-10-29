@@ -1,6 +1,7 @@
 import { db } from "../db";
 import type { ChatMessage, Operation } from "../types";
 import type { Theme } from "../theme";
+import { nextMonth } from "../time";
 import type { OpGroup, SavedBrief, Store, StoredMessage } from "./types";
 
 export class SupabaseStore implements Store {
@@ -91,6 +92,17 @@ export class SupabaseStore implements Store {
     const { data, error } = await db().from("usage").select("*").eq("user_id", userId).eq("date", date).maybeSingle();
     if (error) throw error;
     return Number(data?.cost_microusd ?? 0) / 1_000_000;
+  }
+
+  async getMonthCost(userId: string, month: string) {
+    const { data, error } = await db()
+      .from("usage")
+      .select("*")
+      .eq("user_id", userId)
+      .gte("date", `${month}-01`)
+      .lt("date", `${nextMonth(month)}-01`);
+    if (error) throw error;
+    return (data ?? []).reduce((sum, r) => sum + Number(r.cost_microusd ?? 0), 0) / 1_000_000;
   }
 
   async listMessages(userId: string, opts: { before?: string; limit: number }) {

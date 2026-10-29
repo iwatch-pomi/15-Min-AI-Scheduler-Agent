@@ -1,18 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { logout } from "@/app/actions";
 import { AI_MODE_HELP, SAVE_TIP, type AiMode } from "@/lib/interrupt";
 import type { Usage } from "@/lib/limits";
+import { PLANS, canUse, planFor } from "@/lib/plans";
 import type { Routine, RoutineInput } from "@/lib/routines";
 import { arcProgress, type Arc, type Theme } from "@/lib/theme";
 import ArcEditor from "./ArcEditor";
 import InstructionsEditor from "./InstructionsEditor";
 import NotifyGuide from "./NotifyGuide";
+import PlanSection from "./PlanSection";
 import RoutineList from "./RoutineList";
 import Segmented from "./Segmented";
 import UsageMeter from "./UsageMeter";
-import { AppLogo, BellIcon, BookIcon, CalendarIcon, ChevronRightIcon, ClockIcon, GaugeIcon, PencilIcon, RepeatIcon, SendIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
+import { AppLogo, BellIcon, BookIcon, CalendarIcon, DocIcon, ChevronRightIcon, ClockIcon, GaugeIcon, PencilIcon, RepeatIcon, SendIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
 export default function SettingsView(props: {
@@ -39,8 +42,17 @@ export default function SettingsView(props: {
   /** AI へのカスタム指示（null は指示なし） */
   instructions: string | null;
   onSaveInstructions: (text: string | null) => Promise<string | null>;
+  /** 開いたときに「プラン」の節まで動かす（上限・広告の案内から来たとき） */
+  focusPlan?: boolean;
 }) {
-  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange, today, onThemeChange, onArcChange, quoteOn, onQuoteOnChange, quickActionCount, onEditQuickActions, onShowTutorial, instructions, onSaveInstructions } = props;
+  const { tz, email, demo, usage, onClearHistory, routines, onSaveRoutine, onDeleteRoutine, aiMode, onAiModeChange, today, onThemeChange, onArcChange, quoteOn, onQuoteOnChange, quickActionCount, onEditQuickActions, onShowTutorial, instructions, onSaveInstructions, focusPlan } = props;
+  const plan = usage.plan;
+  // 今のプランでは使えないモードを押したときの案内
+  const [lockedMode, setLockedMode] = useState<AiMode | null>(null);
+  const planRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (focusPlan) planRef.current?.scrollIntoView({ block: "start" });
+  }, [focusPlan]);
   const [editingInstructions, setEditingInstructions] = useState(false);
   const [notifyGuide, setNotifyGuide] = useState(false);
   const { theme, arc } = useTheme();
@@ -80,6 +92,12 @@ export default function SettingsView(props: {
             </form>
           )}
         </Section>
+
+        <div ref={planRef} className="scroll-mt-4">
+          <Section title={t("プラン", "PLAN")}>
+            <PlanSection plan={plan} demo={demo} />
+          </Section>
+        </div>
 
         <Section title={t("デザイン", "DESIGN")}>
           <div className="space-y-2 px-4 py-3">
@@ -177,15 +195,31 @@ export default function SettingsView(props: {
               label="モード"
               large={stoic}
               value={aiMode}
-              options={[
-                { value: "save", label: stoic ? "節約\nECO" : "節約" },
-                { value: "normal", label: stoic ? "通常\nSTD" : "通常" },
-                { value: "boost", label: stoic ? "強化\nBOOST" : "強化" },
-                { value: "max", label: stoic ? "最大\nMAX" : "最大" },
-              ]}
-              onChange={onAiModeChange}
+              options={(
+                [
+                  { value: "save", label: stoic ? "節約\nECO" : "節約" },
+                  { value: "normal", label: stoic ? "通常\nSTD" : "通常" },
+                  { value: "boost", label: stoic ? "強化\nBOOST" : "強化" },
+                  { value: "max", label: stoic ? "最大\nMAX" : "最大" },
+                ] as const
+              ).map((o) => ({ ...o, locked: !canUse(plan, o.value) }))}
+              onChange={(m) => {
+                setLockedMode(null);
+                onAiModeChange(m);
+              }}
+              onLocked={setLockedMode}
               testId="settings-ai-mode"
             />
+            {lockedMode && (
+              <p className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-xs leading-relaxed" data-testid="locked-mode">
+                <span className="flex-1">
+                  {{ save: "節約", normal: "通常", boost: "強化", max: "最大" }[lockedMode]}モードは、{PLANS[planFor(lockedMode)].label}プランから使えます。
+                </span>
+                <button onClick={() => planRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="shrink-0 font-bold text-accent-ink">
+                  プランを見る
+                </button>
+              </p>
+            )}
             <p className="text-xs text-muted">
               {AI_MODE_HELP[aiMode]}。［元に戻す］と「元に戻して」は、どのモードでもAIを使いません。
             </p>
@@ -263,6 +297,12 @@ export default function SettingsView(props: {
           <LinkRow icon={<BookIcon className="size-5" />} label="使い方（チュートリアル）をもう一度見る" onClick={onShowTutorial} testId="tutorial-link" />
         </Section>
 
+        <Section title={t("規約など", "LEGAL")}>
+          <LegalLink href="/legal/terms" label="利用規約" />
+          <LegalLink href="/legal/privacy" label="プライバシーポリシー" />
+          <LegalLink href="/legal/tokushoho" label="特定商取引法に基づく表記" />
+        </Section>
+
         <div className="flex items-center justify-center gap-2 pt-2 text-xs text-muted">
           {stoic ? <SparkleIcon className="size-4 text-accent-ink" /> : <AppLogo className="size-5 rounded-md" />}
           AIスケジュールアシスタント
@@ -288,6 +328,18 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
       <span className="flex-1 text-sm">{label}</span>
       <span className="min-w-0 truncate text-sm text-muted stoic:t-code stoic:text-xs stoic:text-[#a8a8ae]">{value}</span>
     </div>
+  );
+}
+
+function LegalLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2">
+      <span className="text-accent-ink">
+        <DocIcon className="size-5" />
+      </span>
+      <span className="flex-1 text-sm">{label}</span>
+      <ChevronRightIcon className="size-4 shrink-0 text-muted" />
+    </Link>
   );
 }
 

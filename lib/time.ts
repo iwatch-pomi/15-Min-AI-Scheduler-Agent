@@ -101,3 +101,14 @@ export function addMinutes(date: Date, minutes: number): Date {
 export function minutesBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / MINUTE);
 }
+
+/** "YYYY-MM-DD" の月（"YYYY-MM"） */
+export function monthOf(dateStr: string): string {
+  return dateStr.slice(0, 7);
+}
+
+/** "YYYY-MM" の次の月 */
+export function nextMonth(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+}

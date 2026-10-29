@@ -5,13 +5,13 @@ import { modelFor, modelLabel } from "@/lib/claude";
 import { getUserContext } from "@/lib/context";
 import { UnauthorizedError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http";
-import { withAiBudget } from "@/lib/budget";
+import { currentUsage, withAiBudget } from "@/lib/budget";
 import { parseCommand, runCommand, type LocalCommand } from "@/lib/commands";
 import { HISTORY_LIMIT, compactHistory } from "@/lib/context-window";
 import { interruptInstruction, interruptLabel, parseInterrupt } from "@/lib/interrupt";
-import { usageOf } from "@/lib/limits";
+import { allowedMode } from "@/lib/plans";
 import { RecordingCalendar } from "@/lib/ops";
-import { localDateString, safeTimeZone } from "@/lib/time";
+import { safeTimeZone } from "@/lib/time";
 
 export const maxDuration = 60;
 
@@ -39,9 +39,11 @@ export async function POST(req: NextRequest) {
     const tz = safeTimeZone(parsed.data.tz);
     const now = new Date();
 
-    const { userId, calendar, store } = await getUserContext();
+    const { userId, calendar, store, plan } = await getUserContext();
     const recording = new RecordingCalendar(calendar);
-    const { message, interrupt, aiMode, tone } = parsed.data;
+    const { message, interrupt, tone } = parsed.data;
+    // プランに無いモード（無料で強化・最大など）は、使えるいちばん上のモードに下げる（画面だけに頼らない）
+    const aiMode = allowedMode(plan, parsed.data.aiMode);
     // 履歴には、割り込みモードで送ったことが分かる形で残す（AI にも伝わる）
     const userText = interrupt ? interruptLabel(message) : message;
 
@@ -67,8 +69,8 @@ export async function POST(req: NextRequest) {
           ],
           opId ?? undefined,
         );
-        const usage = usageOf(await store.getCost(userId, localDateString(now, tz)));
-        return NextResponse.json({ reply, opId, changes: summarize(recording.ops), usage, local: true });
+        const usage = await currentUsage({ store, userId, tz, now, plan });
+        return NextResponse.json({ reply, opId, changes: summarize(recording.ops), usage, local: true, aiMode });
       }
     }
 
@@ -80,7 +82,7 @@ export async function POST(req: NextRequest) {
     // 節約・通常は Haiku（難しい依頼は Sonnet）、強化は Sonnet、最大は Opus
     const model = modelFor(aiMode, message);
     // Claude を使うので、必ず予算の確認と費用の記録をする（使い切っていたら 429 で AI は呼ばない）
-    const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now }, async (meter) => {
+    const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, now, plan }, async (meter) => {
       try {
         const { reply } = await runAgent({ message: prompt, history, calendar: recording, tz, now, meter, model, tone, instructions });
         return { reply, authError: null };
@@ -106,7 +108,7 @@ export async function POST(req: NextRequest) {
       opId ?? undefined,
     );
 
-    return NextResponse.json({ reply, opId, changes: summarize(recording.ops), usage, costPercent, model: modelLabel(model) });
+    return NextResponse.json({ reply, opId, changes: summarize(recording.ops), usage, costPercent, model: modelLabel(model), aiMode });
   } catch (err) {
     return errorResponse(err);
   }

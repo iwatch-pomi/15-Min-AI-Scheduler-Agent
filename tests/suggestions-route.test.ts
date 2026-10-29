@@ -13,7 +13,7 @@ const { MemoryCalendar } = await import("@/lib/calendar/memory");
 const { MemoryStore } = await import("@/lib/store/memory");
 let userId = "";
 vi.mock("@/lib/context", () => ({
-  getUserContext: async () => ({ userId, calendar: new MemoryCalendar(userId), store: new MemoryStore() }),
+  getUserContext: async () => ({ userId, calendar: new MemoryCalendar(userId), store: new MemoryStore(), plan: "pro" }),
 }));
 const { GET, POST } = await import("@/app/api/suggestions/route");
 

@@ -24,6 +24,15 @@ describe("CSRF 対策（proxy）", () => {
     expect(proxy(req("POST", "/api/auth/signout", { origin: "https://evil.example" })).status).toBe(200);
   });
 
+  it("Stripe からの知らせ（webhook）だけは、送り元ではなく署名で確かめる", () => {
+    // Stripe のサーバーからは Origin も Sec-Fetch-Site も付かない
+    expect(proxy(req("POST", "/api/billing/webhook")).status).toBe(200);
+    // ほかのお支払いの API は、今までどおり送り元を確かめる
+    expect(proxy(req("POST", "/api/billing/checkout", { origin: "https://evil.example" })).status).toBe(403);
+    expect(proxy(req("POST", "/api/billing/portal")).status).toBe(403);
+    expect(proxy(req("POST", "/api/billing/webhook/x")).status).toBe(403);
+  });
+
   it("画面には nonce 付きの CSP を付ける", () => {
     const res = proxy(req("GET", "/"));
     const csp = res.headers.get("content-security-policy")!;

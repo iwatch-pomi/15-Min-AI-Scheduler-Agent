@@ -7,10 +7,12 @@
 - `tests/claude-gateway.test.ts` がこのルールを確認している
 
 ## 料金
-- 1日の上限は回数ではなく費用（`DAILY_AI_BUDGET_USD`、既定 $0.50）。料金表は `lib/pricing.ts`
+- 上限は回数ではなく費用。1日と1か月の両方を、プランごとに `lib/plans.ts` で決める。料金表は `lib/pricing.ts`
+- プランで使えないモードは、画面だけでなくサーバーでも `allowedMode` で下げる
+- お支払いは Stripe（`lib/billing.ts`）。プランは webhook で Stripe から読み直して決める。カードの情報は扱わない
 
 ## セキュリティ
-- API は `app/api/` の下に置く（`proxy.ts` が書き込みの送り元を確認する）。データは必ず `getUserContext()` の userId で絞る
+- API は `app/api/` の下に置く（`proxy.ts` が書き込みの送り元を確認する。Stripe の webhook だけは署名で確かめる）。データは必ず `getUserContext()` の userId で絞る
 - 外部のスクリプト・画像などを使うときは `proxy.ts` の Content-Security-Policy に足す
 
 ## そのほか

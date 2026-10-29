@@ -32,6 +32,8 @@ export interface Store {
   deleteMessages(userId: string): Promise<void>;
   /** 今日の AI の費用の合計（米ドル） */
   getCost(userId: string, date: string): Promise<number>;
+  /** その月（YYYY-MM）の AI の費用の合計（米ドル） */
+  getMonthCost(userId: string, month: string): Promise<number>;
   /** AI のおすすめを保存する（同じ日付・口調のものは置き換える）。keepFrom より前の日付のものは消す */
   saveBrief(userId: string, brief: SavedBrief, keepFrom: string): Promise<void>;
   getBrief(userId: string, date: string, tone: Theme): Promise<SavedBrief | null>;

@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { CalendarIcon, ClockIcon, GaugeIcon, Mascot, RepeatIcon, SparkleIcon } from "@/components/icons";
 import Scheduler from "@/components/Scheduler";
 import { isDemo } from "@/lib/context";
+import { LEGAL_DOCS } from "@/lib/legal";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { login } from "./actions";
 
@@ -90,6 +92,7 @@ function SignInSoft({ notice }: { notice: string | null }) {
         </button>
         <p className="text-center text-xs text-muted">{PERMISSION_NOTE}</p>
       </form>
+      <LegalLinks />
     </main>
   );
 }
@@ -138,6 +141,20 @@ function SignInStoic({ notice }: { notice: string | null }) {
         </button>
         <p className="text-center text-xs leading-relaxed text-muted">{PERMISSION_NOTE}</p>
       </form>
+      <LegalLinks />
     </main>
+  );
+}
+
+/** 規約などへのリンク（ログイン前でも見られる） */
+function LegalLinks() {
+  return (
+    <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[11px] text-muted" data-testid="legal-links">
+      {LEGAL_DOCS.map((d) => (
+        <Link key={d.slug} href={`/legal/${d.slug}`} className="underline">
+          {d.title}
+        </Link>
+      ))}
+    </nav>
   );
 }

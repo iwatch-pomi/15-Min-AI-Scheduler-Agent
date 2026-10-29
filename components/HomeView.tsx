@@ -1,11 +1,13 @@
 "use client";
 
+import type { Usage } from "@/lib/limits";
 import type { Suggestion } from "@/lib/suggest";
 import type { Block } from "@/lib/types";
 import { dayRange, localTime, minutesBetween } from "@/lib/time";
 import { durationLabel } from "@/lib/routines";
 import { arcProgress, shortDuration, type Arc } from "@/lib/theme";
 import { greeting, iconFor } from "@/lib/ui";
+import AdSlot from "./AdSlot";
 import BlockIcon from "./BlockIcon";
 import {
   BulbIcon,
@@ -44,7 +46,9 @@ export default function HomeView(props: {
   aiSuggest: { costPercent: number; at: string } | null;
   suggestLoading: boolean;
   suggestError: string | null;
-  usageExhausted: boolean;
+  usage: Usage;
+  /** マイページの「プラン」を開く（上限・広告の案内から） */
+  onOpenPlans: () => void;
   onRefreshSuggestions: () => void;
   /** ストイックの時間帯のひと言（AI の名言）。null は出さない、"" は作っている途中 */
   stoicQuote: string | null;
@@ -53,7 +57,8 @@ export default function HomeView(props: {
   onDateChange: (d: string) => void;
   onOpenAi: (draft?: string) => void;
 }) {
-  const { date, today, tz, now, events, suggestions, aiSuggest, suggestLoading, suggestError, usageExhausted, onRefreshSuggestions, stoicQuote, error, demo, onDateChange, onOpenAi } = props;
+  const { date, today, tz, now, events, suggestions, aiSuggest, suggestLoading, suggestError, usage, onOpenPlans, onRefreshSuggestions, stoicQuote, error, demo, onDateChange, onOpenAi } = props;
+  const usageExhausted = usage.exhausted;
   const timed = events.filter((e) => !e.allDay);
   const allDay = events.filter((e) => e.allDay);
   const isToday = date === today;
@@ -187,9 +192,13 @@ export default function HomeView(props: {
             </div>
             <p className="mb-2 px-1 text-[11px] text-muted" data-testid="suggest-note">
               {usageExhausted
-                ? stoic
-                  ? "今日のAIは上限に到達。更新できない"
-                  : "今日のAIの利用上限に達したので、更新できません"
+                ? usage.reason === "month"
+                  ? stoic
+                    ? "今月のAIは上限に到達。更新できない"
+                    : "今月のAIの利用上限に達したので、更新できません"
+                  : stoic
+                    ? "今日のAIは上限に到達。更新できない"
+                    : "今日のAIの利用上限に達したので、更新できません"
                 : aiSuggest
                   ? stoic
                     ? `AIが${localTime(new Date(aiSuggest.at), tz)}に考えたブリーフ（今日のAIを${aiSuggest.costPercent < 0.1 ? "0.1%未満" : `${aiSuggest.costPercent}%`}使用）`
@@ -220,6 +229,7 @@ export default function HomeView(props: {
             </ul>
           </section>
         )}
+        <AdSlot plan={usage.plan} onOpenPlans={onOpenPlans} place="home" />
       </div>
 
       <button

@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
     const parsed = body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "入力が不正です" }, { status: 400 });
     const tz = safeTimeZone(parsed.data.tz);
-    const { userId, store } = await getUserContext();
-    const { result, usage, costPercent } = await withAiBudget({ store, userId, tz }, (meter) =>
+    const { userId, store, plan } = await getUserContext();
+    const { result, usage, costPercent } = await withAiBudget({ store, userId, tz, plan }, (meter) =>
       generateQuote(meter, parsed.data).catch((err) => {
         if (err instanceof QuoteError) return err;
         throw err;

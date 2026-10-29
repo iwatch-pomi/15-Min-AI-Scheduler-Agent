@@ -12,7 +12,8 @@ import { worksWithoutAi } from "./QuickActionsEditor";
 import ResultCard from "./ResultCard";
 import Segmented from "./Segmented";
 import { useTheme } from "./ThemeContext";
-import UsageMeter from "./UsageMeter";
+import AdSlot from "./AdSlot";
+import UsageMeter, { exhaustedText } from "./UsageMeter";
 
 /** 最大モード（Opus）向け：カレンダーを振り返って時間の使い方を調べる */
 const ANALYZE_EXAMPLE = "直近2週間の時間の使い方を分析して、浪費している時間と改善案を教えて";
@@ -44,8 +45,10 @@ export default function ChatView(props: {
   onSaveEdits: (entryId: string, changes: ManualChange[]) => Promise<string | null>;
   onConfirm: (items: ChangeItem[]) => void;
   onBack: () => void;
+  /** マイページの「プラン」を開く（上限・広告の案内から） */
+  onOpenPlans: () => void;
 }) {
-  const { tz, usage, draft, onDraftChange, focusInput, entries, hasOlder, loadingOlder, onLoadOlder, sending, onSend, settings, onSettingsChange, onOpenSettings, quickActions, onEditQuickActions, onUndo, onSaveEdits, onConfirm, onBack } = props;
+  const { tz, usage, draft, onDraftChange, focusInput, entries, hasOlder, loadingOlder, onLoadOlder, sending, onSend, settings, onSettingsChange, onOpenSettings, quickActions, onEditQuickActions, onUndo, onSaveEdits, onConfirm, onBack, onOpenPlans } = props;
   // 節約モードなら、アプリで読める依頼は AI を使わずに処理できるので、上限に達していても送れる
   const save = settings.aiMode === "save";
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -78,6 +81,8 @@ export default function ChatView(props: {
           <h1 className="text-center font-bold">AIに予定を依頼</h1>
         </header>
       )}
+
+      <AdSlot plan={usage.plan} onOpenPlans={onOpenPlans} place="chat" />
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3" data-testid="chat-log">
         {hasOlder && (
@@ -206,9 +211,14 @@ export default function ChatView(props: {
           <UsageMeter usage={usage} compact />
         </div>
         {usage.exhausted && (
-          <p className="rounded-xl bg-now/10 px-3 py-2 text-xs text-now">
-            今日のAIの利用上限に達しました。明日の0時にもとに戻ります。
+          <p className="rounded-xl bg-now/10 px-3 py-2 text-xs text-now" data-testid="usage-exhausted">
+            {exhaustedText(usage, stoic)}
             {save && "「14時から会議1時間」「15分延長」のような決まった形の依頼は、AIを使わずに処理できます。時刻と長さをはっきり書いて1件ずつ送ってください。"}
+            {usage.plan !== "pro" && (
+              <button onClick={onOpenPlans} className="ml-1 font-bold underline" data-testid="exhausted-plans">
+                {stoic ? "プランを上げる" : "プランを見る"}
+              </button>
+            )}
           </p>
         )}
         <InterruptPanel settings={settings} onChange={onSettingsChange} />

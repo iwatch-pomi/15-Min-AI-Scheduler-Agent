@@ -20,8 +20,9 @@ vi.mock("@anthropic-ai/sdk", () => ({
 const { MemoryCalendar } = await import("@/lib/calendar/memory");
 const { MemoryStore } = await import("@/lib/store/memory");
 let userId = "";
+let plan: "free" | "plus" | "pro" = "pro";
 vi.mock("@/lib/context", () => ({
-  getUserContext: async () => ({ userId, calendar: new MemoryCalendar(userId), store: new MemoryStore() }),
+  getUserContext: async () => ({ userId, calendar: new MemoryCalendar(userId), store: new MemoryStore(), plan }),
 }));
 const { POST } = await import("@/app/api/chat/route");
 
@@ -48,6 +49,7 @@ afterAll(() => vi.useRealTimers());
 
 beforeEach(() => {
   userId = crypto.randomUUID();
+  plan = "pro";
   create.mockReset();
   requests.length = 0;
   create.mockResolvedValueOnce(toolUse).mockResolvedValueOnce(done);
@@ -227,5 +229,47 @@ describe("カスタム指示", () => {
     requests.length = 0;
     await send({ message: "ちょっとコンビニ", aiMode: "normal" });
     expect((requests[0] as unknown as { system: unknown[] }).system).toHaveLength(1);
+  });
+});
+
+describe("プランごとに使えるモード", () => {
+  const reply = { model: "x", stop_reason: "end_turn", usage: { input_tokens: 500, output_tokens: 50 }, content: [{ type: "text", text: "了解" }] };
+
+  it.each([
+    ["free", "max", "claude-haiku-5-5", "normal"],
+    ["free", "boost", "claude-haiku-5-5", "normal"],
+    ["plus", "max", "claude-sonnet-5-5", "boost"],
+    ["pro", "max", "claude-opus-5-5", "max"],
+  ] as const)("%s で %s を送ると、%s（%s モード）で考える", async (p, aiMode, model, used) => {
+    plan = p;
+    create.mockReset();
+    create.mockResolvedValue(reply);
+    const { status, data } = await send({ message: "ちょっとコンビニ", aiMode });
+    expect(status).toBe(200);
+    expect(requests[0].model).toBe(model);
+    expect(data.aiMode).toBe(used);
+    expect(data.usage.plan).toBe(p);
+  });
+
+  it("無料でも節約モードの決まった形の依頼は、AI を使わずに処理する", async () => {
+    plan = "free";
+    create.mockReset();
+    const { data } = await send({ message: "14時から要件定義1時間", aiMode: "max" });
+    // max は使えないので normal に下がり、AI が考える
+    expect(data.aiMode).toBe("normal");
+    create.mockReset();
+    const r = await send({ message: "14時から要件定義1時間", aiMode: "save" });
+    expect(r.data.local).toBe(true);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("無料プランの1日の上限（$0.05）に達したら、AI を呼ばずに 429", async () => {
+    plan = "free";
+    await new MemoryStore().addCost(userId, "2026-10-28", 0.05);
+    create.mockReset();
+    const { status, data } = await send({ message: "ちょっとコンビニ", aiMode: "normal" });
+    expect(status).toBe(429);
+    expect(data.usage).toMatchObject({ exhausted: true, reason: "day", plan: "free" });
+    expect(create).not.toHaveBeenCalled();
   });
 });
