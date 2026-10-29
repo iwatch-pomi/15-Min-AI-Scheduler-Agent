@@ -333,7 +333,12 @@ A. マイページの「お支払い・プランの変更・解約」から、�
 - Claude Design の書き出しを、JS なしで表示できる普通の HTML にして置いている。書き出しに無かった OGP と、よくある質問の構造化データ（FAQPage）は、スクリプトがページの中身から足している
 - Claude Design で直したら、書き出した HTML で次を実行して置き直す（Playwright が要る）
   ```bash
-  node scripts/lp-export.mjs <書き出したHTML> public/lp/arc https://15-min-ai-scheduler-agent.vercel.app/lp/arc home,chat,calendar
+  node scripts/lp-export.mjs <書き出したHTML> public/lp/arc https://15-min-ai-scheduler-agent.vercel.app/lp/arc home,chat,calendar scripts/lp-colors/arc-light.json
   ```
-- og:image（`public/lp/arc/og-image.jpg`、1200×630）は別に用意して置く
+- **白い背景・黒い文字**（2026-10-29 に変更）
+  - Claude Design のデザインは黒い画面のまま。書き出すときに、`scripts/lp-colors/arc-light.json` の表で色を置き換えて白くしている
+  - 置き換え後の色：背景 `#FFFFFF`、薄い面 `#F4F4F2`・`#EDEDEA`、文字 `#0A0A0B`、補足 `#3F3F46`・`#6B6B73`、ボタン 黒（`#0A0A0B`）に白い文字、差し色 `#0B6FA4`（白い背景でも読める濃い青）、線 `#E4E4E7`・`#D4D4D8`
+  - スマホの枠と、中のアプリの画面（ストイックの黒い画面）はそのまま
+  - Claude Design で色や部品を足して、置き換わらない色があると「見つかりませんでした」と出るか、黒いまま残る。そのときは表に1行足す
+- og:image（`public/lp/arc/og-image.jpg`、1200×630）は別に用意して置く。今のものは、ページに合わせて白い背景に黒い文字
 - ドメインを決めたら、上のコマンドの公開するアドレスを新しいドメインにして書き出し直す

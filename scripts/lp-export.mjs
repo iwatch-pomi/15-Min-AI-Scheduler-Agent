@@ -1,9 +1,10 @@
 // Claude Design から書き出した紹介ページ（HTML）を、JS なしで表示できる普通の HTML にして public/ に置く。
 // 書き出しのファイルは、開いたあとに中身を展開する作りなので、そのままでは Google や SNS が説明文・画像を読めない。
 //
-// 使い方：node scripts/lp-export.mjs <書き出したHTML> <出力先のフォルダ> <公開するアドレス> <画像の名前,…>
+// 使い方：node scripts/lp-export.mjs <書き出したHTML> <出力先のフォルダ> <公開するアドレス> <画像の名前,…> [色の置き換え表.json]
 //   例：node scripts/lp-export.mjs ~/Downloads/LP.html public/lp https://15-min-ai-scheduler-agent.vercel.app/lp home,chat,calendar
 // 画像の名前は、ページに出てくる順。og-image.jpg は別に用意して、出力先のフォルダに置く
+// 色の置き換え表（scripts/lp-colors/）を付けると、書き出しの色を上から順に置き換える（例：黒い画面を白い画面に）
 // Playwright（Chromium）が要る。アプリの依存には入れていないので、使うときは `npx -p playwright` などで用意する
 import { createRequire } from "node:module";
 import fs from "node:fs";
@@ -11,9 +12,9 @@ import path from "node:path";
 
 const { chromium } = createRequire(import.meta.url)("playwright");
 
-const [src, outDir, base, names] = process.argv.slice(2);
+const [src, outDir, base, names, colorsFile] = process.argv.slice(2);
 if (!src || !outDir || !base || !names) {
-  console.error("使い方：node scripts/lp-export.mjs <書き出したHTML> <出力先のフォルダ> <公開するアドレス> <画像の名前,…>");
+  console.error("使い方：node scripts/lp-export.mjs <書き出したHTML> <出力先のフォルダ> <公開するアドレス> <画像の名前,…> [色の置き換え表.json]");
   process.exit(1);
 }
 const imageNames = names.split(",");
@@ -121,6 +122,13 @@ if (!meta.hasLd && meta.faq.length) {
     mainEntity: meta.faq.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
   };
   html = html.replace("</head>", `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script></head>`);
+}
+if (colorsFile) {
+  const { 置き換え: pairs } = JSON.parse(fs.readFileSync(colorsFile, "utf8"));
+  for (const [from, to] of pairs) {
+    if (!html.includes(from)) console.warn(`色の置き換え：「${from}」が見つかりませんでした`);
+    html = html.split(from).join(to);
+  }
 }
 if (/blob:|\/_blob\//.test(html)) throw new Error("まだ書き出し先の中を指している画像があります");
 fs.writeFileSync(path.join(outDir, "index.html"), html);

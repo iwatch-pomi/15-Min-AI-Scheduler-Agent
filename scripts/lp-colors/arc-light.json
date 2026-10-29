@@ -1,0 +1,20 @@
+{
+  "説明": "ストイック向けの紹介ページを、白い背景・黒い文字にする（Claude Design の書き出しは黒い画面）。上から順に置き換える。スマホの枠（黒）と、中のアプリの画面はそのまま",
+  "置き換え": [
+    ["height: 100%; background: rgb(139, 211, 255)", "height: 100%; background: #0B6FA4"],
+    ["background: rgb(139, 211, 255)", "background: #0A0A0B"],
+    ["color: rgb(10, 10, 11)", "color: #FFFFFF"],
+    ["background: rgb(10, 10, 11)", "background: #FFFFFF"],
+    ["background: rgb(19, 19, 21)", "background: #F4F4F2"],
+    ["background: rgb(28, 28, 31)", "background: #EDEDEA"],
+    ["background: rgb(42, 42, 47)", "background: #E4E4E7"],
+    ["color: rgb(242, 242, 240)", "color: #0A0A0B"],
+    ["color: rgb(201, 201, 207)", "color: #3F3F46"],
+    ["color: rgb(171, 171, 179)", "color: #6B6B73"],
+    ["color: rgb(139, 211, 255)", "color: #0B6FA4"],
+    ["rgb(42, 42, 47)", "#E4E4E7"],
+    ["rgb(58, 58, 64)", "#D4D4D8"],
+    ["body{margin:0;background:#0A0A0B}", "body{margin:0;background:#FFFFFF}"],
+    ["a{color:#ABABB3}a:hover{color:#F2F2F0}", "a{color:#6B6B73}a:hover{color:#0A0A0B}"]
+  ]
+}
