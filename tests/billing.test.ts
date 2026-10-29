@@ -207,6 +207,17 @@ describe("お支払いの画面を開けなかったとき", () => {
     expect(db.data.error).toContain("schema.sql をもう一度実行");
   });
 
+  it("アーカイブした価格はそう伝える。知らないエラーは Stripe の文を添え、秘密の値は伏せる", async () => {
+    stripe.checkout.sessions.create.mockRejectedValueOnce(stripeError("StripeInvalidRequestError", "The price specified is inactive. This field only accepts active prices."));
+    const inactive = await post(checkout, "https://app.example/api/billing/checkout", JSON.stringify({ plan: "pro" }));
+    expect(inactive.data.error).toContain("アーカイブ");
+
+    stripe.checkout.sessions.create.mockRejectedValueOnce(stripeError("StripeInvalidRequestError", "Something odd with sk_test_51Abc and whsec_xyz"));
+    const other = await post(checkout, "https://app.example/api/billing/checkout", JSON.stringify({ plan: "pro" }));
+    expect(other.data.error).toContain("Something odd with sk_**** and whsec_****");
+    expect(other.data.error).not.toContain("51Abc");
+  });
+
   it("保存していた顧客が Stripe に無いとき（テストと本番の切り替え）は、作り直して申し込みの画面を開く", async () => {
     stripe.subscriptions.list
       .mockRejectedValueOnce(stripeError("StripeInvalidRequestError", "No such customer: 'cus_1'", { code: "resource_missing", param: "customer" }))
