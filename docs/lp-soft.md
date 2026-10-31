@@ -324,7 +324,8 @@ A. マイページの「お支払い・プランの変更・解約」から、�
 - Claude Design の書き出しは、開いたあとに中身を展開する作りで、そのままでは Google や SNS が説明文・og:image を読めない。そこで、展開したあとの中身を、JS なしで表示できる普通の HTML にして置いている
 - Claude Design で直したら、書き出した HTML で次を実行して置き直す（Playwright が要る）
   ```bash
-  node scripts/lp-export.mjs <書き出したHTML> public/lp https://15-min-ai-scheduler-agent.vercel.app/lp home,chat,calendar
+  node scripts/lp-export.mjs <書き出したHTML> public/lp https://15-min-ai-scheduler-agent.vercel.app/lp home,chat,calendar scripts/lp-colors/soft-white.json
   ```
+- **白い背景**（2026-10-31 に変更）：Claude Design のデザインは生成り色（#FAF9F6）の背景のまま。書き出すときに `scripts/lp-colors/soft-white.json` で白にしている。区切りの帯（薄いベージュ）はそのまま
 - og:image（`public/lp/og-image.jpg`、1200×630）は別に用意して置く
 - ドメインを決めたら、上のコマンドの公開するアドレスを新しいドメインにして書き出し直す（og:image・og:url・canonical が変わる）
