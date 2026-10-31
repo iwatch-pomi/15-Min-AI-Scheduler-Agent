@@ -2,6 +2,7 @@ import { db } from "../db";
 import type { ChatMessage, Operation } from "../types";
 import type { Theme } from "../theme";
 import { nextMonth } from "../time";
+import type { ContactRecord } from "../contact";
 import type { OpGroup, SavedBrief, Store, StoredMessage } from "./types";
 
 export class SupabaseStore implements Store {
@@ -111,6 +112,28 @@ export class SupabaseStore implements Store {
     if (error) throw error;
     const row = (Array.isArray(data) ? data[0] : data) as { all_microusd?: number | string; free_microusd?: number | string } | null;
     return { all: Number(row?.all_microusd ?? 0) / 1_000_000, free: Number(row?.free_microusd ?? 0) / 1_000_000 };
+  }
+
+  async saveContact(c: ContactRecord) {
+    const { error } = await db().from("contacts").insert({
+      user_id: c.userId,
+      name: c.name || null,
+      email: c.email,
+      category: c.category,
+      message: c.message,
+      source: c.source,
+      ip_hash: c.ipHash,
+      created_at: c.createdAt,
+    });
+    if (error) throw error;
+  }
+
+  async countContacts(since: Date, ipHash?: string) {
+    let query = db().from("contacts").select("id", { count: "exact", head: true }).gt("created_at", since.toISOString());
+    if (ipHash !== undefined) query = query.eq("ip_hash", ipHash);
+    const { count, error } = await query;
+    if (error) throw error;
+    return count ?? 0;
   }
 
   async addCost(userId: string, date: string, usd: number) {

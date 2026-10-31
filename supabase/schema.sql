@@ -141,6 +141,22 @@ returns table (all_microusd bigint, free_microusd bigint) language sql stable as
   where u.date = p_date;
 $$;
 
+-- お問い合わせ（アプリ・紹介ページのフォームから。ログインしていなくても送れる）。
+-- IP アドレスはそのまま残さず、ハッシュ（同じ送り元かどうかが分かるだけ）にする
+create table if not exists contacts (
+  id bigserial primary key,
+  user_id uuid references users(id) on delete set null,
+  name text,
+  email text not null,
+  category text not null check (category in ('usage', 'bug', 'billing', 'other')),
+  message text not null,
+  source text not null default 'app' check (source in ('app', 'lp', 'lp-arc')),
+  ip_hash text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists contacts_ip_idx on contacts (ip_hash, created_at desc);
+create index if not exists contacts_created_idx on contacts (created_at desc);
+
 -- AI で作った「AIのおすすめ／AIブリーフ」。日付とデザイン（口調）ごとに1つ。更新したら置き換える
 create table if not exists briefs (
   user_id uuid not null references users(id) on delete cascade,
@@ -169,6 +185,7 @@ alter table briefs enable row level security;
 alter table user_settings enable row level security;
 alter table ai_locks enable row level security;
 alter table rate_limits enable row level security;
+alter table contacts enable row level security;
 
 -- 関数はサーバー（service_role）からだけ呼べるようにする。
 -- anon / authenticated キーが漏れても、ほかの人の使用量を書き換えられないように

@@ -41,6 +41,7 @@
   - 「AIで更新」（AIブリーフ）：無料・ライトは簡易版（Haiku）で1日1回、スタンダードからは詳しい版（Sonnet）で回数の制限なし。簡易版であること・1回で今日のAIの何%を使うかを、ホームとプランの比較に明記（`PLANS` の `brief`・`briefsPerDay`）
   - カスタム指示：有料だけ（無料では、前に保存した指示も AI に渡さない）
   - 規約などのページ：`/legal/terms`・`/legal/privacy`・`/legal/tokushoho`（中身は `lib/legal.ts`）
+- **お問い合わせ**：`/contact`（マイページの「使い方」と、両方の紹介ページのフォームから）。ログインしていなくても送れる。内容は Supabase の `contacts` に保存し、`RESEND_API_KEY`・`CONTACT_FROM_EMAIL` があれば運営者（`CONTACT_TO_EMAIL`、無ければ `lib/legal.ts` のメールアドレス）にもメールで知らせる。いたずら対策に、人には見えない欄・送り元ごとに1時間5件・全体で1日200件まで（`lib/contact.ts`）
 - **紹介ページ**：やさしい向けを `/lp`（`public/lp/`）、ストイック向けを `/lp/arc`（`public/lp/arc/`）に公開。Claude Design で作り、`scripts/lp-export.mjs` で JS なしの HTML にしたもの（Google・SNS が説明文と画像を読めるように）。原稿と公開のしかたは `docs/lp-soft.md`・`docs/lp-stoic.md`
 
 ## 構成

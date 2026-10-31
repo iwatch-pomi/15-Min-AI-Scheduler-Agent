@@ -1,5 +1,6 @@
 import type { ChatMessage, Operation } from "../types";
 import type { Theme } from "../theme";
+import type { ContactRecord } from "../contact";
 import type { OpGroup, SavedBrief, Store, StoredMessage } from "./types";
 
 type MemoryData = {
@@ -13,6 +14,7 @@ type MemoryData = {
   instructions: Map<string, string>;
   aiLocks: Map<string, { token: string; until: number }>;
   rateLimits: Map<string, { start: number; count: number }>;
+  contacts: ContactRecord[];
 };
 
 const g = globalThis as Record<string, unknown>;
@@ -29,6 +31,7 @@ data.quickActions ??= new Map();
 data.instructions ??= new Map();
 data.aiLocks ??= new Map();
 data.rateLimits ??= new Map();
+data.contacts ??= [];
 g.__ai15MemoryStore = data;
 
 export class MemoryStore implements Store {
@@ -120,6 +123,14 @@ export class MemoryStore implements Store {
     let all = 0;
     for (const [key, usd] of data.cost) if (key.endsWith(`:${date}`)) all += usd;
     return { all, free: 0 };
+  }
+
+  async saveContact(contact: ContactRecord) {
+    data.contacts.push(contact);
+  }
+
+  async countContacts(since: Date, ipHash?: string) {
+    return data.contacts.filter((c) => new Date(c.createdAt) > since && (ipHash === undefined || c.ipHash === ipHash)).length;
   }
 
   async addCost(userId: string, date: string, usd: number) {

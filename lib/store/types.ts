@@ -1,3 +1,4 @@
+import type { ContactRecord } from "../contact";
 import type { Suggestion } from "../suggest";
 import type { Theme } from "../theme";
 import type { ChatMessage, Operation } from "../types";
@@ -37,6 +38,10 @@ export interface Store {
   hitRateLimit(userId: string, key: string, windowSeconds: number): Promise<number>;
   /** その日の、全員の AI の費用の合計と、そのうち無料プランの人の分（米ドル） */
   getTotalCost(date: string): Promise<{ all: number; free: number }>;
+  /** お問い合わせを保存する */
+  saveContact(contact: ContactRecord): Promise<void>;
+  /** since より後に届いたお問い合わせの数。ipHash を渡すと、その送り元の分だけ */
+  countContacts(since: Date, ipHash?: string): Promise<number>;
   /** 今日の AI の費用（米ドル）を足し、足した後の合計を返す */
   addCost(userId: string, date: string, usd: number): Promise<number>;
   /** チャット履歴を古い順に。before（その id より前）から limit 件 */

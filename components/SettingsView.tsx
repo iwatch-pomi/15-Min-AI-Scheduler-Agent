@@ -15,7 +15,7 @@ import PlanSection from "./PlanSection";
 import RoutineList from "./RoutineList";
 import Segmented from "./Segmented";
 import UsageMeter from "./UsageMeter";
-import { AppLogo, BellIcon, BookIcon, CalendarIcon, DocIcon, ChevronRightIcon, ClockIcon, GaugeIcon, LockIcon, PencilIcon, RepeatIcon, SendIcon, ShareIcon, SparkleIcon, UserIcon } from "./icons";
+import { AppLogo, BellIcon, BookIcon, CalendarIcon, DocIcon, ChevronRightIcon, ClockIcon, GaugeIcon, LockIcon, PencilIcon, RepeatIcon, SendIcon, ShareIcon, SparkleIcon, UserIcon, MailIcon } from "./icons";
 import { useTheme } from "./ThemeContext";
 
 export default function SettingsView(props: {
@@ -313,6 +313,7 @@ export default function SettingsView(props: {
         )}
         <Section title={t("使い方", "GUIDE")}>
           <LinkRow icon={<BookIcon className="size-5" />} label="使い方（チュートリアル）をもう一度見る" onClick={onShowTutorial} testId="tutorial-link" />
+          <LegalLink href="/contact" label="お問い合わせ" icon={<MailIcon className="size-5" />} testId="contact-link" />
         </Section>
 
         <Section title={t("規約など", "LEGAL")}>
@@ -349,12 +350,10 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
   );
 }
 
-function LegalLink({ href, label }: { href: string; label: string }) {
+function LegalLink({ href, label, icon, testId }: { href: string; label: string; icon?: React.ReactNode; testId?: string }) {
   return (
-    <Link href={href} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2">
-      <span className="text-accent-ink">
-        <DocIcon className="size-5" />
-      </span>
+    <Link href={href} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2" data-testid={testId}>
+      <span className="text-accent-ink">{icon ?? <DocIcon className="size-5" />}</span>
       <span className="flex-1 text-sm">{label}</span>
       <ChevronRightIcon className="size-4 shrink-0 text-muted" />
     </Link>
