@@ -77,6 +77,16 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
         </p>
       )}
 
+      {plan !== "pro" && (
+        <div className="rounded-xl bg-accent-soft px-3 py-2.5 stoic:rounded-[10px]" data-testid="plan-value">
+          {/* プラン（購入）の案内なので、ストイックでも丁寧語にする */}
+          <p className="text-sm font-bold text-accent-ink">コーヒー1杯、ランチ1回分の月額で、時間をかしこく管理できます。</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted">
+            {PLANS.plus.label}は月{yen(PLANS.plus.priceYen)}（コーヒー1杯分）、{PLANS.standard.label}と{PLANS.pro.label}は月{yen(PLANS.standard.priceYen)}・{yen(PLANS.pro.priceYen)}（ランチ1回分）です。
+          </p>
+        </div>
+      )}
+
       <ul className="space-y-2">
         {PLAN_IDS.map((p) => {
           const rule = PLANS[p];
@@ -153,6 +163,9 @@ export default function PlanSection(props: { plan: Plan; demo?: boolean }) {
     </div>
   );
 }
+
+/** 「480円」のような値段 */
+const yen = (n: number) => `${n.toLocaleString("ja-JP")}円`;
 
 /** プランの比較の1行。ok なら印、だめなら鍵 */
 function Feature({ ok, children }: { ok: boolean; children: React.ReactNode }) {
